@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "diffmate review output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "limitation", "findings", "future_improvements"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["findings", "no_findings"]
+    },
+    "limitation": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    },
+    "future_improvements": {
+      "type": "array",
+      "maxItems": 2,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "path", "line", "side", "title", "body"],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "path": {
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "line": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "side": {
+          "type": ["string", "null"],
+          "enum": ["LEFT", "RIGHT", null]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previous_finding_id": {
+          "type": ["string", "null"],
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "line": { "type": "integer" },
+            "side": { "type": "string" },
+            "path": { "type": "string" }
+          }
+        },
+        {
+          "properties": {
+            "line": { "type": "null" },
+            "side": { "type": "null" }
+          }
+        }
+      ]
+    }
+  }
+}
