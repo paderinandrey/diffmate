@@ -1,0 +1,7 @@
+docs:
+  - path: SPEC.md
+    type: SPEC
+    precedence: 0
+  - path: prompts/review.md
+    type: DOC
+    precedence: 1

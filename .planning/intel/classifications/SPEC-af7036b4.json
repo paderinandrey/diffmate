@@ -1,0 +1,13 @@
+{
+  "source_path": "/Users/apaderin/dev/diffmate/SPEC.md",
+  "type": "SPEC",
+  "confidence": "high",
+  "manifest_override": true,
+  "title": "diffmate",
+  "summary": "Technical specification for diffmate, a local tool that runs an agent code review on PRs where the user is requested reviewer and publishes the edited draft.",
+  "scope": ["diffmate", "pull request review", "review draft", "runner and job queue", "publication state machine", "SQLite storage", "git isolation", "Claude CLI agent contract", "GitHub publication", "TUI", "watch daemon", "CLI commands"],
+  "cross_refs": ["/Users/apaderin/dev/diffmate/prompts/review.md"],
+  "locked": false,
+  "precedence": 0,
+  "notes": ""
+}

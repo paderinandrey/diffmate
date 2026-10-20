@@ -1,0 +1,13 @@
+{
+  "source_path": "/Users/apaderin/dev/diffmate/prompts/review.md",
+  "type": "DOC",
+  "confidence": "medium",
+  "manifest_override": true,
+  "title": "Review rules",
+  "summary": "System prompt for the PR review agent: defines its inputs, finding rules, anchoring, re-review behavior, and JSON output contract.",
+  "scope": ["PR review agent", "findings", "diff.patch", "previous.json", "CI data", "rules/ directory", "review output schema"],
+  "cross_refs": [],
+  "locked": false,
+  "precedence": 1,
+  "notes": "Type set by MANIFEST_TYPE=DOC (authoritative). Content is an agent system prompt with an output schema and rule-style directives. Its rules are behavioral instructions for the review agent, so the synthesizer should treat them as product context rather than project requirements. It mentions context-directory file names (pr.md, diff.patch, discussion.md, ci.md, previous.json, rules/), not repository doc links."
+}
