@@ -32,7 +32,7 @@ Slice description: the first task is a spike, since the agent contract depends o
 - [x] **REV-09**: Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
 - [ ] **REV-10**: A PR from a fork is reviewed the same way.
 - [x] **REV-11**: A missing CLI flag fails the run before the agent starts.
-- [ ] **REV-12**: A second `review` while the first holds the lock waits, and its job runs after the first; `status` works meanwhile.
+- [x] **REV-12**: A second `review` while the first holds the lock waits, and its job runs after the first; `status` works meanwhile.
 
 ### Reliability (REL) - Phase 2
 
@@ -153,7 +153,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REV-09 | Phase 1 | Complete |
 | REV-10 | Phase 1 | Pending |
 | REV-11 | Phase 1 | Complete |
-| REV-12 | Phase 1 | Pending |
+| REV-12 | Phase 1 | Complete |
 | REL-01 | Phase 2 | Pending |
 | REL-02 | Phase 2 | Pending |
 | REL-03 | Phase 2 | Pending |
