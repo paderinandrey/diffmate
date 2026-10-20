@@ -56,6 +56,11 @@ queued → running → succeeded (findings | no_findings)
 ```
 
 - `findings` and `no_findings` are results of a successful analysis. `failed` is never shown as `no_findings`.
+- Failure kinds:
+  - `cli_error`: diffmate or the Claude CLI setup fails before or around the agent: preparing the run (`gh`, `git`, the filesystem), the CLI binary, its version, a missing flag, or authentication.
+  - `agent_error`: the CLI returns a result envelope that parses and reports an error (`is_error`, or a `subtype` other than `success`), or exits non-zero with such an envelope.
+  - `invalid_output`: stdout does not parse as an envelope, `structured_output` is missing or does not match the schema, `status` disagrees with `findings`, or the CLI ran out of structured-output retries.
+  - The envelope's `subtype`, `errors`, `api_error_status`, and `terminal_reason` are stored with the failure.
 - `interrupted` carries a cause:
   - `shutdown`: a planned stop; the runner received SIGTERM (for example, launchd at logout or reboot).
   - `user_cancel`: SIGINT on a `review` process that runs the job.
@@ -236,10 +241,10 @@ Every file states when its data is unavailable or truncated. Missing CI data is 
 ## Agent contract
 
 - Invocation: `claude -p` with the worktree as working directory and `--add-dir` for the context directory. The prompt is passed on stdin, because `--tools` takes a variable number of values and would consume a trailing argument.
-- Isolation flags: `--safe-mode`, `--restricted`, `--strict-mcp-config` without `--mcp-config`, `--tools Read,Grep,Glob`, `--no-session-persistence`. `--allowedTools` is not used to limit tools.
+- Isolation flags: `--safe-mode`, `--restricted`, `--strict-mcp-config` without `--mcp-config`, `--tools Read,Grep,Glob`, `--no-session-persistence`, `--permission-prompts none`, `--disable-slash-commands`. `--allowedTools` is not used to limit tools.
 - Managed (policy) settings still apply under these flags, so the flags alone do not prove full isolation. Whether the flags hold is established by the isolation checks in slice 1, not assumed.
 - CLI support: diffmate requires a minimum Claude CLI version, and before every run checks that each flag it uses is supported. If one is missing, the run fails with `cli_error` and does not start the agent.
-- Environment: built from an explicit allowlist (`PATH`, `HOME`, locale, and the variables Claude needs for authentication). Nothing else is inherited. No GitHub credentials.
+- Environment: built from an explicit allowlist (`PATH`, `HOME`, locale, and the variables Claude needs for authentication). Nothing else is inherited. No GitHub credentials. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1` are set, so git commands the CLI runs itself ignore my git config too.
 - Instructions: `prompts/review.md` is passed with `--append-system-prompt-file`.
 - Output: `--output-format json` with `--json-schema` set to `schemas/review.schema.json`. The file declares `$schema` draft 2020-12, and diffmate's validator uses that draft explicitly. The CLI rejects the draft 2020-12 meta-schema URI (checked with Claude CLI 2.1.304), so diffmate removes the `$schema` key before passing the schema to `--json-schema`. The run succeeds only when all of these hold, in order:
   1. the process exits with code 0;
