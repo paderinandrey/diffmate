@@ -157,5 +157,5 @@ fn sandbox_uses_spec_paths() {
     for dir in [sandbox.state_dir(), sandbox.cache_dir()] {
         assert!(dir.starts_with(&sandbox.home) && sandbox.home.starts_with(&sandbox.root));
     }
-    assert!(sandbox.run(&[]).status.success());
+    assert!(sandbox.run(&["--version"]).status.success());
 }
