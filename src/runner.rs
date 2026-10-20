@@ -14,12 +14,27 @@ use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
-use crate::store::Store;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::Revision;
+use crate::store::{RunId, Store};
 use result::{cancelled_before_run, job_failed};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 pub(crate) use result::ReviewResult;
+
+async fn record_agent_process(
+    store: &Store,
+    run: RunId,
+    mut pids: UnboundedReceiver<u32>,
+) -> Vec<String> {
+    let mut problems = Vec::new();
+    while let Some(pid) = pids.recv().await {
+        if let Err(error) = store.set_agent_process(run, pid, pid).await {
+            problems.push(format!("recording the agent process failed: {error}"));
+        }
+    }
+    problems
+}
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,
