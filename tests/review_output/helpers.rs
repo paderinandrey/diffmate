@@ -1,4 +1,4 @@
-use crate::support::fake_claude::success_envelope;
+use crate::support::fake_claude::{finding_json, output_json, success_envelope};
 use crate::support::sandbox::Sandbox;
 use crate::tracer::{database, review};
 use std::process::Output;
@@ -33,4 +33,17 @@ pub fn texts(output: &Output) -> (String, String) {
         String::from_utf8_lossy(&output.stdout).into_owned(),
         String::from_utf8_lossy(&output.stderr).into_owned(),
     )
+}
+
+pub fn anchored(line: u32, side: &str, severity: &str, title: &str) -> String {
+    let path = Some("src/lib.rs");
+    finding_json(path, Some(line), Some(side), severity, title, "Body.")
+}
+
+pub fn row(line: Option<i64>, side: Option<&str>) -> Row {
+    (Some("src/lib.rs".into()), line, side.map(Into::into), None)
+}
+
+pub fn review_one(sandbox: &Sandbox, finding: String) -> Output {
+    review_with(sandbox, &output_json(&[finding], None, &[]))
 }
