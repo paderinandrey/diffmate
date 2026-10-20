@@ -3,6 +3,7 @@ use crate::app::AppConfig;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
+use crate::lock::{self, LOCK_POLL};
 use crate::pr_url::{self, PrRef};
 use crate::render;
 use crate::runner::{self, Deps, ReviewResult};
@@ -34,6 +35,13 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
     };
     let store = Store::open(&config.paths).await?;
     let job = store.enqueue_review(pr, &config.process).await?;
+    let waiting = || {
+        let id = job.job_id;
+        eprintln!(
+            "waiting: another diffmate process holds the runner lock; job {id} stays queued until it is released"
+        );
+    };
+    let _lock = lock::acquire(&config.paths.lock(), LOCK_POLL, waiting).await?;
     let result = runner::execute_review_job(&config.paths, &store, &deps, pr, &job).await;
     let (stdout, stderr) = (std::io::stdout(), std::io::stderr());
     let printed = render::review(pr, &result, &mut stdout.lock(), &mut stderr.lock());

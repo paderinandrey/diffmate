@@ -33,6 +33,10 @@ impl Paths {
         self.state_dir.join("diffmate.db")
     }
 
+    pub fn lock(&self) -> PathBuf {
+        self.state_dir.join("runner.lock")
+    }
+
     pub fn repo_dir(&self, owner: &str, repo: &str) -> PathBuf {
         let name = format!("{repo}.git");
         self.state_dir.join("repos").join(owner).join(name)

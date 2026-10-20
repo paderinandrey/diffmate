@@ -6,6 +6,7 @@ mod diff;
 mod error;
 mod gh;
 mod git;
+mod lock;
 mod normalize;
 mod paths;
 mod pr_url;
