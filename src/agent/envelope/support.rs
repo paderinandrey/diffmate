@@ -47,6 +47,8 @@ pub(super) fn failure(outcome: AgentOutcome) -> (&'static str, FailureDetail, Me
             detail,
             metrics,
         } => (kind.as_str(), detail, metrics),
-        AgentOutcome::Succeeded { .. } => panic!("expected a failure"),
+        AgentOutcome::Succeeded { .. } | AgentOutcome::Cancelled { .. } => {
+            panic!("expected a failure")
+        }
     }
 }

@@ -1,8 +1,8 @@
 use super::{ReviewResult, job_failed};
-use crate::agent::{AgentOutcome, ReviewOutput};
+use crate::agent::{AgentOutcome, FailureDetail, FailureKind, ReviewOutput};
 use crate::normalize::Normalized;
 use crate::store::jobs::EnqueuedJob;
-use crate::store::records::{DraftRecord, FindingRecord, Revision};
+use crate::store::records::{DraftRecord, FindingRecord, Metrics, Revision};
 use crate::store::{RunId, Store};
 
 fn draft_record(
@@ -49,26 +49,46 @@ pub(super) async fn store(
                 Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
             }
         }
+        AgentOutcome::Cancelled { metrics } => {
+            let detail = FailureDetail {
+                message: "interrupted by signal".into(),
+                ..FailureDetail::default()
+            };
+            failed(
+                store,
+                (job, run),
+                (FailureKind::Interrupted, detail, metrics),
+                cleanup_warnings,
+            )
+            .await
+        }
         AgentOutcome::Failed {
             kind,
             detail,
             metrics,
-        } => {
-            let mut message = detail.message.clone();
-            for warning in cleanup_warnings {
-                message = format!("{message}; {warning}");
-            }
-            match store
-                .finish_failed(run, job.job_id, kind, detail, metrics)
-                .await
-            {
-                Ok(()) => ReviewResult::RunFailed {
-                    run_id: run,
-                    kind,
-                    message,
-                },
-                Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
-            }
-        }
+        } => failed(store, (job, run), (kind, detail, metrics), cleanup_warnings).await,
+    }
+}
+
+async fn failed(
+    store: &Store,
+    (job, run): (&EnqueuedJob, RunId),
+    (kind, detail, metrics): (FailureKind, FailureDetail, Metrics),
+    cleanup_warnings: Vec<String>,
+) -> ReviewResult {
+    let mut message = detail.message.clone();
+    for warning in cleanup_warnings {
+        message = format!("{message}; {warning}");
+    }
+    match store
+        .finish_failed(run, job.job_id, kind, detail, metrics)
+        .await
+    {
+        Ok(()) => ReviewResult::RunFailed {
+            run_id: run,
+            kind,
+            message,
+        },
+        Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
     }
 }

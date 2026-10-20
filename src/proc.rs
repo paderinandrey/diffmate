@@ -39,10 +39,11 @@ async fn drain<R: AsyncRead + Unpin>(pipe: Option<R>, limit: usize) -> io::Resul
 }
 
 pub(crate) async fn finish(
-    mut child: Child,
+    mut child: impl std::borrow::BorrowMut<Child>,
     stdin: Option<Vec<u8>>,
     limits: Limits,
 ) -> io::Result<Captured> {
+    let child = child.borrow_mut();
     let (out, err) = (child.stdout.take(), child.stderr.take());
     let input = feed(child.stdin.take(), stdin);
     let ((), out, err, status) = tokio::join!(

@@ -3,21 +3,24 @@ pub(crate) mod envelope;
 mod gitwrap;
 mod output;
 pub(crate) mod probe;
+mod request;
 pub(crate) mod schema;
 mod spawn;
+mod stop;
 
 use crate::store::records::Metrics;
 pub(crate) use output::{ReviewOutput, ReviewStatus, Severity, Side};
+pub(crate) use request::AgentRequest;
 use serde::Serialize;
 use serde_json::Value;
 use std::future::Future;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FailureKind {
     CliError,
     AgentError,
     InvalidOutput,
+    Interrupted,
 }
 
 impl FailureKind {
@@ -26,6 +29,7 @@ impl FailureKind {
             FailureKind::CliError => "cli_error",
             FailureKind::AgentError => "agent_error",
             FailureKind::InvalidOutput => "invalid_output",
+            FailureKind::Interrupted => "interrupted",
         }
     }
 }
@@ -53,22 +57,9 @@ pub(crate) enum AgentOutcome {
         detail: FailureDetail,
         metrics: Metrics,
     },
-}
-
-pub(crate) struct AgentRequest {
-    pub worktree: PathBuf,
-    pub context_dir: PathBuf,
-    pub prompt_file: PathBuf,
-}
-
-impl AgentRequest {
-    pub fn new(worktree: PathBuf, context_dir: PathBuf, prompt_file: PathBuf) -> AgentRequest {
-        AgentRequest {
-            worktree,
-            context_dir,
-            prompt_file,
-        }
-    }
+    Cancelled {
+        metrics: Metrics,
+    },
 }
 
 pub(crate) trait Agent {

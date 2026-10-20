@@ -10,7 +10,7 @@ fn good() -> Value {
 fn a_clean_envelope_succeeds() {
     match run(&good(), 0) {
         AgentOutcome::Succeeded { output, .. } => assert_eq!(output.status, ReviewStatus::Findings),
-        AgentOutcome::Failed { .. } => panic!("expected success"),
+        AgentOutcome::Failed { .. } | AgentOutcome::Cancelled { .. } => panic!("expected success"),
     }
 }
 

@@ -90,7 +90,7 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
         AgentOutcome::Succeeded { output, .. } => {
             normalize(output, &prepared.index, &prepared.previous_ids)
         }
-        AgentOutcome::Failed { .. } => Normalized::default(),
+        AgentOutcome::Failed { .. } | AgentOutcome::Cancelled { .. } => Normalized::default(),
     };
     outcome::store(store, (job, run, revision), (outcome, normalized), warnings).await
 }

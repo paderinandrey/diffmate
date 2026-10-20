@@ -50,7 +50,7 @@ proptest! {
                 prop_assert_eq!(output.status, ReviewStatus::Findings);
                 prop_assert!(!output.findings.is_empty());
             }
-            AgentOutcome::Failed { .. } => prop_assert!(!expected),
+            AgentOutcome::Failed { .. } | AgentOutcome::Cancelled { .. } => prop_assert!(!expected),
         }
     }
 }

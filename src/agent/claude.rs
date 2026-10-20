@@ -15,6 +15,8 @@ pub(crate) use contract::TestOverrides;
 pub(crate) use contract::{production_args, user_prompt};
 
 #[cfg(test)]
+mod cancel_tests;
+#[cfg(test)]
 mod contract_tests;
 #[cfg(test)]
 mod env_tests;
@@ -83,7 +85,10 @@ impl ClaudeCli {
 impl Agent for ClaudeCli {
     async fn run(&self, request: &AgentRequest) -> AgentOutcome {
         match Box::pin(spawn::invoke(self, request)).await {
-            Ok(captured) => classify(&captured, &self.schemas),
+            Ok(Some(captured)) => classify(&captured, &self.schemas),
+            Ok(None) => AgentOutcome::Cancelled {
+                metrics: Metrics::default(),
+            },
             Err(detail) => AgentOutcome::Failed {
                 kind: FailureKind::CliError,
                 detail: *detail,

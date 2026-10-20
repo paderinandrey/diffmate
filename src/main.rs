@@ -1,5 +1,6 @@
 mod agent;
 mod app;
+mod cancel;
 mod cli;
 mod context;
 mod diff;
