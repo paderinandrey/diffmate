@@ -70,8 +70,8 @@ run = "cargo deny check"
 
 [tasks."docs:check"]
 description = "Fail if a relative Markdown link or anchor is broken"
-sources = ["**/*.md"]
-run = "lychee --offline --include-fragments --no-progress './**/*.md'"
+sources = ["**/*.md", ".planning/**/*.md"]
+run = "lychee --offline --include-fragments --no-progress --hidden './**/*.md'"
 
 [tasks."deps:check"]
 description = "Fail if the Rust toolchain, a mise tool or a direct crate is behind its latest eligible release"
