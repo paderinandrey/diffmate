@@ -1,0 +1,17 @@
+{
+  "cli_version": "2.1.304",
+  "version_stdout": "2.1.304 (Claude Code)",
+  "production_flags": ["-p", "--safe-mode", "--restricted", "--strict-mcp-config", "--tools", "Read,Grep,Glob", "--no-session-persistence", "--permission-prompts", "none", "--disable-slash-commands", "--add-dir", "CONTEXT_DIR", "--append-system-prompt-file", "PROMPT_FILE", "--output-format", "json", "--json-schema", "CLI_SCHEMA"],
+  "probe": {
+    "ok_stderr": "Error: Input must be provided either through stdin or as a prompt argument when using --print",
+    "ok_exit_code": 1,
+    "unknown_option_stderr": "error: unknown option '--bogus-flag-xyz'",
+    "unknown_option_exit_code": 1,
+    "schema_with_dollar_schema_stderr": "Error: --json-schema is not a valid JSON Schema: no schema with key or ref \"https://json-schema.org/draft/2020-12/schema\"",
+    "missing_prompt_file_stderr": "Error: Append system prompt file not found: /nonexistent/prompt.md",
+    "flags_accepted": true
+  },
+  "auth_env_required": ["PATH", "HOME", "USER", "LOGNAME"],
+  "auth_env_allowlist": ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "CLAUDE_CONFIG_DIR", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"],
+  "auth_env_not_needed": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_EFFORT", "CLAUDE_PID"]
+}
