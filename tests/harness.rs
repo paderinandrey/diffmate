@@ -5,6 +5,8 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 use support::fake_claude::{DEFAULT_VERSION, FakeClaude, PROBE_OK};
 use support::fake_gh::FakeGh;
+use support::sandbox::Sandbox;
+use support::upstream::real_git;
 use support::{exec, signal};
 use tempfile::TempDir;
 
@@ -94,4 +96,66 @@ fn fake_gh_routes_by_prefix() {
     assert!(String::from_utf8_lossy(&unknown.stderr).contains("fake gh: no route for: repo view"));
     assert_eq!(gh.calls()[0], ["pr", "view", "u", "--json", "x"]);
     assert_eq!(gh.calls().len(), 3);
+}
+
+#[test]
+fn upstream_pr_head_exists_only_under_pull_ref() {
+    let sandbox = Sandbox::new();
+    let upstream = sandbox.upstream("o", "r");
+    upstream.commit(&[("a.txt", "base\n")], "base");
+    upstream.push_branch("main");
+    let head = upstream.pr_head(1, "main", &[("b.txt", "head\n")]);
+
+    let refs = upstream.git(&["ls-remote", upstream.bare.to_str().unwrap()]);
+    assert!(refs.contains("refs/heads/main") && refs.contains("refs/pull/1/head"));
+    assert!(!refs.contains("refs/heads/pr"));
+    let ancestor = [
+        "--git-dir",
+        upstream.bare.to_str().unwrap(),
+        "merge-base",
+        "--is-ancestor",
+        &head,
+        "main",
+    ];
+    let status = Command::new(real_git()).args(ancestor).status().unwrap();
+    assert_eq!(status.code(), Some(1));
+}
+
+#[test]
+fn git_shim_resolves_github_remote() {
+    let sandbox = Sandbox::new();
+    let upstream = sandbox.upstream("o", "r");
+    upstream.commit(&[("a.txt", "base\n")], "base");
+    upstream.push_branch("main");
+    upstream.pr_head(1, "main", &[("b.txt", "head\n")]);
+
+    let output = Command::new(sandbox.bin.join("git"))
+        .args(["ls-remote", "https://github.com/o/r.git"])
+        .env_clear()
+        .env("HOME", &sandbox.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("refs/pull/1/head"));
+}
+
+#[test]
+fn sandbox_uses_spec_paths() {
+    let sandbox = Sandbox::new();
+    assert!(
+        sandbox
+            .state_dir()
+            .ends_with("Library/Application Support/diffmate")
+    );
+    assert!(sandbox.cache_dir().ends_with("Library/Caches/diffmate"));
+    assert!(
+        sandbox
+            .db_path()
+            .ends_with("Application Support/diffmate/diffmate.db")
+    );
+    for dir in [sandbox.state_dir(), sandbox.cache_dir()] {
+        assert!(dir.starts_with(&sandbox.home) && sandbox.home.starts_with(&sandbox.root));
+    }
+    assert!(sandbox.run(&[]).status.success());
 }
