@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Single review
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-20T18:04:33.564Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-20T18:20:30.528Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: dce9bde3362dfacdc7b301ee1e4b959d7f68b7d0
+state_head: 97cb078f9e47b8cdbc659e5306b2f90089daf6eb
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 12
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 01 (Single review) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 9 min | 2 tasks | 12 files |
 | Phase 01 P01 | 115 min | 3 tasks | 10 files |
 | Phase 01 P04 | 23 min | 1 tasks | 41 files |
+| Phase 01 P05 | 14 min | 3 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 01]: ClaudeCli installs the PATH git wrapper (owner decision A1) in RUN/prompt/bin; 01-05 does not own it
 - [Phase 01]: Envelope check 4 (status vs findings) is in classify from the tracer; previous_finding_id stored NULL with a run warning until 01-07
 - [Phase 01]: ReviewResult carries expect(dead_code) for run_id; remove it when first read
+- [Phase 01]: 01-05: a non-zero exit with an otherwise clean success envelope is classified agent_error; only exit 0 may produce succeeded
+- [Phase 01]: 01-05: probe functions return Box<FailureDetail> (clippy result_large_err); the probe passes only on the recorded input-error text with a non-zero exit, everything else is inconclusive and fails closed
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T18:04:33.536Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-20T18:20:30.493Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
