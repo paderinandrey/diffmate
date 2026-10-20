@@ -1,5 +1,6 @@
 mod cleanup;
 mod outcome;
+mod resolve;
 mod steps;
 
 use crate::agent::{Agent, AgentOutcome, FailureKind};
@@ -11,7 +12,6 @@ use crate::pr_url::PrRef;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::{FindingRecord, Revision};
 use crate::store::{RunId, Store};
-use std::collections::HashSet;
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,
@@ -55,7 +55,7 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
     job: &EnqueuedJob,
 ) -> ReviewResult {
     let resolved = match store.start_job(job.job_id).await {
-        Ok(()) => steps::resolve(paths, deps, pr).await,
+        Ok(()) => resolve::resolve(paths, deps, pr).await,
         Err(error) => Err(error),
     };
     match resolved {
@@ -75,9 +75,11 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
         Ok(run) => run,
         Err(error) => return job_failed(store, job, error.to_string()).await,
     };
-    let (outcome, index) = steps::run_agent(paths, deps, pr, (meta, revision), run).await;
+    let ids = (pr, job.target_id, run);
+    let (outcome, mut prepared) = steps::run_agent(paths, store, deps, ids, (meta, revision)).await;
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
-    let mut warnings = cleanup::run(&deps.git, paths, &repo, run).await;
+    let mut warnings = std::mem::take(&mut prepared.warnings);
+    warnings.extend(cleanup::run(&deps.git, paths, &repo, run).await);
     if meta.head_sha != revision.head_sha {
         let (seen, reviewed) = (&meta.head_sha, &revision.head_sha);
         warnings.push(format!(
@@ -85,7 +87,9 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
         ));
     }
     let normalized = match &outcome {
-        AgentOutcome::Succeeded { output, .. } => normalize(output, &index, &HashSet::new()),
+        AgentOutcome::Succeeded { output, .. } => {
+            normalize(output, &prepared.index, &prepared.previous_ids)
+        }
         AgentOutcome::Failed { .. } => Normalized::default(),
     };
     outcome::store(store, (job, run, revision), (outcome, normalized), warnings).await

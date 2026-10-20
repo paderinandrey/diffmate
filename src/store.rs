@@ -1,5 +1,6 @@
 pub(crate) mod finish;
 pub(crate) mod jobs;
+pub(crate) mod previous;
 pub(crate) mod readonly;
 pub(crate) mod records;
 pub(crate) mod recovery;

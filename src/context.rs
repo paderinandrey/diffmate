@@ -1,63 +1,63 @@
+mod caps;
+mod files;
+mod pr;
+mod previous;
+#[cfg(test)]
+mod tests;
+
 use crate::error::Error;
 use crate::gh::PrMeta;
 use crate::paths::create_private_dir_async;
 use crate::pr_url::PrRef;
 use crate::store::records::Revision;
+use crate::store::{RunId, Store, TargetId};
+use caps::{DIFF_CAP, cap_diff};
+use files::put;
+use std::collections::HashSet;
 use std::path::Path;
-use tokio::fs::OpenOptions;
-use tokio::io::AsyncWriteExt;
 
-const PROMPT: &str = include_str!("../prompts/review.md");
+pub(crate) use files::write_prompt;
 
-async fn put(path: &Path, bytes: impl AsRef<[u8]>) -> Result<(), Error> {
-    let what = format!("write {}", path.display());
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true).mode(0o600);
-    let mut file = options.open(path).await.map_err(Error::io(&what))?;
-    file.write_all(bytes.as_ref())
-        .await
-        .map_err(Error::io(&what))?;
-    file.flush().await.map_err(Error::io(&what))
+pub(crate) struct ContextInputs<'a> {
+    pub dir: &'a Path,
+    pub pr: &'a PrRef,
+    pub meta: &'a PrMeta,
+    pub revision: &'a Revision,
+    pub diff: Vec<u8>,
+    pub target: TargetId,
+    pub run: RunId,
+    pub store: &'a Store,
 }
 
-fn pr_md(pr: &PrRef, meta: &PrMeta, revision: &Revision) -> String {
-    let fork = if meta.is_cross_repository {
-        "yes"
-    } else {
-        "no"
-    };
-    format!(
-        "# {label} (#{number})\n\nTitle: {title}\nAuthor: {author}\nState: {state}\nURL: {url}\nBase branch: {base}\nHead branch: {head}\nHead SHA: {head_sha}\nMerge-base SHA: {merge_base}\nHead is in another repository: {fork}\n\n## Description\n\n{body}\n",
-        label = pr.label(),
-        number = meta.number,
-        title = meta.title,
-        author = meta.author,
-        state = meta.state,
-        url = meta.url,
-        base = meta.base_ref,
-        head = meta.head_ref,
-        head_sha = revision.head_sha,
-        merge_base = revision.merge_base_sha,
-        body = meta.body,
-    )
+pub(crate) struct WrittenContext {
+    pub diff_as_written: Vec<u8>,
+    pub previous_ids: HashSet<String>,
+    pub warnings: Vec<String>,
 }
 
-pub(crate) async fn write(
-    dir: &Path,
-    pr: &PrRef,
-    meta: &PrMeta,
-    revision: &Revision,
-    diff: Vec<u8>,
-) -> Result<(), Error> {
-    let made = create_private_dir_async(dir.to_path_buf()).await;
+fn note_truncation(warnings: &mut Vec<String>, name: &str, content: impl AsRef<[u8]>) {
+    if content.as_ref().starts_with(b"TRUNCATED:") {
+        warnings.push(format!(
+            "{name} exceeded its size cap; the agent saw only the start of it"
+        ));
+    }
+}
+
+pub(crate) async fn write(inputs: ContextInputs<'_>) -> Result<WrittenContext, Error> {
+    let made = create_private_dir_async(inputs.dir.to_path_buf()).await;
     made.map_err(Error::io("create context directory"))?;
-    put(&dir.join("pr.md"), pr_md(pr, meta, revision)).await?;
-    put(&dir.join("diff.patch"), diff).await
-}
-
-pub(crate) async fn write_prompt(path: &Path) -> Result<(), Error> {
-    let dir = path.parent().unwrap_or(path).to_path_buf();
-    let made = create_private_dir_async(dir).await;
-    made.map_err(Error::io("create prompt directory"))?;
-    put(path, PROMPT).await
+    let mut warnings = Vec::new();
+    let pr_md = pr::render(inputs.pr, inputs.meta, inputs.revision);
+    note_truncation(&mut warnings, "pr.md", &pr_md);
+    put(&inputs.dir.join("pr.md"), pr_md).await?;
+    let diff_as_written = cap_diff(&inputs.diff, DIFF_CAP);
+    note_truncation(&mut warnings, "diff.patch", &diff_as_written);
+    put(&inputs.dir.join("diff.patch"), &diff_as_written).await?;
+    let ids = (inputs.target, inputs.run);
+    let previous_ids = previous::write(inputs.dir, inputs.store, ids).await?;
+    Ok(WrittenContext {
+        diff_as_written,
+        previous_ids,
+        warnings,
+    })
 }
