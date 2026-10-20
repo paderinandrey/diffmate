@@ -1,13 +1,14 @@
 use super::Deps;
-use crate::agent::AgentRequest;
+use crate::agent::{Agent, AgentOutcome, AgentRequest, FailureDetail, FailureKind};
 use crate::context;
+use crate::diff::{self, DiffIndex};
 use crate::error::Error;
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::paths::{Paths, create_private_dir_async};
 use crate::pr_url::{self, PrRef};
 use crate::store::RunId;
-use crate::store::records::Revision;
+use crate::store::records::{Metrics, Revision};
 
 pub(super) async fn resolve<G: Git, H: Gh, A>(
     paths: &Paths,
@@ -49,7 +50,7 @@ pub(super) async fn prepare<G: Git, H, A>(
     pr: &PrRef,
     (meta, revision): (&PrMeta, &Revision),
     run: RunId,
-) -> Result<AgentRequest, Error> {
+) -> Result<(AgentRequest, DiffIndex), Error> {
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
     let (worktree, context_dir) = (paths.worktree(run), paths.context_dir(run));
     let made = create_private_dir_async(paths.run_dir(run)).await;
@@ -61,8 +62,33 @@ pub(super) async fn prepare<G: Git, H, A>(
         .git
         .diff(&repo, &revision.merge_base_sha, &revision.head_sha)
         .await?;
+    let index = diff::parse(&diff);
     context::write(&context_dir, pr, meta, revision, diff).await?;
     let prompt_file = paths.prompt_file(run);
     context::write_prompt(&prompt_file).await?;
-    Ok(AgentRequest::new(worktree, context_dir, prompt_file))
+    Ok((AgentRequest::new(worktree, context_dir, prompt_file), index))
+}
+
+pub(super) async fn run_agent<G: Git, H, A: Agent>(
+    paths: &Paths,
+    deps: &Deps<G, H, A>,
+    pr: &PrRef,
+    revisions: (&PrMeta, &Revision),
+    run: RunId,
+) -> (AgentOutcome, DiffIndex) {
+    match prepare(paths, deps, pr, revisions, run).await {
+        Ok((request, index)) => (deps.agent.run(&request).await, index),
+        Err(error) => {
+            let detail = FailureDetail {
+                message: format!("prepare: {error}"),
+                ..FailureDetail::default()
+            };
+            let failed = AgentOutcome::Failed {
+                kind: FailureKind::CliError,
+                detail,
+                metrics: Metrics::default(),
+            };
+            (failed, DiffIndex::default())
+        }
+    }
 }

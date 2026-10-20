@@ -1,5 +1,6 @@
 use super::{ReviewResult, job_failed};
 use crate::agent::{AgentOutcome, ReviewOutput};
+use crate::normalize::Normalized;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::{DraftRecord, FindingRecord, Revision};
 use crate::store::{RunId, Store};
@@ -7,26 +8,8 @@ use crate::store::{RunId, Store};
 fn draft_record(
     output: ReviewOutput,
     raw: serde_json::Value,
-    warnings: &mut Vec<String>,
+    findings: Vec<FindingRecord>,
 ) -> DraftRecord {
-    let mut findings = Vec::new();
-    for finding in output.findings {
-        if finding.previous_finding_id.is_some() {
-            warnings.push(format!(
-                "previous_finding_id on \"{}\" ignored: no earlier run is known",
-                finding.title
-            ));
-        }
-        findings.push(FindingRecord {
-            severity: finding.severity,
-            path: finding.path,
-            line: finding.line,
-            side: finding.side,
-            title: finding.title,
-            body: finding.body,
-            previous_finding_id: None,
-        });
-    }
     DraftRecord {
         original_output: raw,
         limitation: output.limitation,
@@ -37,11 +20,9 @@ fn draft_record(
 
 pub(super) async fn store(
     store: &Store,
-    job: &EnqueuedJob,
-    run: RunId,
-    revision: &Revision,
-    outcome: AgentOutcome,
-    mut warnings: Vec<String>,
+    (job, run, revision): (&EnqueuedJob, RunId, &Revision),
+    (outcome, normalized): (AgentOutcome, Normalized),
+    cleanup_warnings: Vec<String>,
 ) -> ReviewResult {
     match outcome {
         AgentOutcome::Succeeded {
@@ -49,7 +30,9 @@ pub(super) async fn store(
             raw,
             metrics,
         } => {
-            let draft = draft_record(output, raw, &mut warnings);
+            let mut warnings = normalized.warnings;
+            warnings.extend(cleanup_warnings);
+            let draft = draft_record(output, raw, normalized.findings);
             let result = ReviewResult::Succeeded {
                 run_id: run,
                 head_sha: revision.head_sha.clone(),
@@ -72,7 +55,7 @@ pub(super) async fn store(
             metrics,
         } => {
             let mut message = detail.message.clone();
-            for warning in warnings {
+            for warning in cleanup_warnings {
                 message = format!("{message}; {warning}");
             }
             match store

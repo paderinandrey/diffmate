@@ -28,10 +28,14 @@ pub fn review(sandbox: &Sandbox) -> Output {
 }
 
 pub fn with_pr(sandbox: &Sandbox) -> (String, String) {
+    with_pr_head(sandbox, HEAD_LIB)
+}
+
+pub fn with_pr_head(sandbox: &Sandbox, head_lib: &str) -> (String, String) {
     let upstream = sandbox.upstream("o", "r");
     let base = upstream.commit(&[("src/lib.rs", BASE_LIB)], "base");
     upstream.push_branch("main");
-    let head = upstream.pr_head(1, "main", &[("src/lib.rs", HEAD_LIB)]);
+    let head = upstream.pr_head(1, "main", &[("src/lib.rs", head_lib)]);
     let json = pr_view_json("o", "r", 1, &head, "main", false);
     sandbox.gh.route(&format!("pr view {URL}"), &json);
     (base, head)

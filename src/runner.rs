@@ -2,14 +2,16 @@ mod cleanup;
 mod outcome;
 mod steps;
 
-use crate::agent::{Agent, AgentOutcome, FailureDetail, FailureKind};
+use crate::agent::{Agent, AgentOutcome, FailureKind};
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
+use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
 use crate::store::jobs::EnqueuedJob;
-use crate::store::records::{FindingRecord, Metrics, Revision};
+use crate::store::records::{FindingRecord, Revision};
 use crate::store::{RunId, Store};
+use std::collections::HashSet;
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,
@@ -73,17 +75,7 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
         Ok(run) => run,
         Err(error) => return job_failed(store, job, error.to_string()).await,
     };
-    let outcome = match steps::prepare(paths, deps, pr, (meta, revision), run).await {
-        Ok(request) => deps.agent.run(&request).await,
-        Err(error) => AgentOutcome::Failed {
-            kind: FailureKind::CliError,
-            detail: FailureDetail {
-                message: format!("prepare: {error}"),
-                ..FailureDetail::default()
-            },
-            metrics: Metrics::default(),
-        },
-    };
+    let (outcome, index) = steps::run_agent(paths, deps, pr, (meta, revision), run).await;
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
     let mut warnings = cleanup::run(&deps.git, paths, &repo, run).await;
     if meta.head_sha != revision.head_sha {
@@ -92,5 +84,9 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
             "PR head moved during preparation: gh reported {seen}, reviewed {reviewed}"
         ));
     }
-    outcome::store(store, job, run, revision, outcome, warnings).await
+    let normalized = match &outcome {
+        AgentOutcome::Succeeded { output, .. } => normalize(output, &index, &HashSet::new()),
+        AgentOutcome::Failed { .. } => Normalized::default(),
+    };
+    outcome::store(store, (job, run, revision), (outcome, normalized), warnings).await
 }
