@@ -1,3 +1,4 @@
+mod auth;
 mod contract;
 mod endpoint;
 mod endpoint_check;
@@ -7,4 +8,6 @@ mod harness;
 mod harness_check;
 mod http;
 mod inspect;
-mod smoke;
+mod rev06;
+mod rev07;
+mod rev08;

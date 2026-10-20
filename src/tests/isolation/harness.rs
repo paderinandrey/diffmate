@@ -1,4 +1,4 @@
-use super::endpoint::FakeAnthropic;
+use super::endpoint::{FakeAnthropic, Recorded};
 use super::fixture::MaliciousPr;
 use crate::agent::claude::{ClaudeCli, TestOverrides};
 use crate::agent::{Agent, AgentOutcome, AgentRequest};
@@ -72,4 +72,25 @@ pub(super) async fn run_control(pr: &MaliciousPr, endpoint: &FakeAnthropic) -> A
 pub(super) async fn run_open_control(pr: &MaliciousPr, endpoint: &FakeAnthropic) -> AgentOutcome {
     let removed = [WITHOUT_ISOLATION, WITHOUT_TOOL_LIMITS].concat();
     run(pr, endpoint, "open-control", removed).await
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum Mode {
+    Isolated,
+    Control,
+    OpenControl,
+}
+
+pub(super) async fn observe(
+    pr: &MaliciousPr,
+    secondary: &FakeAnthropic,
+    mode: Mode,
+) -> Vec<Recorded> {
+    let endpoint = FakeAnthropic::start().await;
+    match mode {
+        Mode::Isolated => run_isolated(pr, &endpoint).await,
+        Mode::Control => run_control(pr, &endpoint).await,
+        Mode::OpenControl => run_open_control(pr, &endpoint).await,
+    };
+    [endpoint.take(), secondary.take()].concat()
 }
