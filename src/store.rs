@@ -1,7 +1,9 @@
 pub(crate) mod finish;
 pub(crate) mod jobs;
+pub(crate) mod readonly;
 pub(crate) mod records;
 pub(crate) mod runs;
+pub(crate) mod status;
 
 use crate::error::Error;
 use crate::paths::{Paths, create_private_dir};

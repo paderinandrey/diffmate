@@ -14,6 +14,7 @@ mod procenv;
 mod render;
 mod review;
 mod runner;
+mod status;
 mod store;
 
 use clap::Parser;
@@ -38,5 +39,6 @@ fn main() -> ExitCode {
     };
     match cli.command {
         cli::Command::Review { url } => runtime.block_on(review::run(&config, &url)),
+        cli::Command::Status => runtime.block_on(status::run(&config)),
     }
 }

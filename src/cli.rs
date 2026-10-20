@@ -10,4 +10,5 @@ pub(crate) struct Cli {
 #[derive(Subcommand)]
 pub(crate) enum Command {
     Review { url: String },
+    Status,
 }
