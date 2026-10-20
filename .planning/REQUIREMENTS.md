@@ -29,7 +29,7 @@ Slice description: the first task is a spike, since the agent contract depends o
 - [ ] **REV-06**: Claude isolation, checked with a canary string instead of a real secret, while authentication keeps working: a `CLAUDE.md` in the worktree containing the canary is not loaded.
 - [ ] **REV-07**: Claude isolation, same canary method: a `CLAUDE.md` with an `@` import of a file outside the worktree containing the canary does not leak it.
 - [ ] **REV-08**: Claude isolation, same canary method: `.claude/settings.json` with a hook, a plugin, and `.mcp.json` from the PR do not run or load.
-- [ ] **REV-09**: Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
+- [x] **REV-09**: Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
 - [ ] **REV-10**: A PR from a fork is reviewed the same way.
 - [x] **REV-11**: A missing CLI flag fails the run before the agent starts.
 - [ ] **REV-12**: A second `review` while the first holds the lock waits, and its job runs after the first; `status` works meanwhile.
@@ -150,7 +150,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REV-06 | Phase 1 | Pending |
 | REV-07 | Phase 1 | Pending |
 | REV-08 | Phase 1 | Pending |
-| REV-09 | Phase 1 | Pending |
+| REV-09 | Phase 1 | Complete |
 | REV-10 | Phase 1 | Pending |
 | REV-11 | Phase 1 | Complete |
 | REV-12 | Phase 1 | Pending |
