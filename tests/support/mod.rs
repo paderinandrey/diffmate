@@ -4,6 +4,7 @@ mod envelope;
 mod fake_call;
 pub mod fake_claude;
 pub mod fake_gh;
+pub mod poison;
 pub mod sandbox;
 pub mod upstream;
 

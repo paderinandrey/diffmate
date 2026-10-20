@@ -13,6 +13,7 @@ if [ ! -s "$d/stdin" ]; then
   cat "$S/probe_stderr" >&2
   exit "$(cat "$S/probe_exit")"
 fi
+if [ -e "$S/snapshot_tree" ]; then cp -R . "$d/tree"; fi
 r=$(( $(cat "$S/run_count" 2>/dev/null || echo 0) + 1 ))
 echo "$r" > "$S/run_count"
 prev=

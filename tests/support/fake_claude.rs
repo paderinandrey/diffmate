@@ -55,6 +55,10 @@ impl FakeClaude {
         hold
     }
 
+    pub fn snapshot_tree(&self) {
+        self.put("snapshot_tree", "");
+    }
+
     pub fn spawn_child(&self) {
         self.put("spawn_child", "");
     }
