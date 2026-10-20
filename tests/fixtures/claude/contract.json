@@ -13,5 +13,21 @@
   },
   "auth_env_required": ["PATH", "HOME", "USER", "LOGNAME"],
   "auth_env_allowlist": ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "CLAUDE_CONFIG_DIR", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"],
-  "auth_env_not_needed": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_EFFORT", "CLAUDE_PID"]
+  "auth_env_not_needed": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_EFFORT", "CLAUDE_PID"],
+  "envelope": {
+    "fields_success": ["duration_api_ms", "stop_reason", "session_id", "total_cost_usd", "usage", "modelUsage", "permission_denials", "terminal_reason", "fast_mode_state", "fast_mode_disabled_reason", "subagent_stats", "safety_stops", "is_error", "num_turns", "subtype", "api_error_status", "result", "structured_output", "ttft_ms", "type", "duration_ms", "uuid", "ttft_stream_ms", "time_to_request_ms", "first_content_frame_ms", "queued_turn_count", "result_index"],
+    "fields_error": ["duration_api_ms", "stop_reason", "session_id", "total_cost_usd", "usage", "modelUsage", "permission_denials", "terminal_reason", "fast_mode_state", "fast_mode_disabled_reason", "subagent_stats", "safety_stops", "is_error", "num_turns", "subtype", "errors", "type", "duration_ms", "uuid", "queued_turn_count", "result_index"],
+    "single_json_object": true,
+    "structured_output_type": "object"
+  },
+  "max_turns": {"exit_code": 1, "subtype": "error_max_turns"},
+  "api_error": {"exit_code": 1, "subtype": "success", "is_error": true, "terminal_reason": "api_error", "unknown_model_api_error_status": 404},
+  "auth_failure": {
+    "exit_code": 1,
+    "stdout_is_envelope": true,
+    "identified_by": "is_error true, terminal_reason api_error, api_error_status null, total_cost_usd 0 and result text starting with Not logged in",
+    "subtype": "success"
+  },
+  "schema_form": "full",
+  "schema_file": null
 }

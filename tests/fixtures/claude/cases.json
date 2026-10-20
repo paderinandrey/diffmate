@@ -1,0 +1,44 @@
+{
+  "success-findings": {
+    "file": "success-findings.stdout",
+    "exit_code": 0,
+    "stderr_first_line": "",
+    "extra_args": [],
+    "observed": "subtype success, is_error false, structured_output present as an object with status findings and one finding anchored on util.py line 6 RIGHT."
+  },
+  "success-no-findings": {
+    "file": "success-no-findings.stdout",
+    "exit_code": 0,
+    "stderr_first_line": "",
+    "extra_args": [],
+    "observed": "subtype success, is_error false, structured_output present as an object with status no_findings and an empty findings array."
+  },
+  "error-max-turns": {
+    "file": "error-max-turns.stdout",
+    "exit_code": 1,
+    "stderr_first_line": "",
+    "extra_args": ["--max-turns", "1"],
+    "observed": "subtype error_max_turns, is_error true, terminal_reason max_turns, errors lists the turn limit, no result and no structured_output; the exit code is 1, not 0."
+  },
+  "error-unknown-model": {
+    "file": "error-unknown-model.stdout",
+    "exit_code": 1,
+    "stderr_first_line": "[claude-code:unrecognized_model] {\"model\":\"not-a-real-model\",\"query_source\":\"sdk\"}",
+    "extra_args": ["--model", "not-a-real-model"],
+    "observed": "subtype success with is_error true, api_error_status 404, terminal_reason api_error, result holds the model error text, no structured_output, total_cost_usd 0."
+  },
+  "error-not-logged-in": {
+    "file": "error-not-logged-in.stdout",
+    "exit_code": 1,
+    "stderr_first_line": "",
+    "extra_args": [],
+    "observed": "subtype success with is_error true, api_error_status null, terminal_reason api_error, result is the text Not logged in, no structured_output, total_cost_usd 0; HOME and CLAUDE_CONFIG_DIR pointed at empty directories."
+  },
+  "error-max-budget": {
+    "file": "error-max-budget.stdout",
+    "exit_code": 1,
+    "stderr_first_line": "",
+    "extra_args": ["--max-budget-usd", "0.0001"],
+    "observed": "flag accepted; subtype error_max_budget_usd, is_error true, terminal_reason budget_exhausted, errors lists the budget, no result and no structured_output."
+  }
+}
