@@ -17,7 +17,9 @@ cutoff=$(date -u -d "@$cutoff_epoch" +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -
 user_agent="User-Agent: diffmate-deps (https://github.com/paderinandrey/diffmate)"
 
 semver() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "unexpected version '$1'" >&2; exit 2; }; }
-newer() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$2" ]; }
+crate_version() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9A-Za-z.-]+)?$ ]] || { echo "unexpected crate version '$1'" >&2; exit 2; }; }
+newer() { local a=${1%%+*} b=${2%%+*}; [ "$a" != "$b" ] && [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -1)" = "$b" ]; }
+compat() { IFS=. read -r major minor patch <<< "$1"; if [ "$major" != 0 ]; then echo "$major"; elif [ "$minor" != 0 ]; then echo "0.$minor"; else echo "0.0.$patch"; fi; }
 
 rust_eligible=$(gh api 'repos/rust-lang/rust/releases?per_page=50' \
   --jq '.[] | select((.draft or .prerelease) | not) | [.tag_name, .published_at] | @tsv' |
@@ -49,13 +51,13 @@ behind_crates=""
 while IFS="$sep" read -r name current; do
   [ -n "$name" ] || continue
   [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "unexpected crate name '$name'" >&2; exit 2; }
-  semver "$current"
+  crate_version "$current"
   sleep 1
   eligible=$(curl -fsS -H "$user_agent" "https://crates.io/api/v1/crates/$name/versions?per_page=100" |
-    jq -r --arg c "$cutoff" '.versions[] | select((.yanked | not) and (.num | test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and (.created_at[0:19] <= $c)) | .num' |
+    jq -r --arg c "$cutoff" '.versions[] | select((.yanked | not) and (.num | test("^[0-9]+\\.[0-9]+\\.[0-9]+(\\+[0-9A-Za-z.-]+)?$")) and (.created_at[0:19] <= $c)) | .num' |
     sort -V | tail -1)
   [ -n "$eligible" ] || continue
-  semver "$eligible"
+  crate_version "$eligible"
   if newer "$current" "$eligible"; then behind_crates+="$name $current $eligible"$'\n'; fi
 done < <(cut -d "$sep" -f 1,2 <<< "$decls" | sort -u)
 
@@ -88,10 +90,10 @@ while IFS="$sep" read -r name _ kind rename target; do
   case "$kind" in dev) args+=(--dev) ;; build) args+=(--build) ;; esac
   [ -z "$rename" ] || args+=(--rename "$rename")
   [ -z "$target" ] || args+=(--target "$target")
-  cargo add ${args[@]+"${args[@]}"} "$name@$eligible"
+  cargo add ${args[@]+"${args[@]}"} "$name@${eligible%%+*}"
 done <<< "$decls"
 while read -r name _ eligible; do
   [ -n "$name" ] || continue
-  cargo update -p "$name" --precise "$eligible"
+  cargo update -p "$name@$(compat "${eligible%%+*}")" --precise "$eligible"
 done <<< "$behind_crates"
 echo "updated Rust, mise tools and direct crates; run: mise run lint && mise run test"
