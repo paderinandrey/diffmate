@@ -15,6 +15,9 @@ hooks {
       ["docs"] {
         check = "mise run docs:check"
       }
+      ["actions"] {
+        check = "mise run lint:actions"
+      }
       ["test"] {
         check = "mise run test"
       }

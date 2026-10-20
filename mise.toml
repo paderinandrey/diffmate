@@ -40,7 +40,7 @@ run = "cargo llvm-cov nextest --locked --fail-under-lines 80"
 
 [tasks.lint]
 description = "Run all lint checks"
-depends = ["lint:rust", "lint:secrets"]
+depends = ["lint:rust", "lint:secrets", "lint:actions"]
 
 [tasks."lint:rust"]
 description = "Run rustfmt, clippy with warnings denied, and cargo-machete"
@@ -50,6 +50,11 @@ run = [
   "cargo clippy --locked --all-targets --all-features -- -D warnings",
   "cargo machete",
 ]
+
+[tasks."lint:actions"]
+description = "Lint the GitHub Actions workflows with actionlint"
+sources = [".github/workflows/*.yml"]
+run = "actionlint"
 
 [tasks."lint:secrets"]
 description = "Scan the working tree for hardcoded secrets"
