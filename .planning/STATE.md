@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Single review
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-20T19:06:49.032Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-20T19:29:19.535Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: 466d2e75820fa25c00a7f51967954e293acbbadf
+state_head: ef0899f6deec7bff88b411b91de4e7f99d41d1bd
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 01 (Single review) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P06 | 12 min | 2 tasks | 18 files |
 | Phase 01 P07 | 14 min | 3 tasks | 25 files |
 | Phase 01 P08 | 18 min | 3 tasks | 19 files |
+| Phase 01 P09 | 17 min | 3 tasks | 38 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-07: sanitize also strips U+061C as a bidirectional control
 - [Phase 01]: 01-08: recovery marks every running run interrupted: crash and fails every running review job; Phase 1 stores no stop cause, so shutdown and user_cancel causes arrive with 01-10 and Phase 2
 - [Phase 01]: 01-08: Store::open_read_only returns None for a missing file or user_version 0; status never opens read-write
+- [Phase 01]: 01-09: TreeEntry carries the ls-tree size so a truncated rules file states its real total; context run warnings cover truncation only, gh failures are stated inside the files
+- [Phase 01]: 01-09: graphql owner and name go through -f (raw) and only the number through -F; a rules symlink is followed one hop only to a plain single-component regular file
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T19:06:40.181Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-20T19:29:19.506Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
