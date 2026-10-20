@@ -2,6 +2,8 @@ use crate::error::Error;
 
 pub(crate) const PR_BODY_CAP: usize = 65_536;
 pub(crate) const DIFF_CAP: usize = 1_048_576;
+pub(crate) const DISCUSSION_CAP: usize = 262_144;
+pub(crate) const CI_CAP: usize = 131_072;
 pub(crate) const RULE_FILE_CAP: usize = 131_072;
 
 pub(crate) fn cap_split<'a>(
@@ -23,7 +25,6 @@ pub(crate) fn cap_split<'a>(
     (Some(marker), kept)
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn cap_text(name: &str, text: &str, cap: usize) -> String {
     match cap_split(name, text, text.len(), cap) {
         (Some(marker), kept) => format!("{marker}\n{kept}"),

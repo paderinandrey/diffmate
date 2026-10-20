@@ -1,66 +1,32 @@
+mod checks;
+mod discussion;
+mod meta;
+
 use crate::error::Error;
 use crate::pr_url::PrRef;
 use crate::proc::run_tool;
 use crate::procenv::{InheritedEnv, Pairs};
-use serde::Deserialize;
+use std::ffi::OsStr;
 use std::future::Future;
 use tokio::process::Command;
 
-const FIELDS: &str =
-    "number,url,title,body,author,baseRefName,headRefName,headRefOid,isCrossRepository,state";
-
-pub(crate) struct PrMeta {
-    pub number: u64,
-    pub url: String,
-    pub title: String,
-    pub body: String,
-    pub author: String,
-    pub base_ref: String,
-    pub head_ref: String,
-    pub head_sha: String,
-    pub is_cross_repository: bool,
-    pub state: String,
-}
-
-#[derive(Deserialize)]
-struct Author {
-    login: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Raw {
-    number: u64,
-    url: String,
-    title: String,
-    body: Option<String>,
-    author: Option<Author>,
-    base_ref_name: String,
-    head_ref_name: String,
-    head_ref_oid: String,
-    is_cross_repository: bool,
-    state: String,
-}
-
-impl From<Raw> for PrMeta {
-    fn from(raw: Raw) -> PrMeta {
-        PrMeta {
-            number: raw.number,
-            url: raw.url,
-            title: raw.title,
-            body: raw.body.unwrap_or_default(),
-            author: raw.author.map_or_else(|| "unknown".into(), |a| a.login),
-            base_ref: raw.base_ref_name,
-            head_ref: raw.head_ref_name,
-            head_sha: raw.head_ref_oid,
-            is_cross_repository: raw.is_cross_repository,
-            state: raw.state,
-        }
-    }
-}
+pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
+pub(crate) use discussion::{Comment, Discussion, Review, Thread};
+pub(crate) use meta::PrMeta;
 
 pub(crate) trait Gh {
     fn pr_view(&self, pr: &PrRef) -> impl Future<Output = Result<PrMeta, Error>> + Send;
+    fn discussion(&self, pr: &PrRef) -> impl Future<Output = Result<Discussion, Error>> + Send;
+    fn check_runs(
+        &self,
+        pr: &PrRef,
+        sha: &str,
+    ) -> impl Future<Output = Result<CheckRuns, Error>> + Send;
+    fn annotations(
+        &self,
+        pr: &PrRef,
+        check_run_id: u64,
+    ) -> impl Future<Output = Result<Vec<Annotation>, Error>> + Send;
 }
 
 pub(crate) struct GhCli {
@@ -79,19 +45,32 @@ impl GhCli {
         }
         GhCli { env: vars }
     }
+
+    fn command(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Command {
+        let mut command = Command::new("gh");
+        command.args(args).env_clear();
+        command.envs(self.env.iter().map(|(name, value)| (name, value)));
+        command
+    }
 }
 
 impl Gh for GhCli {
     async fn pr_view(&self, pr: &PrRef) -> Result<PrMeta, Error> {
-        let mut command = Command::new("gh");
-        command
-            .args(["pr", "view"])
-            .arg(pr.web_url())
-            .args(["--json", FIELDS]);
-        command
-            .env_clear()
-            .envs(self.env.iter().map(|(name, value)| (name, value)));
-        let stdout = Box::pin(run_tool("gh", command)).await?;
-        Ok(serde_json::from_slice::<Raw>(&stdout)?.into())
+        let url = pr.web_url();
+        let args = ["pr", "view", url.as_str(), "--json", meta::FIELDS];
+        let stdout = Box::pin(run_tool("gh", self.command(args))).await?;
+        meta::parse(&stdout)
+    }
+
+    async fn discussion(&self, pr: &PrRef) -> Result<Discussion, Error> {
+        discussion::fetch(self, pr).await
+    }
+
+    async fn check_runs(&self, pr: &PrRef, sha: &str) -> Result<CheckRuns, Error> {
+        checks::runs(self, pr, sha).await
+    }
+
+    async fn annotations(&self, pr: &PrRef, check_run_id: u64) -> Result<Vec<Annotation>, Error> {
+        checks::annotations(self, pr, check_run_id).await
     }
 }

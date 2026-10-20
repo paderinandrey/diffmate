@@ -1,4 +1,6 @@
 mod caps;
+mod ci;
+mod discussion;
 mod files;
 mod pr;
 mod previous;
@@ -7,7 +9,7 @@ mod rules;
 mod tests;
 
 use crate::error::Error;
-use crate::gh::PrMeta;
+use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::paths::create_private_dir_async;
 use crate::pr_url::PrRef;
@@ -20,7 +22,7 @@ use std::path::Path;
 
 pub(crate) use files::write_prompt;
 
-pub(crate) struct ContextInputs<'a, G> {
+pub(crate) struct ContextInputs<'a, G, H> {
     pub dir: &'a Path,
     pub pr: &'a PrRef,
     pub meta: &'a PrMeta,
@@ -30,6 +32,7 @@ pub(crate) struct ContextInputs<'a, G> {
     pub target: TargetId,
     pub run: RunId,
     pub git: &'a G,
+    pub gh: &'a H,
     pub store: &'a Store,
 }
 
@@ -42,12 +45,14 @@ pub(crate) struct WrittenContext {
 fn note_truncation(warnings: &mut Vec<String>, name: &str, content: impl AsRef<[u8]>) {
     if content.as_ref().starts_with(b"TRUNCATED:") {
         warnings.push(format!(
-            "{name} exceeded its size cap; the agent saw only the start of it"
+            "{name} was truncated; the agent saw only part of it"
         ));
     }
 }
 
-pub(crate) async fn write<G: Git>(inputs: ContextInputs<'_, G>) -> Result<WrittenContext, Error> {
+pub(crate) async fn write<G: Git, H: Gh>(
+    inputs: ContextInputs<'_, G, H>,
+) -> Result<WrittenContext, Error> {
     let made = create_private_dir_async(inputs.dir.to_path_buf()).await;
     made.map_err(Error::io("create context directory"))?;
     let mut warnings = Vec::new();
@@ -60,6 +65,13 @@ pub(crate) async fn write<G: Git>(inputs: ContextInputs<'_, G>) -> Result<Writte
     let merge_base = inputs.revision.merge_base_sha.as_str();
     let at = (inputs.repo, merge_base);
     rules::write(inputs.git, at, inputs.dir, &mut warnings).await?;
+    let discussion = discussion::text(inputs.gh, inputs.pr).await;
+    note_truncation(&mut warnings, "discussion.md", &discussion);
+    put(&inputs.dir.join("discussion.md"), discussion).await?;
+    let head = inputs.revision.head_sha.as_str();
+    let ci = ci::text(inputs.gh, inputs.pr, head).await;
+    note_truncation(&mut warnings, "ci.md", &ci);
+    put(&inputs.dir.join("ci.md"), ci).await?;
     let ids = (inputs.target, inputs.run);
     let previous_ids = previous::write(inputs.dir, inputs.store, ids).await?;
     Ok(WrittenContext {

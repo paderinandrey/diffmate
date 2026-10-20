@@ -3,7 +3,7 @@ use crate::agent::{Agent, AgentOutcome, AgentRequest, FailureDetail, FailureKind
 use crate::context::{self, ContextInputs};
 use crate::diff::{self, DiffIndex};
 use crate::error::Error;
-use crate::gh::PrMeta;
+use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::paths::{Paths, create_private_dir_async};
 use crate::pr_url::PrRef;
@@ -18,7 +18,7 @@ pub(super) struct Prepared {
     pub warnings: Vec<String>,
 }
 
-pub(super) async fn prepare<G: Git, H, A>(
+pub(super) async fn prepare<G: Git, H: Gh, A>(
     paths: &Paths,
     store: &Store,
     deps: &Deps<G, H, A>,
@@ -44,6 +44,7 @@ pub(super) async fn prepare<G: Git, H, A>(
         diff,
         repo: &repo,
         git: &deps.git,
+        gh: &deps.gh,
         target,
         run,
         store,
@@ -62,7 +63,7 @@ pub(super) async fn prepare<G: Git, H, A>(
     ))
 }
 
-pub(super) async fn run_agent<G: Git, H, A: Agent>(
+pub(super) async fn run_agent<G: Git, H: Gh, A: Agent>(
     paths: &Paths,
     store: &Store,
     deps: &Deps<G, H, A>,

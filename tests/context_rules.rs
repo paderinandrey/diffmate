@@ -84,5 +84,5 @@ fn unsafe_missing_and_oversized_rules_are_marked_not_followed() {
     assert_eq!(capped.len(), marker.len() + 131_072);
     assert!(capped.starts_with(marker));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("warning: rules/CONTRIBUTING.md exceeded its size cap"));
+    assert!(stderr.contains("warning: rules/CONTRIBUTING.md was truncated"));
 }
