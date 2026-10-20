@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Single review
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-10-20T16:00:01.021Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-10-20T17:37:59.269Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: eb7e9e25cdff8efea0bd0dc9a1bd32ca50057b65
+state_head: bf8e53793e708302594d3ffc4285aac441d96a86
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 12
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 01 (Single review) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P03 | 9 min | 2 tasks | 12 files |
+| Phase 01 P01 | 115 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Init]: Latest stable versions of all libraries and tooling, looked up at the time of use; no pinned versions in planning docs
 - [Init]: GSD lightweight mode; PRs via `gh pr create --assignee @me` then `@codex review`; no agent attribution; no code comments by default
 - [Phase 01]: 01-03: test support split into envelope.rs and fake_call.rs behind re-exports in fake_claude.rs to stay within the 100-line commit hook
+- [Phase 01]: 01-01: schema_form full, no CLI schema file; agent auth env is PATH, HOME, USER, LOGNAME
+- [Phase 01]: 01-01 (A1): agent PATH gets a git wrapper forcing GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1; DeferredToolPlaceholder accepted as inert, tool set is Glob, Grep, Read, StructuredOutput, DeferredToolPlaceholder
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T16:00:00.996Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-10-20T17:37:59.242Z
+Stopped at: Completed 01-01-PLAN.md
 Resume file: None
