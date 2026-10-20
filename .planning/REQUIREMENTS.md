@@ -22,7 +22,7 @@ Intel crosswalk (the five intel entries are decomposed into checkable IDs; no sc
 Slice description: the first task is a spike, since the agent contract depends on it. Then `diffmate review <url>` and `diffmate status`.
 
 - [ ] **REV-01**: Spike, done first: establish on the target Claude CLI version (a) the isolation checks for the Claude CLI and git; (b) the CLI result envelope fields (`is_error`, `subtype`, `structured_output`, `total_cost_usd`, `duration_ms`); (c) the full output schema through `--json-schema`: `$defs`, `anyOf`, `minLength`, `maxItems`, nullable fields, and extraction of `structured_output`. Local validation with the full schema stays mandatory either way. If the CLI needs a simplified schema, the CLI form becomes a separate file with a test that checks it against the full schema. (Slice "first task"; no separate "Done when" line. It enables REV-05 to REV-09 and REV-11.)
-- [ ] **REV-02**: `diffmate review <url>` and `diffmate status` work end to end: enqueue a `review` job, take the runner lock, perform recovery, resolve the revision, fetch into the bare clone, create the worktree and context files, check CLI flag support, run the agent with the isolation flags, validate and normalize the output, store the run and its draft, clean up, and print the findings. (Slice description; it is the capability that REV-03 to REV-12 exercise.)
+- [x] **REV-02**: `diffmate review <url>` and `diffmate status` work end to end: enqueue a `review` job, take the runner lock, perform recovery, resolve the revision, fetch into the bare clone, create the worktree and context files, check CLI flag support, run the agent with the isolation flags, validate and normalize the output, store the run and its draft, clean up, and print the findings. (Slice description; it is the capability that REV-03 to REV-12 exercise.)
 - [ ] **REV-03**: A PR with an obvious bug produces a finding anchored to the right line.
 - [ ] **REV-04**: A clean PR produces `no_findings`.
 - [ ] **REV-05**: An agent error with exit code 0 (for example, a turn limit) produces `failed`, not `no_findings`.
@@ -143,7 +143,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | REV-01 | Phase 1 | Pending |
-| REV-02 | Phase 1 | Pending |
+| REV-02 | Phase 1 | Complete |
 | REV-03 | Phase 1 | Pending |
 | REV-04 | Phase 1 | Pending |
 | REV-05 | Phase 1 | Pending |
