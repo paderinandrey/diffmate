@@ -1,3 +1,4 @@
+mod build;
 mod cli;
 mod config;
 #[cfg(test)]
@@ -9,16 +10,20 @@ mod isolation_tests;
 mod refname;
 #[cfg(test)]
 mod tests;
+mod tree;
+#[cfg(test)]
+mod tree_tests;
 #[cfg(test)]
 mod worktree_tests;
 
 use crate::error::Error;
-use crate::procenv::{InheritedEnv, Pairs};
+use build::os;
 use refname::validate_branch_name;
-use std::ffi::OsStr;
 use std::future::Future;
 use std::path::Path;
-use tokio::process::Command;
+
+pub(crate) use build::GitCli;
+pub(crate) use tree::TreeEntry;
 
 pub(crate) trait Git {
     fn ensure_clone(
@@ -62,38 +67,16 @@ pub(crate) trait Git {
         worktree: &Path,
     ) -> impl Future<Output = Result<(), Error>> + Send;
     fn worktree_prune(&self, repo: &Path) -> impl Future<Output = Result<(), Error>> + Send;
-}
-
-fn os<S: AsRef<OsStr> + ?Sized>(text: &S) -> &OsStr {
-    text.as_ref()
-}
-
-pub(crate) struct GitCli {
-    env: Pairs,
-}
-
-impl GitCli {
-    pub fn new(env: &InheritedEnv) -> GitCli {
-        let mut vars = env.tool_env();
-        vars.push(("GIT_TERMINAL_PROMPT".into(), "0".into()));
-        vars.push(("GIT_CONFIG_GLOBAL".into(), "/dev/null".into()));
-        vars.push(("GIT_CONFIG_NOSYSTEM".into(), "1".into()));
-        GitCli { env: vars }
-    }
-
-    fn command<S: AsRef<OsStr>>(
+    fn tree_entry(
         &self,
-        repo: Option<&Path>,
-        args: impl IntoIterator<Item = S>,
-    ) -> Command {
-        let mut command = Command::new("git");
-        command
-            .env_clear()
-            .envs(self.env.iter().map(|(name, value)| (name, value)));
-        if let Some(repo) = repo {
-            command.arg("-C").arg(repo);
-        }
-        command.args(args);
-        command
-    }
+        repo: &Path,
+        commit: &str,
+        path: &str,
+    ) -> impl Future<Output = Result<Option<TreeEntry>, Error>> + Send;
+    fn blob(
+        &self,
+        repo: &Path,
+        oid: &str,
+        cap: usize,
+    ) -> impl Future<Output = Result<Vec<u8>, Error>> + Send;
 }

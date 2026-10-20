@@ -42,6 +42,8 @@ pub(super) async fn prepare<G: Git, H, A>(
         meta,
         revision,
         diff,
+        repo: &repo,
+        git: &deps.git,
         target,
         run,
         store,

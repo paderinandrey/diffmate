@@ -1,20 +1,8 @@
-use super::{Git, GitCli, config, os, validate_branch_name};
+use super::{Git, GitCli, TreeEntry, config, os, tree, validate_branch_name};
 use crate::error::Error;
 use crate::paths::create_private_dir_async;
 use crate::proc::run_tool;
 use std::path::Path;
-use tokio::process::Command;
-
-impl GitCli {
-    pub(super) async fn run(command: Command) -> Result<(), Error> {
-        Box::pin(run_tool("git", command)).await.map(drop)
-    }
-
-    pub(super) async fn text(command: Command) -> Result<String, Error> {
-        let stdout = Box::pin(run_tool("git", command)).await?;
-        Ok(String::from_utf8_lossy(&stdout).trim().to_string())
-    }
-}
 
 impl Git for GitCli {
     async fn ensure_clone(
@@ -86,5 +74,18 @@ impl Git for GitCli {
 
     async fn worktree_prune(&self, repo: &Path) -> Result<(), Error> {
         GitCli::run(self.command(Some(repo), ["worktree", "prune"])).await
+    }
+
+    async fn tree_entry(
+        &self,
+        repo: &Path,
+        commit: &str,
+        path: &str,
+    ) -> Result<Option<TreeEntry>, Error> {
+        tree::entry(self, repo, commit, path).await
+    }
+
+    async fn blob(&self, repo: &Path, oid: &str, cap: usize) -> Result<Vec<u8>, Error> {
+        tree::blob(self, repo, oid, cap).await
     }
 }

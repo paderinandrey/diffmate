@@ -1,5 +1,8 @@
+use crate::error::Error;
+
 pub(crate) const PR_BODY_CAP: usize = 65_536;
 pub(crate) const DIFF_CAP: usize = 1_048_576;
+pub(crate) const RULE_FILE_CAP: usize = 131_072;
 
 pub(crate) fn cap_split<'a>(
     name: &str,
@@ -49,4 +52,10 @@ pub(crate) fn cap_diff(diff: &[u8], cap: usize) -> Vec<u8> {
     let marker =
         format!("TRUNCATED: diff.patch kept {at} of {total} bytes, cut at a hunk boundary.\n");
     [marker.as_bytes(), &diff[..at]].concat()
+}
+
+pub(crate) fn reason(error: &Error) -> String {
+    let flat = error.to_string();
+    let flat = flat.chars().map(|c| if c.is_control() { ' ' } else { c });
+    flat.take(300).collect()
 }

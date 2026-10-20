@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::git::Git;
+use crate::git::{Git, TreeEntry};
 use std::future::{Future, ready};
 use std::path::Path;
 use std::sync::Mutex;
@@ -81,5 +81,15 @@ impl Git for FakeGit {
 
     fn worktree_prune(&self, repo: &Path) -> impl Future<Output = Result<(), Error>> + Send {
         self.note(format!("prune {}", repo.display()), ())
+    }
+
+    #[allow(refining_impl_trait)]
+    fn tree_entry(&self, _: &Path, _: &str, _: &str) -> Done<Option<TreeEntry>> {
+        self.note("tree_entry".into(), None)
+    }
+
+    #[allow(refining_impl_trait)]
+    fn blob(&self, _: &Path, _: &str, _: usize) -> Done<Vec<u8>> {
+        self.note("blob".into(), Vec::new())
     }
 }
