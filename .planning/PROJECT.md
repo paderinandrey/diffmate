@@ -2,7 +2,7 @@
 
 ## What This Is
 
-diffmate is a personal pull-request review agent written in Rust. For every PR where my review is directly requested, an agent reviews the change in an isolated git worktree and diffmate prepares a draft: findings anchored to diff lines, an optional limitation, and up to two future improvements. I read the draft, decide on every finding, edit what I keep, and submit the review myself. It runs on my own macOS machine with my own `gh` credentials. Private repo: paderinandrey/diffmate.
+diffmate is a personal pull-request review agent written in Rust. For every PR where my review is directly requested, an agent reviews the change in an isolated git worktree and diffmate prepares a draft: findings anchored to diff lines, an optional limitation, and up to two future improvements. I read the draft, decide on every finding, edit what I keep, and submit the review myself. It runs on my own macOS machine with my own `gh` credentials. Public repo: paderinandrey/diffmate.
 
 In this project "I", "my", and "me" mean the single user and owner, the same voice SPEC.md uses.
 
