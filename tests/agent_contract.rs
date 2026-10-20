@@ -1,3 +1,5 @@
+#[path = "agent_contract/classification.rs"]
+mod classification;
 mod support;
 #[allow(dead_code)]
 mod tracer;
@@ -9,7 +11,7 @@ use tracer::{count, database, review, with_pr};
 
 const CONTRACT: &str = include_str!("fixtures/claude/contract.json");
 
-fn failed_run(sandbox: &Sandbox) -> (String, String) {
+pub(crate) fn failed_run(sandbox: &Sandbox) -> (String, String) {
     let db = database(sandbox);
     assert_eq!(count(&db, "SELECT count(*) FROM runs"), 1);
     let sql = "SELECT failure_kind, failure_detail FROM runs WHERE state = 'failed'";
