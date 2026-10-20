@@ -1,1 +1,5 @@
 /target
+lcov.info
+*.profraw
+.env
+.DS_Store

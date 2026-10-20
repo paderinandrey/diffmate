@@ -1,6 +1,13 @@
 ---
-gsd_state_version: '1.0'
+gsd_state_version: "1.0"
+current_phase: 1
+current_phase_name: Single review
 status: planning
+stopped_at: Roadmap created; next step is /gsd-plan-phase 1
+last_updated: "2026-10-20T01:36:10.256Z"
+last_activity: 2026-10-20
+last_activity_desc: "Completed quick task 261020-5pn: Set up dev environment and tooling"
+state_head: 5c54d34d6247a2827cae28636e11947b8b0378a0
 progress:
   total_phases: 5
   completed_phases: 0
@@ -24,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 Phase: 1 of 5 (Single review)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-10-20 - Roadmap, requirements, and state created from the SPEC.md ingest
+Last activity: 2026-10-20 - Completed quick task 261020-5pn: Set up dev environment and tooling
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -70,7 +77,12 @@ None yet.
 - [Phase 2]: Done-when scenarios use `watch` and `tui` roles before those features exist; the plan needs a minimal `watch` runner loop and a `tui`-style job enqueue seam
 - [Phase 3]: The QUE-07 discard check needs a discard trigger; the `tui` key arrives in Phase 4
 - [Phase 3]: The macOS notification mechanism is not fixed by SPEC.md
-- No `.planning/config.json` existed when the roadmap was written
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 261020-5pn | Set up dev environment and tooling | 2026-10-20 | 5c54d34 | [261020-5pn-set-up-dev-environment-and-tooling](./quick/261020-5pn-set-up-dev-environment-and-tooling/) |
 
 ## Deferred Items
 
