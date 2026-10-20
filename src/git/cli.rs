@@ -1,8 +1,20 @@
-use super::{Git, GitCli, os};
+use super::{Git, GitCli, config, os, validate_branch_name};
 use crate::error::Error;
 use crate::paths::create_private_dir_async;
 use crate::proc::run_tool;
 use std::path::Path;
+use tokio::process::Command;
+
+impl GitCli {
+    pub(super) async fn run(command: Command) -> Result<(), Error> {
+        Box::pin(run_tool("git", command)).await.map(drop)
+    }
+
+    pub(super) async fn text(command: Command) -> Result<String, Error> {
+        let stdout = Box::pin(run_tool("git", command)).await?;
+        Ok(String::from_utf8_lossy(&stdout).trim().to_string())
+    }
+}
 
 impl Git for GitCli {
     async fn ensure_clone(
@@ -25,15 +37,11 @@ impl Git for GitCli {
             );
             GitCli::run(init).await?;
         }
-        let hooks = self.command(
-            Some(repo),
-            [os("config"), os("core.hooksPath"), os(hooks_dir)],
-        );
-        GitCli::run(hooks).await?;
-        GitCli::run(self.command(Some(repo), ["config", "remote.origin.url", remote_url])).await
+        config::write(self, repo, remote_url, hooks_dir).await
     }
 
     async fn fetch_pr(&self, repo: &Path, number: u64, base_ref: &str) -> Result<(), Error> {
+        validate_branch_name(base_ref)?;
         let helper = "credential.helper=!gh auth git-credential";
         let mut command = self.command(Some(repo), ["-c", "credential.helper=", "-c", helper]);
         command.args(["fetch", "--no-tags", "--no-recurse-submodules", "origin"]);

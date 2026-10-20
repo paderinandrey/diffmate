@@ -33,6 +33,10 @@ pub(crate) enum Error {
     Url(#[from] UrlError),
     #[error("PR resolves to {0}; run diffmate review with that URL")]
     Canonical(String),
+    #[error("base branch {0:?} is not a safe branch name")]
+    UnsafeBranch(String),
+    #[error("hooks directory {0} is not empty")]
+    HooksNotEmpty(PathBuf),
 }
 
 impl Error {

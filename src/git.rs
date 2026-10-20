@@ -1,8 +1,20 @@
 mod cli;
+mod config;
+#[cfg(test)]
+mod config_tests;
+#[cfg(test)]
+mod fixture;
+#[cfg(test)]
+mod isolation_tests;
+mod refname;
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+mod worktree_tests;
 
 use crate::error::Error;
-use crate::proc::run_tool;
 use crate::procenv::{InheritedEnv, Pairs};
+use refname::validate_branch_name;
 use std::ffi::OsStr;
 use std::future::Future;
 use std::path::Path;
@@ -83,14 +95,5 @@ impl GitCli {
         }
         command.args(args);
         command
-    }
-
-    async fn run(command: Command) -> Result<(), Error> {
-        Box::pin(run_tool("git", command)).await.map(drop)
-    }
-
-    async fn text(command: Command) -> Result<String, Error> {
-        let stdout = Box::pin(run_tool("git", command)).await?;
-        Ok(String::from_utf8_lossy(&stdout).trim().to_string())
     }
 }
