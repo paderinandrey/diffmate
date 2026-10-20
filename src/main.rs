@@ -2,6 +2,8 @@ mod agent;
 mod app;
 mod cli;
 mod context;
+#[cfg_attr(not(test), expect(dead_code))]
+mod diff;
 mod error;
 mod gh;
 mod git;
