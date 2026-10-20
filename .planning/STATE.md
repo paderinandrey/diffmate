@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Single review
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-10-20T17:37:59.269Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-10-20T18:04:33.564Z"
 last_activity: 2026-10-20
 last_activity_desc: Phase 01 execution started
-state_head: bf8e53793e708302594d3ffc4285aac441d96a86
+state_head: dce9bde3362dfacdc7b301ee1e4b959d7f68b7d0
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 12
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-20)
 ## Current Position
 
 Phase: 01 (Single review) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-20 — Phase 01 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P03 | 9 min | 2 tasks | 12 files |
 | Phase 01 P01 | 115 min | 3 tasks | 10 files |
+| Phase 01 P04 | 23 min | 1 tasks | 41 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-03: test support split into envelope.rs and fake_call.rs behind re-exports in fake_claude.rs to stay within the 100-line commit hook
 - [Phase 01]: 01-01: schema_form full, no CLI schema file; agent auth env is PATH, HOME, USER, LOGNAME
 - [Phase 01]: 01-01 (A1): agent PATH gets a git wrapper forcing GIT_CONFIG_GLOBAL=/dev/null and GIT_CONFIG_NOSYSTEM=1; DeferredToolPlaceholder accepted as inert, tool set is Glob, Grep, Read, StructuredOutput, DeferredToolPlaceholder
+- [Phase 01]: ClaudeCli installs the PATH git wrapper (owner decision A1) in RUN/prompt/bin; 01-05 does not own it
+- [Phase 01]: Envelope check 4 (status vs findings) is in classify from the tracer; previous_finding_id stored NULL with a run warning until 01-07
+- [Phase 01]: ReviewResult carries expect(dead_code) for run_id; remove it when first read
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-20T17:37:59.242Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-10-20T18:04:33.536Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
