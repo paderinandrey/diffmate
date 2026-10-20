@@ -55,4 +55,17 @@ impl Store {
         })
         .await
     }
+
+    pub async fn set_agent_process(
+        &self,
+        run: RunId,
+        process: u32,
+        group: u32,
+    ) -> Result<(), Error> {
+        self.call(move |conn| {
+            let sql = "UPDATE runs SET agent_pid = ?1, agent_pgid = ?2 WHERE id = ?3";
+            conn.execute(sql, params![process, group, run]).map(drop)
+        })
+        .await
+    }
 }

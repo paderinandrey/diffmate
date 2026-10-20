@@ -1,50 +1,30 @@
+mod agent_run;
 mod cleanup;
 mod outcome;
 mod resolve;
+mod result;
 mod steps;
+#[cfg(test)]
+mod tests;
 
-use crate::agent::{Agent, AgentOutcome, FailureKind};
+use crate::agent::{Agent, AgentOutcome};
+use crate::cancel::{self, CancelRx};
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
+use crate::store::Store;
 use crate::store::jobs::EnqueuedJob;
-use crate::store::records::{FindingRecord, Revision};
-use crate::store::{RunId, Store};
+use crate::store::records::Revision;
+use result::{cancelled_before_run, job_failed};
+
+pub(crate) use result::ReviewResult;
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,
     pub gh: H,
     pub agent: A,
-}
-
-#[expect(dead_code)]
-pub(crate) enum ReviewResult {
-    Succeeded {
-        run_id: RunId,
-        head_sha: String,
-        findings: Vec<FindingRecord>,
-        limitation: Option<String>,
-        future_improvements: Vec<String>,
-        warnings: Vec<String>,
-    },
-    RunFailed {
-        run_id: RunId,
-        kind: FailureKind,
-        message: String,
-    },
-    JobFailed {
-        reason: String,
-    },
-}
-
-async fn job_failed(store: &Store, job: &EnqueuedJob, reason: String) -> ReviewResult {
-    let reason = match store.fail_job(job.job_id, reason.clone()).await {
-        Ok(()) => reason,
-        Err(error) => format!("{reason}; recording the failure also failed: {error}"),
-    };
-    ReviewResult::JobFailed { reason }
 }
 
 pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
@@ -53,14 +33,20 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
     deps: &Deps<G, H, A>,
     pr: &PrRef,
     job: &EnqueuedJob,
+    cancel: &CancelRx,
 ) -> ReviewResult {
+    let mut stop = cancel.clone();
     let resolved = match store.start_job(job.job_id).await {
-        Ok(()) => resolve::resolve(paths, deps, pr).await,
-        Err(error) => Err(error),
+        Ok(()) => cancel::raced(&mut stop, resolve::resolve(paths, deps, pr)).await,
+        Err(error) => Some(Err(error)),
     };
     match resolved {
-        Ok((meta, revision)) => review_run(paths, store, deps, (pr, job), (&meta, &revision)).await,
-        Err(error) => job_failed(store, job, error.to_string()).await,
+        None => cancelled_before_run(store, job).await,
+        Some(Ok((meta, revision))) => {
+            let revisions = (&meta, &revision);
+            review_run(paths, store, deps, (pr, job), revisions, cancel).await
+        }
+        Some(Err(error)) => job_failed(store, job, error.to_string()).await,
     }
 }
 
@@ -70,13 +56,15 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
     deps: &Deps<G, H, A>,
     (pr, job): (&PrRef, &EnqueuedJob),
     (meta, revision): (&PrMeta, &Revision),
+    cancel: &CancelRx,
 ) -> ReviewResult {
     let run = match store.insert_running_run(job, revision).await {
         Ok(run) => run,
         Err(error) => return job_failed(store, job, error.to_string()).await,
     };
     let ids = (pr, job.target_id, run);
-    let (outcome, mut prepared) = steps::run_agent(paths, store, deps, ids, (meta, revision)).await;
+    let ran = agent_run::run_agent(paths, store, deps, ids, (meta, revision), cancel);
+    let (outcome, mut prepared) = ran.await;
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
     let mut warnings = std::mem::take(&mut prepared.warnings);
     warnings.extend(cleanup::run(&deps.git, paths, &repo, run).await);

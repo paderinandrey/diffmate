@@ -10,6 +10,9 @@ use crate::render;
 use crate::runner::{self, Deps, ReviewResult};
 use crate::store::Store;
 use std::process::ExitCode;
+use tokio::sync::watch;
+
+mod signals;
 
 pub(crate) async fn run(config: &AppConfig, url: &str) -> ExitCode {
     let Ok(pr) = pr_url::parse(url) else {
@@ -47,7 +50,10 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
     for line in report.lines() {
         eprintln!("{}", render::sanitize(&line));
     }
-    let result = runner::execute_review_job(&config.paths, &store, &deps, pr, &job).await;
+    let (stop, cancel) = watch::channel(false);
+    let paths = &config.paths;
+    let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
+    let result = signals::until_done(stop, job_run).await?;
     let (stdout, stderr) = (std::io::stdout(), std::io::stderr());
     let printed = render::review(pr, &result, &mut stdout.lock(), &mut stderr.lock());
     printed.map_err(Error::io("write the result"))?;

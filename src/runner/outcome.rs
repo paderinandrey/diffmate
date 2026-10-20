@@ -84,6 +84,9 @@ async fn failed(
         .finish_failed(run, job.job_id, kind, detail, metrics)
         .await
     {
+        Ok(()) if matches!(kind, FailureKind::Interrupted) => {
+            ReviewResult::Cancelled { run_id: Some(run) }
+        }
         Ok(()) => ReviewResult::RunFailed {
             run_id: run,
             kind,

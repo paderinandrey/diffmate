@@ -21,13 +21,11 @@ impl AgentRequest {
         }
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn with_cancel(mut self, cancel: CancelRx) -> AgentRequest {
         self.cancel = Some(cancel);
         self
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn with_spawn_hook(mut self, hook: UnboundedSender<u32>) -> AgentRequest {
         self.spawn_hook = Some(hook);
         self

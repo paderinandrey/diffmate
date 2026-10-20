@@ -61,6 +61,14 @@ fn failures_never_claim_there_were_no_findings() {
     for (result, text) in [
         (run, "failed (agent_error): boom"),
         (job, "failed (cli_error): gh failed"),
+        (
+            ReviewResult::Cancelled { run_id: Some(1) },
+            "Run cancelled; recorded as interrupted",
+        ),
+        (
+            ReviewResult::Cancelled { run_id: None },
+            "Cancelled before the run started; the job failed",
+        ),
     ] {
         let (out, err) = render(&result);
         assert_eq!(out, "");

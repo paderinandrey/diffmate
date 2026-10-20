@@ -1,5 +1,5 @@
 use super::Deps;
-use crate::agent::{Agent, AgentOutcome, AgentRequest, FailureDetail, FailureKind};
+use crate::agent::AgentRequest;
 use crate::context::{self, ContextInputs};
 use crate::diff::{self, DiffIndex};
 use crate::error::Error;
@@ -7,7 +7,7 @@ use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::paths::{Paths, create_private_dir_async};
 use crate::pr_url::PrRef;
-use crate::store::records::{Metrics, Revision};
+use crate::store::records::Revision;
 use crate::store::{RunId, Store, TargetId};
 use std::collections::HashSet;
 
@@ -61,28 +61,4 @@ pub(super) async fn prepare<G: Git, H: Gh, A>(
         AgentRequest::new(worktree, context_dir, prompt_file),
         prepared,
     ))
-}
-
-pub(super) async fn run_agent<G: Git, H: Gh, A: Agent>(
-    paths: &Paths,
-    store: &Store,
-    deps: &Deps<G, H, A>,
-    ids: (&PrRef, TargetId, RunId),
-    revisions: (&PrMeta, &Revision),
-) -> (AgentOutcome, Prepared) {
-    match prepare(paths, store, deps, ids, revisions).await {
-        Ok((request, prepared)) => (deps.agent.run(&request).await, prepared),
-        Err(error) => {
-            let detail = FailureDetail {
-                message: format!("prepare: {error}"),
-                ..FailureDetail::default()
-            };
-            let failed = AgentOutcome::Failed {
-                kind: FailureKind::CliError,
-                detail,
-                metrics: Metrics::default(),
-            };
-            (failed, Prepared::default())
-        }
-    }
 }
