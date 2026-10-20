@@ -38,11 +38,15 @@ semver "$hk_pin"; semver "$hk_pkl"
 tool_rows=$(mise outdated --bump --json "${tools[@]}" 2>/dev/null |
   jq -r 'to_entries[] | select(.value.bump != null and .value.bump != .value.requested) | "\(.key) \(.value.requested) -> \(.value.bump)"')
 
-crates=$(cargo metadata --locked --format-version 1 | jq -r '. as $m | $m.resolve.nodes[] | select(.id == $m.resolve.root) | .deps[]
-  | select(.pkg | startswith("registry+")) | [.dep_kinds[].kind] as $k | (.pkg | split("#")[1] | split("@")) as $p
-  | "\($p[0]) \($p[1]) \(if ($k | index(null)) != null then "normal" elif ($k | index("build")) != null then "build" else "dev" end)"')
+sep=$'\x1f'
+decls=$(cargo metadata --locked --all-features --format-version 1 | jq -r '.resolve.root as $r
+  | [.resolve.nodes[] | select(.id == $r) | .deps[].pkg | select(startswith("registry+")) | split("#")[1] | split("@")] as $p
+  | if ($p | map(.[0]) | length) != ($p | map(.[0]) | unique | length) then error("a direct crate resolves to two versions; update it manually") else . end
+  | ($p | map({(.[0]): .[1]}) | add // {}) as $v
+  | .packages[] | select(.id == $r) | .dependencies[] | select((.source // "") | startswith("registry+"))
+  | [.name, ($v[.name] // "unresolved"), (.kind // "normal"), (.rename // ""), (.target // "")] | join("\u001f")')
 behind_crates=""
-while read -r name current kind; do
+while IFS="$sep" read -r name current; do
   [ -n "$name" ] || continue
   [[ "$name" =~ ^[A-Za-z0-9_-]+$ ]] || { echo "unexpected crate name '$name'" >&2; exit 2; }
   semver "$current"
@@ -52,8 +56,8 @@ while read -r name current kind; do
     sort -V | tail -1)
   [ -n "$eligible" ] || continue
   semver "$eligible"
-  if newer "$current" "$eligible"; then behind_crates+="$name $kind $current $eligible"$'\n'; fi
-done <<< "$crates"
+  if newer "$current" "$eligible"; then behind_crates+="$name $current $eligible"$'\n'; fi
+done < <(cut -d "$sep" -f 1,2 <<< "$decls" | sort -u)
 
 if [ "$mode" = check ]; then
   behind=0
@@ -62,7 +66,7 @@ if [ "$mode" = check ]; then
   newer "$rust_version" "$rust_eligible" && report "Cargo.toml rust-version $rust_version -> $rust_eligible"
   [ "$hk_pin" = "$hk_pkl" ] || report "hk.pkl amends hk $hk_pkl -> $hk_pin"
   while IFS= read -r row; do [ -n "$row" ] || continue; report "mise tool $row"; done <<< "$tool_rows"
-  while read -r name kind current eligible; do [ -n "$name" ] || continue; report "crate $name ($kind) $current -> $eligible"; done <<< "$behind_crates"
+  while read -r name current eligible; do [ -n "$name" ] || continue; report "crate $name $current -> $eligible"; done <<< "$behind_crates"
   if [ "$behind" = 1 ]; then echo "run: mise run deps:update" >&2; exit 1; fi
   echo "Rust $rust_eligible, mise tools and direct crates are on their latest eligible releases"
   exit 0
@@ -76,11 +80,18 @@ hk_new=$(sed -nE 's/^hk = "(.*)"$/\1/p' mise.toml)
 semver "$hk_new"
 sed -i.bak -E "s#/download/v[0-9.]+/hk@[0-9.]+#/download/v$hk_new/hk@$hk_new#" hk.pkl
 rm -f hk.pkl.bak
-while read -r name kind _ eligible; do
+while IFS="$sep" read -r name _ kind rename target; do
   [ -n "$name" ] || continue
-  flag=""
-  case "$kind" in dev) flag="--dev" ;; build) flag="--build" ;; esac
-  cargo add ${flag:+"$flag"} "$name@$eligible"
+  eligible=$(awk -v n="$name" '$1 == n { print $3 }' <<< "$behind_crates")
+  [ -n "$eligible" ] || continue
+  args=()
+  case "$kind" in dev) args+=(--dev) ;; build) args+=(--build) ;; esac
+  [ -z "$rename" ] || args+=(--rename "$rename")
+  [ -z "$target" ] || args+=(--target "$target")
+  cargo add ${args[@]+"${args[@]}"} "$name@$eligible"
+done <<< "$decls"
+while read -r name _ eligible; do
+  [ -n "$name" ] || continue
   cargo update -p "$name" --precise "$eligible"
 done <<< "$behind_crates"
 echo "updated Rust, mise tools and direct crates; run: mise run lint && mise run test"
