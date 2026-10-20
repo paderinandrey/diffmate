@@ -1,11 +1,23 @@
-use super::claude::{ClaudeCli, production_args, user_prompt};
-use super::{AgentRequest, gitwrap};
+use super::claude::{ClaudeCli, user_prompt};
+use super::probe::{self, Refusal};
+use super::{AgentRequest, FailureDetail, gitwrap};
 use crate::error::Error;
 use crate::proc::{self, Captured, Limits};
+use crate::procenv::Pairs;
+use std::ffi::{OsStr, OsString};
 use std::process::Stdio;
 use tokio::process::Command;
 
-pub(super) async fn invoke(cli: &ClaudeCli, request: &AgentRequest) -> Result<Captured, Error> {
+const PROGRAM: &str = "claude";
+
+fn refused(error: &Error) -> Refusal {
+    Box::new(FailureDetail {
+        message: error.to_string(),
+        ..FailureDetail::default()
+    })
+}
+
+async fn environment(cli: &ClaudeCli, request: &AgentRequest) -> Result<Pairs, Error> {
     let inputs = [
         &request.worktree,
         &request.context_dir,
@@ -18,16 +30,23 @@ pub(super) async fn invoke(cli: &ClaudeCli, request: &AgentRequest) -> Result<Ca
         }
     }
     let bin = gitwrap::install(&request.prompt_file, &cli.real_git).await?;
-    let dirs = std::iter::once(bin).chain(std::env::split_paths(&cli.path));
-    let path = std::env::join_paths(dirs).map_err(std::io::Error::other);
-    let path = path.map_err(Error::io("build the agent PATH"))?;
-    let mut command = Command::new("claude");
-    command.args(production_args(request, &cli.schemas.cli_arg));
+    cli.run_env(&bin)
+}
+
+pub(super) async fn invoke(cli: &ClaudeCli, request: &AgentRequest) -> Result<Captured, Refusal> {
+    let env = environment(cli, request).await.map_err(|e| refused(&e))?;
+    let program = OsStr::new(PROGRAM);
+    probe::check_version(program, &env).await?;
+    let args = cli.args_for(request);
+    probe::check_flags(program, &env, &args, &request.worktree).await?;
+    start(&env, &args, request).await.map_err(|e| refused(&e))
+}
+
+async fn start(env: &Pairs, args: &[OsString], request: &AgentRequest) -> Result<Captured, Error> {
+    let mut command = Command::new(PROGRAM);
+    command.args(args);
     command.current_dir(&request.worktree).env_clear();
-    command.envs(cli.env.iter().map(|(name, value)| (name, value)));
-    command.env("PATH", path);
-    command.env("GIT_CONFIG_GLOBAL", "/dev/null");
-    command.env("GIT_CONFIG_NOSYSTEM", "1");
+    command.envs(env.iter().map(|(name, value)| (name, value)));
     command.process_group(0).kill_on_drop(true);
     command
         .stdin(Stdio::piped())

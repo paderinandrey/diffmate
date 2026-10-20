@@ -2,6 +2,7 @@ pub(crate) mod claude;
 pub(crate) mod envelope;
 mod gitwrap;
 mod output;
+pub(crate) mod probe;
 pub(crate) mod schema;
 mod spawn;
 
