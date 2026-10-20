@@ -29,5 +29,54 @@
     "subtype": "success"
   },
   "schema_form": "full",
-  "schema_file": null
+  "schema_file": null,
+  "fake_endpoint": {
+    "works": true,
+    "request_paths": ["HEAD /api/hello", "POST /v1/messages?beta=true"],
+    "requests_per_run": 2,
+    "ends_on_400": true,
+    "retries": 0,
+    "body_encoding": "plain JSON",
+    "system_prompt_contains_appended_rules": true
+  },
+  "structured_output_tool": "StructuredOutput",
+  "isolated_first_look": {
+    "canaries_seen": [],
+    "markers_present": [],
+    "tool_names": ["Glob", "Grep", "Read", "StructuredOutput", "DeferredToolPlaceholder"],
+    "accepted": "DeferredToolPlaceholder is an inert CLI-internal tool (empty schema, defer_loading true, described as never to be called), also present in the unisolated control; accepted by the owner (A1) as part of the 2.1.304 tool set",
+    "second_listener_connections": 0
+  },
+  "controls": {
+    "claude_md": true,
+    "import": true,
+    "agents_md": true,
+    "rules_claude_md_in_add_dir": false,
+    "session_start_hook": true,
+    "settings_env_base_url": true,
+    "api_key_helper": true,
+    "plugin_hook": true,
+    "mcp_server": true,
+    "agents_commands_skills": false,
+    "trust_keys": ["projects[path].hasTrustDialogAccepted", "projects[path].hasClaudeMdExternalIncludesApproved", "projects[path].hasClaudeMdExternalIncludesWarningShown"]
+  },
+  "controls_notes": {
+    "agents_md": "fires only when CLAUDE.md is absent from the worktree",
+    "plugin_hook": "plugin is enabled as evilplug@skills-dir",
+    "rules_claude_md_in_add_dir": "also false with CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1; only a CLAUDE.md at the add-dir root loads",
+    "agents_commands_skills": "does not fire for the production vector; fires only when both --tools and --disable-slash-commands are dropped"
+  },
+  "claude_git_calls": {
+    "runs_git": true,
+    "every_call_had_isolation_env": false,
+    "calls_observed": 6,
+    "calls_without_git_config_global": ["ls-files", "status", "log", "config user.name"],
+    "git_config_nosystem_always_present": true,
+    "global_clean_filter_ran_unmitigated": true,
+    "mitigations": {
+      "path_git_wrapper": {"calls": 6, "all_had_git_config_global_dev_null": true, "filter_ran": false},
+      "disable_git_instructions": {"env": "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1", "calls": 3, "all_had_git_config_global": false, "filter_ran": false}
+    },
+    "chosen": "path_git_wrapper"
+  }
 }
