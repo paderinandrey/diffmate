@@ -12,6 +12,7 @@ mod paths;
 mod pr_url;
 mod proc;
 mod procenv;
+mod recovery;
 mod render;
 mod review;
 mod runner;

@@ -2,6 +2,7 @@ pub(crate) mod finish;
 pub(crate) mod jobs;
 pub(crate) mod readonly;
 pub(crate) mod records;
+pub(crate) mod recovery;
 pub(crate) mod runs;
 pub(crate) mod status;
 

@@ -5,6 +5,7 @@ use crate::gh::GhCli;
 use crate::git::GitCli;
 use crate::lock::{self, LOCK_POLL};
 use crate::pr_url::{self, PrRef};
+use crate::recovery;
 use crate::render;
 use crate::runner::{self, Deps, ReviewResult};
 use crate::store::Store;
@@ -42,6 +43,10 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
         );
     };
     let _lock = lock::acquire(&config.paths.lock(), LOCK_POLL, waiting).await?;
+    let report = recovery::run(&config.paths, &store, &deps.git).await?;
+    for line in report.lines() {
+        eprintln!("{}", render::sanitize(&line));
+    }
     let result = runner::execute_review_job(&config.paths, &store, &deps, pr, &job).await;
     let (stdout, stderr) = (std::io::stdout(), std::io::stderr());
     let printed = render::review(pr, &result, &mut stdout.lock(), &mut stderr.lock());

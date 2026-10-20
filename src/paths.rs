@@ -37,17 +37,25 @@ impl Paths {
         self.state_dir.join("runner.lock")
     }
 
+    pub fn repos_dir(&self) -> PathBuf {
+        self.state_dir.join("repos")
+    }
+
     pub fn repo_dir(&self, owner: &str, repo: &str) -> PathBuf {
         let name = format!("{repo}.git");
-        self.state_dir.join("repos").join(owner).join(name)
+        self.repos_dir().join(owner).join(name)
     }
 
     pub fn empty_hooks_dir(&self) -> PathBuf {
         self.state_dir.join("empty-hooks")
     }
 
+    pub fn runs_dir(&self) -> PathBuf {
+        self.cache_dir.join("runs")
+    }
+
     pub fn run_dir(&self, run: RunId) -> PathBuf {
-        self.cache_dir.join("runs").join(run.to_string())
+        self.runs_dir().join(run.to_string())
     }
 
     pub fn worktree(&self, run: RunId) -> PathBuf {
