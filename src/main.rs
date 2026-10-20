@@ -19,6 +19,8 @@ mod review;
 mod runner;
 mod status;
 mod store;
+#[cfg(test)]
+mod tests;
 
 use clap::Parser;
 use std::process::ExitCode;
