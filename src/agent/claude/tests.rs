@@ -1,7 +1,13 @@
 use super::{ClaudeCli, TestOverrides};
 use crate::agent::AgentRequest;
 use crate::procenv::InheritedEnv;
-use std::path::PathBuf;
+use serde_json::Value;
+use std::path::{Path, PathBuf};
+
+pub(super) fn contract() -> Value {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/claude/contract.json");
+    serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+}
 
 pub(super) fn inherited(extra: &[(&str, &str)]) -> InheritedEnv {
     let mut pairs = vec![("PATH".into(), std::env::var_os("PATH").unwrap())];

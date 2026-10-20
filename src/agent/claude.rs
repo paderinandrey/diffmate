@@ -15,6 +15,10 @@ pub(crate) use contract::TestOverrides;
 pub(crate) use contract::{production_args, user_prompt};
 
 #[cfg(test)]
+mod contract_tests;
+#[cfg(test)]
+mod env_tests;
+#[cfg(test)]
 mod tests;
 
 pub(crate) struct ClaudeCli {

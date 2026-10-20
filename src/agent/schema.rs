@@ -2,6 +2,11 @@ use crate::error::Error;
 use jsonschema::Validator;
 use serde_json::Value;
 
+#[cfg(test)]
+mod generated_tests;
+#[cfg(test)]
+mod tests;
+
 const FULL: &str = include_str!("../../schemas/review.schema.json");
 
 pub(crate) struct Schemas {
