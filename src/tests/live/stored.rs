@@ -1,5 +1,6 @@
 use crate::render::sanitize;
 use rusqlite::Connection;
+use serde_json::Value;
 use std::path::Path;
 
 type Finding = (Option<String>, Option<i64>, Option<String>, String, String);
@@ -23,6 +24,14 @@ impl StoredRun {
         });
         let all: Vec<String> = std::iter::once(head).chain(lines).collect();
         sanitize(&all.join("\n"))
+    }
+
+    pub fn has_finding_at(&self, expected: &Value) -> bool {
+        let path = expected["path"].as_str();
+        let (line, side) = (expected["line"].as_i64(), expected["side"].as_str());
+        let at =
+            |(p, l, s, _, _): &Finding| p.as_deref() == path && *l == line && s.as_deref() == side;
+        self.findings.iter().any(at)
     }
 }
 
