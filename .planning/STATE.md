@@ -1,44 +1,44 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 01
-current_phase_name: Single review
-status: verifying
-stopped_at: Completed 01-12-PLAN.md
-last_updated: "2026-10-26T21:55:43.749Z"
-last_activity: 2026-10-20
-last_activity_desc: Phase 01 execution started
-state_head: 5b662c510e35742ee5e13bf36fd209d7b3b59d23
+current_phase: 2
+current_phase_name: Reliability
+status: planning
+stopped_at: Phase 01 complete, ready to plan Phase 2
+last_updated: "2026-10-26T23:11:02.069Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 01 complete, transitioned to Phase 2
+state_head: 0486b6c5f411ede8e18ba1b6441aaf9e44e8bad9
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 12
   completed_plans: 12
-  percent: 0
+  percent: 20
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-20)
+See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 01 — Single review
+**Current focus:** Phase 2 — Reliability
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
 
-Phase: 01 (Single review) — EXECUTING
-Plan: 12 of 12
-Status: Phase complete — ready for verification
-Last activity: 2026-10-20 — Phase 01 execution started
+Phase: 2 — Reliability
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-27 — Phase 01 complete, transitioned to Phase 2
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 12
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -46,7 +46,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 12 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -103,6 +103,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Plan 01-02: the owner asked the orchestrator to create the private fixture repository paderinandrey/diffmate-fixtures, the fork tileforge/diffmate-fixtures and three PRs, superseding for this plan only the CONTEXT.md rule that Claude does not create repositories or PRs
 - [Phase 01]: 01-12: live tests run once each; the e2e gate run excluded them to avoid a second model call
 - [Phase 01]: 01-12: mise.toml keeps hk as a plain version string because scripts/deps.sh parses that form
+- [Phase 01]: UAT: substitute isolation controls kept (owner decision 2026-10-22, option a); D6 residual risk accepted; `MIT-0` allowed in deny.toml
 
 ### Pending Todos
 
@@ -110,8 +111,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Claude CLI isolation flags are unproven until the Phase 1 spike; managed (policy) settings still apply under them
-- [Phase 1]: Whether `--json-schema` accepts the full output schema is open; a simplified CLI schema file may be needed (with a test against the full schema)
+- [Phase 1]: Tool-level confinement (an agent Read outside the worktree or through a symlink) has no direct control; accepted in Phase 1 UAT (01-11 coverage D6)
+- [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
 - [Phase 2]: Done-when scenarios use `watch` and `tui` roles before those features exist; the plan needs a minimal `watch` runner loop and a `tui`-style job enqueue seam
 - [Phase 3]: The QUE-07 discard check needs a discard trigger; the `tui` key arrives in Phase 4
 - [Phase 3]: The macOS notification mechanism is not fixed by SPEC.md
@@ -132,6 +133,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-26T21:55:43.710Z
-Stopped at: Completed 01-12-PLAN.md
+Last session: 2026-10-27
+Stopped at: Phase 01 complete, ready to plan Phase 2
 Resume file: None

@@ -29,13 +29,12 @@ Every PR where my review is directly requested gets an honest, ready-to-read dra
 
 ### Validated
 
-(None yet - ship to validate)
+- ✓ Single review (REV-01 to REV-12): `diffmate review <url>` and `diffmate status`, Claude CLI and git isolation, output validation, runner lock, bare clone and worktree — Phase 1
 
 ### Active
 
-Five groups, one per SPEC delivery slice, in SPEC order. Full text and IDs are in `.planning/REQUIREMENTS.md`.
+Four remaining groups, one per SPEC delivery slice, in SPEC order. Full text and IDs are in `.planning/REQUIREMENTS.md`.
 
-- [ ] Single review (REV-01 to REV-12): `diffmate review <url>` and `diffmate status`, Claude CLI and git isolation, output validation, runner lock, bare clone and worktree. Starts with a spike on the agent contract.
 - [ ] Reliability (REL-01 to REL-13): idempotent runs, crash recovery, draft freshness, timeouts, `--force`, signal handling, job attachment.
 - [ ] Queue (QUE-01 to QUE-11): `diffmate watch`, tracking, debounce, retries, macOS notifications, job handoff.
 - [ ] Review and publish (PUB-01 to PUB-15): `diffmate tui`, decisions, editing, publication state machine, reconciliation, comment sync.
@@ -56,7 +55,8 @@ These are the SPEC non-goals.
 ## Context
 
 - Runtime: macOS only (launchd, `~/Library` paths), single user, my own `gh` auth. No server, no team features.
-- Repo state at roadmap time: SPEC.md, `prompts/review.md`, `schemas/review.schema.json`, and a `cargo init` scaffold (`Cargo.toml` with no dependencies, a hello-world `src/main.rs`). No product code yet.
+- Repo state after Phase 1: `diffmate review <url>` and `diffmate status` work end to end against live PRs (including a fork PR), with the isolation suite (REV-06 to REV-08) under `mise run test:e2e` and the fixture PRs in the private repo paderinandrey/diffmate-fixtures. Isolation was last proven on Claude CLI 2.1.311; rerun `mise run test:e2e` after a CLI upgrade.
+- Accepted residual risk from Phase 1: tool-level confinement (an agent Read of a file outside the worktree or through a symlink) and `rules/CLAUDE.md` as an add-dir memory file have no direct control (01-11 coverage D6, accepted in Phase 1 UAT).
 - How it works, in brief (SPEC.md governs every detail):
   - Every process (`review`, `watch`, `tui`) enqueues a job in SQLite (WAL mode). The one process holding the exclusive `flock` on `~/Library/Application Support/diffmate/runner.lock` is the runner: it performs recovery first, then executes the jobs it is responsible for.
   - A review run fetches the PR head and base into a diffmate-owned bare clone, makes a detached worktree under `~/Library/Caches/diffmate/runs/<run-id>/`, writes the agent's input files, and runs `claude -p` with isolation flags and a scrubbed environment. Output is validated against the full schema, normalized, and stored as the run and its draft.
@@ -97,9 +97,12 @@ These are the SPEC non-goals.
 | SPEC.md is the source of truth; planning artifacts follow it | The SPEC carries the design and the exact "Done when" scenarios | Pending |
 | Exactly five phases, one per SPEC delivery slice, in SPEC order; slices are not split or merged | Each slice ends with a scenario I can check by hand (owner instruction) | Pending |
 | Phase success criteria are the slice's "Done when" items | Keeps verification identical to the SPEC (owner instruction) | Pending |
-| Phase 1 opens with a spike on the agent contract | Isolation flags, the result envelope, and full-schema support through `--json-schema` are unproven until checked, and the agent contract depends on them | Pending |
+| Phase 1 opens with a spike on the agent contract | Isolation flags, the result envelope, and full-schema support through `--json-schema` are unproven until checked, and the agent contract depends on them | Good: the full schema works through `--json-schema` with no CLI schema file; the agent env is PATH, HOME, USER, LOGNAME |
 | Requirement IDs are per-slice categories (REV, REL, QUE, PUB, OPS), decomposed from the five intel `REQ-*` entries | Planning tools track `CAT-NN` IDs; the decomposition adds no new scope beyond the SPEC | Pending |
 | Latest stable versions of all libraries and tooling, looked up at the time of use | Owner instruction; avoids stale pins and memory-based versions | Pending |
+| The agent PATH gets a git wrapper forcing `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`; the isolated tool set is Read, Grep, Glob, StructuredOutput, DeferredToolPlaceholder (owner decision A1) | The CLI's own git calls must not read global or system config; DeferredToolPlaceholder is inert | Good: proven by REV-08 (Phase 1) |
+| Isolation items the CLI cannot exercise directly get substitute controls: a CLAUDE.md at the add-dir root and an open control without `--tools` and `--disable-slash-commands` (owner decision 2026-10-22, option a) | `rules/CLAUDE.md` and agents/commands/skills do not load even without isolation, so a direct control would be vacuous | Good: controls fire, isolated runs show nothing |
+| `MIT-0` is an allowed license in `deny.toml` | It is MIT without the attribution clause; `borrow-or-share` (via `jsonschema`) uses it | Good |
 
 ## Evolution
 
@@ -119,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-20 after roadmap creation from the SPEC.md ingest*
+*Last updated: 2026-10-27 after Phase 1*

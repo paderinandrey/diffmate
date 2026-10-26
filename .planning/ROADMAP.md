@@ -12,7 +12,7 @@ diffmate is built in five phases, one per SPEC delivery slice, in SPEC order. Ph
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Single review** - `diffmate review <url>` and `status` with an isolated agent, validated output, runner lock, bare clone and worktree
+- [x] **Phase 1: Single review** - `diffmate review <url>` and `status` with an isolated agent, validated output, runner lock, bare clone and worktree (completed 2026-10-27)
 - [ ] **Phase 2: Reliability** - idempotent runs, crash recovery, freshness, timeouts, `--force`, signal handling, job attachment
 - [ ] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications
 - [ ] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync
@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   - The SQLite schema and job model must stay compatible with the publication, decision, retry-budget, and automatic/manual job rules that later phases implement (SPEC "States", "Concurrency").
   - Toolchain, crate, and CLI versions are looked up when work starts, never taken from the `cargo init` scaffold or from memory.
 
-**Plans:** 12/12 plans executed
+**Plans:** 12/12 plans complete
 
 Plans:
 **Wave 1**
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Single review | 12/12 | In Progress | - |
+| 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 0/TBD | Not started | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
