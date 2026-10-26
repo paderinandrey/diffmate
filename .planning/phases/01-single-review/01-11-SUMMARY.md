@@ -203,7 +203,7 @@ status: complete
 - **Issue:** clippy (warnings denied) rejects `#[ignore]` without a reason, so the plan's `grep -c '#\[ignore\]'` prints 0 for the four files. `grep -c ignore` prints 1 per file and the tests are skipped by `mise run test` (7 skipped in the suite).
 
 **5. [Rule 1 - Design] Controls for the two items the spike recorded as false**
-- `contract.json` has `rules_claude_md_in_add_dir` and `agents_commands_skills` false. Instead of a checkpoint, the dispatch and the 01-01 SUMMARY name the controls to build, and they fire: a CLAUDE.md at the context root (with `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`, which is required: without it the root file did not load, observed) and an open control without `--tools` and `--disable-slash-commands`. The owner should confirm this reading of "design those controls accordingly".
+- `contract.json` has `rules_claude_md_in_add_dir` and `agents_commands_skills` false. Instead of a checkpoint, the dispatch and the 01-01 SUMMARY name the controls to build, and they fire: a CLAUDE.md at the context root (with `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`, which is required: without it the root file did not load, observed) and an open control without `--tools` and `--disable-slash-commands`. Owner decision (2026-10-22): keep these substitute controls (option a of the plan checkpoint).
 
 **6. [Rule 1 - Design] AGENTS.md control**
 - AGENTS.md loads only when CLAUDE.md is absent, so rev06 hides CLAUDE.md for one control run and one isolated run and restores it.
