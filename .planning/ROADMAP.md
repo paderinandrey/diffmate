@@ -43,12 +43,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   - The SQLite schema and job model must stay compatible with the publication, decision, retry-budget, and automatic/manual job rules that later phases implement (SPEC "States", "Concurrency").
   - Toolchain, crate, and CLI versions are looked up when work starts, never taken from the `cargo init` scaffold or from memory.
 
-**Plans:** 10/12 plans executed
+**Plans:** 11/12 plans executed
 
 Plans:
 **Wave 1**
 - [x] 01-01-PLAN.md — Spike (REV-01): flag contract, envelope matrix, schema form, auth under isolation, fake-endpoint and control feasibility
-- [ ] 01-02-PLAN.md — Owner-created fixture PRs (obvious bug, clean, fork), verified and recorded
+- [x] 01-02-PLAN.md — Owner-created fixture PRs (obvious bug, clean, fork), verified and recorded
 - [x] 01-03-PLAN.md — Black-box test harness: sandbox, fake claude and gh, git shim, upstream builder
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Single review | 10/12 | In Progress | - |
+| 1. Single review | 11/12 | In Progress | - |
 | 2. Reliability | 0/TBD | Not started | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
