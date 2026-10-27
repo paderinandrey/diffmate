@@ -1,10 +1,9 @@
 use super::claude::{ClaudeCli, user_prompt};
 use super::probe::{self, Refusal};
-use super::stop::halt;
+use super::stop::supervise;
 use super::{AgentRequest, FailureDetail, gitwrap};
-use crate::cancel;
 use crate::error::Error;
-use crate::proc::{self, Captured, Limits};
+use crate::proc::{Captured, Limits};
 use crate::procenv::Pairs;
 use std::ffi::{OsStr, OsString};
 use std::process::Stdio;
@@ -40,9 +39,15 @@ type Invoked = Result<Option<Captured>, Refusal>;
 pub(super) async fn invoke(cli: &ClaudeCli, request: &AgentRequest) -> Invoked {
     let env = environment(cli, request).await.map_err(|e| refused(&e))?;
     let program = OsStr::new(PROGRAM);
-    probe::check_version(program, &env).await?;
+    let cancel = || request.cancel.clone();
+    let Some(()) = probe::check_version(program, &env, cancel()).await? else {
+        return Ok(None);
+    };
     let args = cli.args_for(request);
-    probe::check_flags(program, &env, &args, &request.worktree).await?;
+    let cwd = &request.worktree;
+    let Some(()) = probe::check_flags(program, &env, &args, cwd, cancel()).await? else {
+        return Ok(None);
+    };
     start(&env, &args, request).await.map_err(|e| refused(&e))
 }
 
@@ -51,7 +56,7 @@ async fn start(
     args: &[OsString],
     request: &AgentRequest,
 ) -> Result<Option<Captured>, Error> {
-    let mut cancel = request.cancel.clone();
+    let cancel = request.cancel.clone();
     if cancel.as_ref().is_some_and(|stop| *stop.borrow()) {
         return Ok(None);
     }
@@ -64,9 +69,8 @@ async fn start(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let mut child = command.spawn().map_err(Error::io("start claude"))?;
-    let pgid = child.id();
-    if let (Some(hook), Some(pid)) = (&request.spawn_hook, pgid) {
+    let child = command.spawn().map_err(Error::io("start claude"))?;
+    if let (Some(hook), Some(pid)) = (&request.spawn_hook, child.id()) {
         let _ = hook.send(pid);
     }
     let prompt = user_prompt(&request.context_dir).into_bytes();
@@ -74,14 +78,6 @@ async fn start(
         stdout: 8 << 20,
         stderr: 64 << 10,
     };
-    let finished = Box::pin(proc::finish(&mut child, Some(prompt), limits));
-    let captured = match cancel.as_mut() {
-        Some(stop) => cancel::raced(stop, finished).await,
-        None => Some(finished.await),
-    };
-    let Some(captured) = captured else {
-        halt(&mut child, pgid).await;
-        return Ok(None);
-    };
-    captured.map(Some).map_err(Error::io("run claude"))
+    let captured = supervise(child, Some(prompt), limits, cancel).await;
+    captured.map_err(Error::io("run claude"))
 }

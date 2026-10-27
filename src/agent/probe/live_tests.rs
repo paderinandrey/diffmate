@@ -35,10 +35,12 @@ fn live(overrides: TestOverrides) -> Live {
 async fn probe(live: &Live) -> Result<(), String> {
     let program = OsStr::new("claude");
     let env = live.cli.env_vars();
-    check_version(program, env).await.map_err(|d| d.message)?;
+    check_version(program, env, None)
+        .await
+        .map_err(|d| d.message)?;
     let args = live.cli.args_for(&live.request);
-    let probed = check_flags(program, env, &args, &live.request.worktree).await;
-    probed.map_err(|detail| detail.message)
+    let probed = check_flags(program, env, &args, &live.request.worktree, None).await;
+    probed.map(drop).map_err(|detail| detail.message)
 }
 
 #[tokio::test]
@@ -67,8 +69,8 @@ async fn live_probe_rejects_dollar_schema_and_accepts_cli_schema() {
     let at = args.iter().position(|arg| arg == "--json-schema").unwrap();
     args[at + 1] = FULL_SCHEMA.into();
     let cwd = Some(live.request.worktree.as_path());
-    let done = capture(OsStr::new("claude"), &args, live.cli.env_vars(), cwd).await;
-    let done = done.unwrap();
+    let done = capture(OsStr::new("claude"), &args, live.cli.env_vars(), cwd, None).await;
+    let done = done.unwrap().unwrap();
     let verdict = interpret_probe(&done.stdout, &done.stderr, done.status.code());
     assert!(verdict.unwrap_err().message.contains("--json-schema"));
     probe(&live).await.unwrap();

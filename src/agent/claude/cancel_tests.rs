@@ -2,16 +2,19 @@ use super::ClaudeCli;
 use crate::agent::probe::PROBE_OK_TEXT;
 use crate::agent::{Agent, AgentOutcome, AgentRequest};
 use crate::procenv::InheritedEnv;
-use rustix::process::{Pid, test_kill_process};
+use rustix::process::{Pid, test_kill_process, test_kill_process_group};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
+use std::process::Command;
 use tempfile::TempDir;
 use tokio::sync::{mpsc, watch};
 
-fn install_fake(dir: &Path) -> ClaudeCli {
+const VERSION: &str = "echo '2.1.304 (Claude Code)'; exit 0";
+
+fn install_fake(dir: &Path, version: &str) -> ClaudeCli {
     let script = format!(
-        "#!/bin/sh\n[ \"$1\" = \"--version\" ] && {{ echo '2.1.304 (Claude Code)'; exit 0; }}\n\
+        "#!/bin/sh\n[ \"$1\" = \"--version\" ] && {{ {version}; }}\n\
          [ -z \"$(cat)\" ] && {{ echo '{PROBE_OK_TEXT}' >&2; exit 1; }}\nexec sleep 300\n"
     );
     let bin = dir.join("fake-bin");
@@ -37,7 +40,7 @@ fn request(dir: &Path) -> AgentRequest {
 #[tokio::test]
 async fn cancelling_a_running_agent_stops_it_after_reporting_its_pid() {
     let tmp = TempDir::new().unwrap();
-    let cli = install_fake(tmp.path());
+    let cli = install_fake(tmp.path(), VERSION);
     let (stop, cancel) = watch::channel(false);
     let (hook, mut pids) = mpsc::unbounded_channel();
     let request = request(tmp.path())
@@ -59,7 +62,7 @@ async fn cancelling_a_running_agent_stops_it_after_reporting_its_pid() {
 #[tokio::test]
 async fn an_already_cancelled_request_never_starts_the_agent() {
     let tmp = TempDir::new().unwrap();
-    let cli = install_fake(tmp.path());
+    let cli = install_fake(tmp.path(), VERSION);
     let (_stop, cancel) = watch::channel(true);
     let (hook, mut pids) = mpsc::unbounded_channel();
     let request = request(tmp.path())
@@ -69,6 +72,39 @@ async fn an_already_cancelled_request_never_starts_the_agent() {
     let outcome = cli.run(&request).await;
 
     assert!(matches!(outcome, AgentOutcome::Cancelled { .. }));
+    drop(request);
+    assert_eq!(pids.recv().await, None);
+}
+
+#[tokio::test]
+async fn cancelling_during_a_stalled_probe_stops_its_group() {
+    let tmp = TempDir::new().unwrap();
+    let fifo = tmp.path().join("probe-pid");
+    assert!(
+        Command::new("mkfifo")
+            .arg(&fifo)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let stall = format!("sleep 300 & echo $$ > '{}'; wait", fifo.display());
+    let cli = install_fake(tmp.path(), &stall);
+    let (stop, cancel) = watch::channel(false);
+    let (hook, mut pids) = mpsc::unbounded_channel();
+    let request = request(tmp.path())
+        .with_cancel(cancel)
+        .with_spawn_hook(hook);
+    let canceller = async {
+        let read = tokio::task::spawn_blocking(move || fs::read_to_string(fifo));
+        let pid: i32 = read.await.unwrap().unwrap().trim().parse().unwrap();
+        stop.send_replace(true);
+        pid
+    };
+
+    let (outcome, pgid) = tokio::join!(cli.run(&request), canceller);
+
+    assert!(matches!(outcome, AgentOutcome::Cancelled { .. }));
+    assert!(test_kill_process_group(Pid::from_raw(pgid).unwrap()).is_err());
     drop(request);
     assert_eq!(pids.recv().await, None);
 }

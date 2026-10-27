@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use crate::cancel::{self, CancelRx};
+use crate::proc::{self, Captured, Limits};
 use rustix::io::Errno;
 use rustix::process::{Pid, Signal, kill_process_group, test_kill_process_group};
 use std::future::Future;
@@ -87,7 +89,26 @@ pub(crate) async fn stop_group<S: GroupSignaller, W: Future<Output = ()>>(
     killed.unwrap_or(Ok(()))
 }
 
-pub(super) async fn halt(child: &mut Child, pgid: Option<u32>) {
+pub(super) async fn supervise(
+    mut child: Child,
+    stdin: Option<Vec<u8>>,
+    limits: Limits,
+    cancel: Option<CancelRx>,
+) -> io::Result<Option<Captured>> {
+    let pgid = child.id();
+    let finished = Box::pin(proc::finish(&mut child, stdin, limits));
+    let captured = match cancel {
+        Some(mut stop) => cancel::raced(&mut stop, finished).await,
+        None => Some(finished.await),
+    };
+    let Some(captured) = captured else {
+        halt(&mut child, pgid).await;
+        return Ok(None);
+    };
+    captured.map(Some)
+}
+
+async fn halt(child: &mut Child, pgid: Option<u32>) {
     let stopped = match pgid {
         Some(pgid) => {
             let wait = async {

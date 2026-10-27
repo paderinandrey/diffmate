@@ -1,5 +1,7 @@
 use super::{Env, MIN_VERSION, Refusal, dotted, interpret_probe, parse_version, refuse};
-use crate::proc::{self, Captured, Limits, excerpt};
+use crate::agent::stop::supervise;
+use crate::cancel::CancelRx;
+use crate::proc::{Captured, Limits, excerpt};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Stdio;
@@ -10,7 +12,8 @@ pub(super) async fn capture(
     args: &[OsString],
     env: &Env,
     cwd: Option<&Path>,
-) -> Result<Captured, Refusal> {
+    cancel: Option<CancelRx>,
+) -> Result<Option<Captured>, Refusal> {
     let mut command = Command::new(program);
     command.args(args).env_clear();
     command.envs(env.iter().map(|(name, value)| (name, value)));
@@ -27,13 +30,19 @@ pub(super) async fn capture(
         stdout: 64 << 10,
         stderr: 64 << 10,
     };
-    let done = Box::pin(proc::finish(child, None, limits)).await;
+    let done = Box::pin(supervise(child, None, limits, cancel)).await;
     done.map_err(|error| failed("run", error))
 }
 
-pub(crate) async fn check_version(program: &OsStr, env: &Env) -> Result<(), Refusal> {
+pub(crate) async fn check_version(
+    program: &OsStr,
+    env: &Env,
+    cancel: Option<CancelRx>,
+) -> Result<Option<()>, Refusal> {
     let args = [OsString::from("--version")];
-    let done = capture(program, &args, env, None).await?;
+    let Some(done) = capture(program, &args, env, None, cancel).await? else {
+        return Ok(None);
+    };
     let text = String::from_utf8_lossy(&done.stdout);
     let code = done.status.code();
     let Some(found) = parse_version(&text).filter(|_| done.status.success()) else {
@@ -46,7 +55,7 @@ pub(crate) async fn check_version(program: &OsStr, env: &Env) -> Result<(), Refu
         let message = format!("Claude CLI {found} is older than the minimum {minimum}");
         return Err(refuse(message, code, &done.stderr));
     }
-    Ok(())
+    Ok(Some(()))
 }
 
 pub(crate) async fn check_flags(
@@ -54,7 +63,10 @@ pub(crate) async fn check_flags(
     env: &Env,
     args: &[OsString],
     cwd: &Path,
-) -> Result<(), Refusal> {
-    let done = capture(program, args, env, Some(cwd)).await?;
-    interpret_probe(&done.stdout, &done.stderr, done.status.code())
+    cancel: Option<CancelRx>,
+) -> Result<Option<()>, Refusal> {
+    let Some(done) = capture(program, args, env, Some(cwd), cancel).await? else {
+        return Ok(None);
+    };
+    interpret_probe(&done.stdout, &done.stderr, done.status.code()).map(Some)
 }
