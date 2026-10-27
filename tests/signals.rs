@@ -4,7 +4,6 @@ mod tracer;
 
 use rustix::process::{Pid, Signal, kill_process};
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
 use support::git_in;
 use support::sandbox::Sandbox;
 use tracer::{URL, count, database, with_pr};
@@ -21,14 +20,6 @@ fn running(raw: u32) -> bool {
         .unwrap();
     let stat = String::from_utf8_lossy(&output.stdout);
     !stat.trim().is_empty() && !stat.trim().starts_with('Z')
-}
-
-fn wait_gone(raw: u32) {
-    let deadline = Instant::now() + Duration::from_secs(5);
-    while running(raw) && Instant::now() < deadline {
-        std::thread::sleep(Duration::from_millis(50));
-    }
-    assert!(!running(raw), "process {raw} is still running");
 }
 
 fn interrupted_by(signal: Signal) {
@@ -54,7 +45,7 @@ fn interrupted_by(signal: Signal) {
         "{stderr}"
     );
     assert!(!running(agent));
-    wait_gone(background);
+    assert!(!running(background));
     let db = database(&sandbox);
     let sql = "SELECT state, failure_kind, interrupted_cause, agent_pid, agent_pgid FROM runs";
     let row = |r: &rusqlite::Row| {
