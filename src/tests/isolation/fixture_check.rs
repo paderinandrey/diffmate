@@ -47,6 +47,9 @@ fn the_worktree_is_a_one_commit_repository_with_the_planted_files() {
     let output = Command::new("git")
         .args(["rev-list", "--count", "HEAD"])
         .current_dir(&pr.worktree)
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap())
+        .env("HOME", &pr.home)
         .output()
         .unwrap();
     assert_eq!(String::from_utf8(output.stdout).unwrap().trim(), "1");
