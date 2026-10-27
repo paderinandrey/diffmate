@@ -93,7 +93,30 @@ Plans:
   - Several scenarios run the `watch` and `tui` roles before those features exist. The plan needs a minimal `watch` runner loop (executes every job, handles SIGTERM and SIGINT) and a way to enqueue an automatic job and a `tui`-style `review` job as a test seam. Polling, tracking, debounce, and notifications stay in Phase 3; the TUI stays in Phase 4.
   - This phase introduces the automatic/manual job distinction and the retry budget and next-attempt time persisted in SQLite, and `status` gains draft freshness with the time of the last head check.
 
-**Plans**: TBD
+**Plans:** 10 plans
+
+Plans:
+**Wave 1**
+- [ ] 02-01-PLAN.md — Schema v2 migration that keeps Phase 1 data (owner confirms the shape; one-way)
+- [ ] 02-02-PLAN.md — `config.toml` with SPEC defaults and hard errors (REL-13; toml crate gate)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-03-PLAN.md — Stop causes stored first: Ctrl-C → user_cancel, SIGTERM → shutdown (REL-09)
+- [ ] 02-04-PLAN.md — `status` freshness from a live head check and the retry budget (REL-02, REL-03, D-16)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-05-PLAN.md — Recovery keeps the stored cause; retry budget and next attempt in SQLite (REL-06, REL-07)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 02-06-PLAN.md — Reuse per head, attach in one transaction, `--force`, waiting review (REL-04, REL-05, REL-11)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 02-07-PLAN.md — Runner stores the last known head; `review` reports a stale draft (REL-02, REL-03)
+- [ ] 02-08-PLAN.md — Run timeout from `config.toml` (REL-12)
+- [ ] 02-09-PLAN.md — `diffmate watch` runner loop and hidden `debug enqueue` (REL-08, REL-10)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 02-10-PLAN.md — Crash points: kill at every step, budget across restarts, kept causes, phase gate (REL-01, REL-06, REL-07)
 
 ### Phase 3: Queue
 
@@ -171,7 +194,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
-| 2. Reliability | 0/TBD | Not started | - |
+| 2. Reliability | 0/10 | Planned | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
