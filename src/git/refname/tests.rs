@@ -1,5 +1,26 @@
-use super::validate_branch_name;
+use super::{nested_refs, validate_branch_name};
 use proptest::prelude::*;
+
+#[test]
+fn only_a_ref_inside_another_conflicts_with_it() {
+    let base = "refs/diffmate/base/release";
+    for nested in [
+        "refs/diffmate/base/release/v2",
+        "refs/diffmate/base/release/a/b",
+    ] {
+        assert!(nested_refs(base, nested), "{nested}");
+        assert!(nested_refs(nested, base), "{nested}");
+    }
+    for apart in [
+        base,
+        "refs/diffmate/base/release-v2",
+        "refs/diffmate/base/releases/v2",
+        "refs/diffmate/base/rel",
+        "refs/diffmate/base/main",
+    ] {
+        assert!(!nested_refs(base, apart), "{apart}");
+    }
+}
 
 #[test]
 fn ordinary_branch_names_are_accepted() {

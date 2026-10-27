@@ -18,7 +18,7 @@ mod worktree_tests;
 
 use crate::error::Error;
 use build::os;
-use refname::validate_branch_name;
+use refname::{nested_refs, validate_branch_name};
 use std::future::Future;
 use std::path::Path;
 

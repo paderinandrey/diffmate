@@ -65,3 +65,34 @@ async fn an_unsafe_base_branch_fails_before_any_ref_is_fetched() {
     assert!(matches!(result, Err(Error::UnsafeBranch(_))));
     assert_eq!(git(&clone.repo, &["for-each-ref"]), "");
 }
+
+#[tokio::test]
+async fn a_base_branch_replaced_by_a_conflicting_name_still_fetches() {
+    let (clone, up) = fetched().await;
+    let list = [
+        "for-each-ref",
+        "--format=%(refname:lstrip=3)",
+        "refs/diffmate/base/",
+    ];
+    let rounds = [
+        (vec![], vec!["release/v1", "release/v2"]),
+        (vec!["release/v1", "release/v2"], vec!["release"]),
+        (vec!["release"], vec!["release/v3"]),
+    ];
+    for (gone, created) in rounds {
+        for name in gone {
+            let refname = format!("refs/heads/{name}");
+            git(&up.path, &["update-ref", "-d", &refname]);
+        }
+        for name in &created {
+            let refname = format!("refs/heads/{name}");
+            git(&up.path, &["update-ref", &refname, &up.base]);
+            clone.cli.fetch_pr(&clone.repo, 1, name).await.unwrap();
+        }
+        let expected = ["main"].iter().chain(&created).copied();
+        assert_eq!(
+            git(&clone.repo, &list),
+            expected.collect::<Vec<_>>().join("\n")
+        );
+    }
+}

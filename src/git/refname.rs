@@ -26,3 +26,12 @@ pub(super) fn validate_branch_name(name: &str) -> Result<(), Error> {
     }
     Ok(())
 }
+
+pub(super) fn nested_refs(a: &str, b: &str) -> bool {
+    let inside = |outer: &str, inner: &str| {
+        inner
+            .strip_prefix(outer)
+            .is_some_and(|rest| rest.starts_with('/'))
+    };
+    inside(a, b) || inside(b, a)
+}

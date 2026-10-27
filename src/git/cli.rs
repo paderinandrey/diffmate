@@ -1,4 +1,4 @@
-use super::{Git, GitCli, TreeEntry, config, os, tree, validate_branch_name};
+use super::{Git, GitCli, TreeEntry, config, nested_refs, os, tree, validate_branch_name};
 use crate::error::Error;
 use crate::paths::create_private_dir_async;
 use crate::proc::run_tool;
@@ -30,15 +30,19 @@ impl Git for GitCli {
 
     async fn fetch_pr(&self, repo: &Path, number: u64, base_ref: &str) -> Result<(), Error> {
         validate_branch_name(base_ref)?;
+        let base = format!("refs/diffmate/base/{base_ref}");
+        let list = ["for-each-ref", "--format=%(refname)", "refs/diffmate/base/"];
+        let listed = GitCli::text(self.command(Some(repo), list)).await?;
+        for stale in listed.lines().filter(|have| nested_refs(have, &base)) {
+            GitCli::run(self.command(Some(repo), ["update-ref", "-d", stale])).await?;
+        }
         let helper = "credential.helper=!gh auth git-credential";
         let mut command = self.command(Some(repo), ["-c", "credential.helper=", "-c", helper]);
         command.args(["fetch", "--no-tags", "--no-recurse-submodules", "origin"]);
         command.arg(format!(
             "+refs/pull/{number}/head:refs/diffmate/pull/{number}/head"
         ));
-        command.arg(format!(
-            "+refs/heads/{base_ref}:refs/diffmate/base/{base_ref}"
-        ));
+        command.arg(format!("+refs/heads/{base_ref}:{base}"));
         GitCli::run(command).await
     }
 
