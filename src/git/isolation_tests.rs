@@ -12,6 +12,13 @@ fn poisoned_cli(root: &Path, poison: &Poison) -> GitCli {
     fs::create_dir_all(&home).unwrap();
     fs::copy(&poison.config, home.join(".gitconfig")).unwrap();
     fs::copy(&poison.config, xdg.join("git/config")).unwrap();
+    fs::create_dir_all(home.join(".config/git")).unwrap();
+    for attributes in [
+        home.join(".config/git/attributes"),
+        xdg.join("git/attributes"),
+    ] {
+        fs::write(attributes, "* -diff\n").unwrap();
+    }
     let monitor = format!("'core.fsmonitor'='{}'", poison.fsmonitor.display());
     let pairs = [
         ("PATH", path_var()),

@@ -21,6 +21,7 @@ pub(super) async fn write(
     ensure_empty(hooks_dir).await?;
     let settings = [
         ("core.hooksPath", os(hooks_dir)),
+        ("core.attributesFile", os("/dev/null")),
         ("core.fsmonitor", os("false")),
         ("core.symlinks", os("false")),
         ("gc.autoDetach", os("false")),

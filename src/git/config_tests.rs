@@ -3,7 +3,8 @@ use super::fixture::git;
 use super::tests::clone;
 use std::fs;
 
-const KEYS: [&str; 9] = [
+const KEYS: [&str; 10] = [
+    "core.attributesfile",
     "core.bare",
     "core.filemode",
     "core.fsmonitor",
