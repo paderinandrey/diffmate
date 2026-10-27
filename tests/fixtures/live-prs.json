@@ -1,0 +1,25 @@
+{
+  "obvious_bug": {
+    "url": "https://github.com/paderinandrey/diffmate-fixtures/pull/1",
+    "head_sha": "5c5924713de3e990f738f022daf1ed031daf6378",
+    "expected_anchor": {
+      "path": "calc.py",
+      "line": 7,
+      "side": "RIGHT"
+    }
+  },
+  "clean": {
+    "url": "https://github.com/paderinandrey/diffmate-fixtures/pull/2",
+    "head_sha": "3a226759707ca75b6105b177854bd907d90481e4"
+  },
+  "fork": {
+    "url": "https://github.com/paderinandrey/diffmate-fixtures/pull/3",
+    "head_sha": "3d5320d144aea2c7420a9c310df7d24a9901a9ee",
+    "is_cross_repository": true,
+    "expected_anchor": {
+      "path": "calc.py",
+      "line": 7,
+      "side": "RIGHT"
+    }
+  }
+}

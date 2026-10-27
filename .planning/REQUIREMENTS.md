@@ -21,18 +21,18 @@ Intel crosswalk (the five intel entries are decomposed into checkable IDs; no sc
 
 Slice description: the first task is a spike, since the agent contract depends on it. Then `diffmate review <url>` and `diffmate status`.
 
-- [ ] **REV-01**: Spike, done first: establish on the target Claude CLI version (a) the isolation checks for the Claude CLI and git; (b) the CLI result envelope fields (`is_error`, `subtype`, `structured_output`, `total_cost_usd`, `duration_ms`); (c) the full output schema through `--json-schema`: `$defs`, `anyOf`, `minLength`, `maxItems`, nullable fields, and extraction of `structured_output`. Local validation with the full schema stays mandatory either way. If the CLI needs a simplified schema, the CLI form becomes a separate file with a test that checks it against the full schema. (Slice "first task"; no separate "Done when" line. It enables REV-05 to REV-09 and REV-11.)
-- [ ] **REV-02**: `diffmate review <url>` and `diffmate status` work end to end: enqueue a `review` job, take the runner lock, perform recovery, resolve the revision, fetch into the bare clone, create the worktree and context files, check CLI flag support, run the agent with the isolation flags, validate and normalize the output, store the run and its draft, clean up, and print the findings. (Slice description; it is the capability that REV-03 to REV-12 exercise.)
-- [ ] **REV-03**: A PR with an obvious bug produces a finding anchored to the right line.
-- [ ] **REV-04**: A clean PR produces `no_findings`.
-- [ ] **REV-05**: An agent error with exit code 0 (for example, a turn limit) produces `failed`, not `no_findings`.
-- [ ] **REV-06**: Claude isolation, checked with a canary string instead of a real secret, while authentication keeps working: a `CLAUDE.md` in the worktree containing the canary is not loaded.
-- [ ] **REV-07**: Claude isolation, same canary method: a `CLAUDE.md` with an `@` import of a file outside the worktree containing the canary does not leak it.
-- [ ] **REV-08**: Claude isolation, same canary method: `.claude/settings.json` with a hook, a plugin, and `.mcp.json` from the PR do not run or load.
-- [ ] **REV-09**: Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
-- [ ] **REV-10**: A PR from a fork is reviewed the same way.
-- [ ] **REV-11**: A missing CLI flag fails the run before the agent starts.
-- [ ] **REV-12**: A second `review` while the first holds the lock waits, and its job runs after the first; `status` works meanwhile.
+- [x] **REV-01**: Spike, done first: establish on the target Claude CLI version (a) the isolation checks for the Claude CLI and git; (b) the CLI result envelope fields (`is_error`, `subtype`, `structured_output`, `total_cost_usd`, `duration_ms`); (c) the full output schema through `--json-schema`: `$defs`, `anyOf`, `minLength`, `maxItems`, nullable fields, and extraction of `structured_output`. Local validation with the full schema stays mandatory either way. If the CLI needs a simplified schema, the CLI form becomes a separate file with a test that checks it against the full schema. (Slice "first task"; no separate "Done when" line. It enables REV-05 to REV-09 and REV-11.)
+- [x] **REV-02**: `diffmate review <url>` and `diffmate status` work end to end: enqueue a `review` job, take the runner lock, perform recovery, resolve the revision, fetch into the bare clone, create the worktree and context files, check CLI flag support, run the agent with the isolation flags, validate and normalize the output, store the run and its draft, clean up, and print the findings. (Slice description; it is the capability that REV-03 to REV-12 exercise.)
+- [x] **REV-03**: A PR with an obvious bug produces a finding anchored to the right line.
+- [x] **REV-04**: A clean PR produces `no_findings`.
+- [x] **REV-05**: An agent error with exit code 0 (for example, a turn limit) produces `failed`, not `no_findings`.
+- [x] **REV-06**: Claude isolation, checked with a canary string instead of a real secret, while authentication keeps working: a `CLAUDE.md` in the worktree containing the canary is not loaded.
+- [x] **REV-07**: Claude isolation, same canary method: a `CLAUDE.md` with an `@` import of a file outside the worktree containing the canary does not leak it.
+- [x] **REV-08**: Claude isolation, same canary method: `.claude/settings.json` with a hook, a plugin, and `.mcp.json` from the PR do not run or load.
+- [x] **REV-09**: Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
+- [x] **REV-10**: A PR from a fork is reviewed the same way.
+- [x] **REV-11**: A missing CLI flag fails the run before the agent starts.
+- [x] **REV-12**: A second `review` while the first holds the lock waits, and its job runs after the first; `status` works meanwhile.
 
 ### Reliability (REL) - Phase 2
 
@@ -142,18 +142,18 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REV-01 | Phase 1 | Pending |
-| REV-02 | Phase 1 | Pending |
-| REV-03 | Phase 1 | Pending |
-| REV-04 | Phase 1 | Pending |
-| REV-05 | Phase 1 | Pending |
-| REV-06 | Phase 1 | Pending |
-| REV-07 | Phase 1 | Pending |
-| REV-08 | Phase 1 | Pending |
-| REV-09 | Phase 1 | Pending |
-| REV-10 | Phase 1 | Pending |
-| REV-11 | Phase 1 | Pending |
-| REV-12 | Phase 1 | Pending |
+| REV-01 | Phase 1 | Complete |
+| REV-02 | Phase 1 | Complete |
+| REV-03 | Phase 1 | Complete |
+| REV-04 | Phase 1 | Complete |
+| REV-05 | Phase 1 | Complete |
+| REV-06 | Phase 1 | Complete |
+| REV-07 | Phase 1 | Complete |
+| REV-08 | Phase 1 | Complete |
+| REV-09 | Phase 1 | Complete |
+| REV-10 | Phase 1 | Complete |
+| REV-11 | Phase 1 | Complete |
+| REV-12 | Phase 1 | Complete |
 | REL-01 | Phase 2 | Pending |
 | REL-02 | Phase 2 | Pending |
 | REL-03 | Phase 2 | Pending |

@@ -1,0 +1,82 @@
+{
+  "cli_version": "2.1.304",
+  "version_stdout": "2.1.304 (Claude Code)",
+  "production_flags": ["-p", "--safe-mode", "--restricted", "--strict-mcp-config", "--tools", "Read,Grep,Glob", "--no-session-persistence", "--permission-prompts", "none", "--disable-slash-commands", "--add-dir", "CONTEXT_DIR", "--append-system-prompt-file", "PROMPT_FILE", "--output-format", "json", "--json-schema", "CLI_SCHEMA"],
+  "probe": {
+    "ok_stderr": "Error: Input must be provided either through stdin or as a prompt argument when using --print",
+    "ok_exit_code": 1,
+    "unknown_option_stderr": "error: unknown option '--bogus-flag-xyz'",
+    "unknown_option_exit_code": 1,
+    "schema_with_dollar_schema_stderr": "Error: --json-schema is not a valid JSON Schema: no schema with key or ref \"https://json-schema.org/draft/2020-12/schema\"",
+    "missing_prompt_file_stderr": "Error: Append system prompt file not found: /nonexistent/prompt.md",
+    "flags_accepted": true
+  },
+  "auth_env_required": ["PATH", "HOME", "USER", "LOGNAME"],
+  "auth_env_allowlist": ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "CLAUDE_CONFIG_DIR", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"],
+  "auth_env_not_needed": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_EFFORT", "CLAUDE_PID"],
+  "envelope": {
+    "fields_success": ["duration_api_ms", "stop_reason", "session_id", "total_cost_usd", "usage", "modelUsage", "permission_denials", "terminal_reason", "fast_mode_state", "fast_mode_disabled_reason", "subagent_stats", "safety_stops", "is_error", "num_turns", "subtype", "api_error_status", "result", "structured_output", "ttft_ms", "type", "duration_ms", "uuid", "ttft_stream_ms", "time_to_request_ms", "first_content_frame_ms", "queued_turn_count", "result_index"],
+    "fields_error": ["duration_api_ms", "stop_reason", "session_id", "total_cost_usd", "usage", "modelUsage", "permission_denials", "terminal_reason", "fast_mode_state", "fast_mode_disabled_reason", "subagent_stats", "safety_stops", "is_error", "num_turns", "subtype", "errors", "type", "duration_ms", "uuid", "queued_turn_count", "result_index"],
+    "single_json_object": true,
+    "structured_output_type": "object"
+  },
+  "max_turns": {"exit_code": 1, "subtype": "error_max_turns"},
+  "api_error": {"exit_code": 1, "subtype": "success", "is_error": true, "terminal_reason": "api_error", "unknown_model_api_error_status": 404},
+  "auth_failure": {
+    "exit_code": 1,
+    "stdout_is_envelope": true,
+    "identified_by": "is_error true, terminal_reason api_error, api_error_status null, total_cost_usd 0 and result text starting with Not logged in",
+    "subtype": "success"
+  },
+  "schema_form": "full",
+  "schema_file": null,
+  "fake_endpoint": {
+    "works": true,
+    "request_paths": ["HEAD /api/hello", "POST /v1/messages?beta=true"],
+    "requests_per_run": 2,
+    "ends_on_400": true,
+    "retries": 0,
+    "body_encoding": "plain JSON",
+    "system_prompt_contains_appended_rules": true
+  },
+  "structured_output_tool": "StructuredOutput",
+  "isolated_first_look": {
+    "canaries_seen": [],
+    "markers_present": [],
+    "tool_names": ["Glob", "Grep", "Read", "StructuredOutput", "DeferredToolPlaceholder"],
+    "accepted": "DeferredToolPlaceholder is an inert CLI-internal tool (empty schema, defer_loading true, described as never to be called), also present in the unisolated control; accepted by the owner (A1) as part of the 2.1.304 tool set",
+    "second_listener_connections": 0
+  },
+  "controls": {
+    "claude_md": true,
+    "import": true,
+    "agents_md": true,
+    "rules_claude_md_in_add_dir": false,
+    "session_start_hook": true,
+    "settings_env_base_url": true,
+    "api_key_helper": true,
+    "plugin_hook": true,
+    "mcp_server": true,
+    "agents_commands_skills": false,
+    "trust_keys": ["projects[path].hasTrustDialogAccepted", "projects[path].hasClaudeMdExternalIncludesApproved", "projects[path].hasClaudeMdExternalIncludesWarningShown"]
+  },
+  "controls_notes": {
+    "agents_md": "fires only when CLAUDE.md is absent from the worktree",
+    "plugin_hook": "plugin is enabled as evilplug@skills-dir",
+    "rules_claude_md_in_add_dir": "also false with CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1; only a CLAUDE.md at the add-dir root loads",
+    "agents_commands_skills": "does not fire for the production vector; fires only when both --tools and --disable-slash-commands are dropped"
+  },
+  "claude_git_calls": {
+    "runs_git": true,
+    "every_call_had_isolation_env": false,
+    "calls_observed": 6,
+    "calls_without_git_config_global": ["ls-files", "status", "log", "config user.name"],
+    "git_config_nosystem_always_present": true,
+    "global_clean_filter_ran_unmitigated": true,
+    "mitigations": {
+      "path_git_wrapper": {"calls": 6, "all_had_git_config_global_dev_null": true, "filter_ran": false},
+      "disable_git_instructions": {"env": "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1", "calls": 3, "all_had_git_config_global": false, "filter_ran": false}
+    },
+    "chosen": "path_git_wrapper"
+  }
+}
