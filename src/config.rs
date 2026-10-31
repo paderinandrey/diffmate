@@ -1,5 +1,7 @@
 mod error;
 mod raw;
+#[cfg(test)]
+mod tests;
 
 pub(crate) use error::ConfigError;
 use std::path::Path;
@@ -25,12 +27,12 @@ impl Default for Settings {
 }
 
 impl Settings {
-    #[expect(dead_code)]
+    #[cfg_attr(not(test), expect(dead_code))]
     pub fn run_timeout(&self) -> Duration {
         Duration::from_secs(self.run_timeout_minutes * 60)
     }
 
-    #[expect(dead_code)]
+    #[cfg_attr(not(test), expect(dead_code))]
     pub fn max_retries(&self) -> u32 {
         self.max_retries
     }

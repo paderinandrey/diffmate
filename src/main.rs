@@ -39,7 +39,10 @@ fn main() -> ExitCode {
         match config::load(&config.config_file) {
             Ok(settings) => config.settings = settings,
             Err(error) => {
-                eprintln!("error: {}", render::sanitize(&error.to_string()));
+                eprintln!(
+                    "error: {}",
+                    render::sanitize(&error.to_string()).replace('\n', " ")
+                );
                 return ExitCode::FAILURE;
             }
         }

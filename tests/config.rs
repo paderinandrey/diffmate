@@ -35,3 +35,25 @@ fn missing_config_uses_defaults() {
     let output = tracer::review(&sandbox);
     assert!(output.status.success(), "{output:?}");
 }
+
+#[test]
+fn status_ignores_broken_config() {
+    let sandbox = Sandbox::new();
+    write_config(&sandbox, "this is not toml");
+    let output = sandbox.run(&["status"]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(String::from_utf8(output.stdout).unwrap(), "No targets.\n");
+    assert!(!sandbox.db_path().exists());
+}
+
+#[test]
+fn config_errors_are_one_line_and_strip_terminal_controls() {
+    let sandbox = Sandbox::new();
+    write_config(&sandbox, "\"bad\\nkey\\u001b\\u202e\" = 1");
+    let output = sandbox.run(&["review", tracer::URL]);
+    assert_eq!(output.status.code(), Some(1));
+    let error = String::from_utf8(output.stderr).unwrap();
+    assert_eq!(error.lines().count(), 1, "{error:?}");
+    assert!(!error.contains(['\u{1b}', '\u{202e}']));
+    assert!(!sandbox.db_path().exists());
+}

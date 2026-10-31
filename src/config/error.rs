@@ -1,3 +1,5 @@
+mod key;
+
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -34,19 +36,7 @@ impl ConfigError {
     pub(super) fn parse(path: &Path, text: &str, error: toml::de::Error) -> Self {
         let line = error.span().map(|span| line(text, span.start));
         let message = error.message().to_owned();
-        let key = message
-            .strip_prefix("unknown field `")
-            .and_then(|rest| rest.split('`').next())
-            .map(str::to_owned)
-            .or_else(|| {
-                let mut context = error.clone();
-                context.set_input(None);
-                context.to_string().lines().find_map(|line| {
-                    line.strip_prefix("in `")
-                        .and_then(|s| s.strip_suffix('`'))
-                        .map(str::to_owned)
-                })
-            });
+        let key = key::name(&error, text, line);
         Self {
             path: path.to_path_buf(),
             line,
