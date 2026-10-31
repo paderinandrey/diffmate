@@ -42,6 +42,8 @@ pub(super) fn live_config(root: &Path) -> AppConfig {
             pid: std::process::id(),
             started_at_ms: now_ms(),
         },
+        config_file: root.join("config.toml"),
+        settings: crate::config::Settings::default(),
     }
 }
 

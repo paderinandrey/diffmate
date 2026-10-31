@@ -2,6 +2,7 @@ mod agent;
 mod app;
 mod cancel;
 mod cli;
+mod config;
 mod context;
 mod diff;
 mod error;
@@ -27,13 +28,22 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let cli = cli::Cli::parse();
-    let config = match app::AppConfig::from_process() {
+    let mut config = match app::AppConfig::from_process() {
         Ok(config) => config,
         Err(error) => {
             eprintln!("error: {error}");
             return ExitCode::FAILURE;
         }
     };
+    if matches!(cli.command, cli::Command::Review { .. }) {
+        match config::load(&config.config_file) {
+            Ok(settings) => config.settings = settings,
+            Err(error) => {
+                eprintln!("error: {}", render::sanitize(&error.to_string()));
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     let mut builder = tokio::runtime::Builder::new_current_thread();
     let runtime = match builder.enable_all().build() {
         Ok(runtime) => runtime,
