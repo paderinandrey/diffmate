@@ -23,6 +23,12 @@ pub(crate) enum Error {
     Db(#[from] rusqlite::Error),
     #[error("database schema version {0} is newer than this diffmate supports")]
     SchemaVersion(i64),
+    #[error(
+        "database schema version {0} is older than this diffmate; run `diffmate review` once to upgrade it"
+    )]
+    SchemaOutdated(i64),
+    #[error("database backup {path}: {detail}")]
+    Backup { path: PathBuf, detail: String },
     #[error("background task failed: {0}")]
     Join(#[from] tokio::task::JoinError),
     #[error("unexpected JSON: {0}")]
