@@ -7,17 +7,21 @@ use std::path::Path;
 
 pub(super) fn create(db: &Path) -> Result<(), Error> {
     let backup = db.with_file_name("diffmate.db.v1-backup");
-    if backup
+    let exists = backup
         .try_exists()
-        .map_err(Error::io("check database backup"))?
-    {
-        return validate(&backup);
+        .map_err(Error::io("check database backup"))?;
+    if exists {
+        validate(&backup)?;
+        sync(&backup)?;
     }
     let temporary = db.with_file_name("diffmate.db.v1-backup.tmp");
     match fs::remove_file(&temporary) {
         Ok(()) => {}
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
         Err(error) => return Err(Error::io("remove incomplete database backup")(error)),
+    }
+    if exists {
+        return Ok(());
     }
     let file = OpenOptions::new()
         .write(true)
@@ -34,14 +38,22 @@ pub(super) fn create(db: &Path) -> Result<(), Error> {
     validate(&temporary)?;
     file.sync_all().map_err(Error::io("sync database backup"))?;
     fs::hard_link(&temporary, &backup).map_err(Error::io("publish database backup"))?;
-    let parent = backup.parent().ok_or_else(|| Error::Backup {
-        path: backup.clone(),
+    sync(&backup)?;
+    fs::remove_file(&temporary).map_err(Error::io("remove completed backup temporary file"))?;
+    Ok(())
+}
+
+fn sync(path: &Path) -> Result<(), Error> {
+    File::open(path)
+        .and_then(|file| file.sync_all())
+        .map_err(Error::io("sync database backup"))?;
+    let parent = path.parent().ok_or_else(|| Error::Backup {
+        path: path.to_path_buf(),
         detail: "backup path has no parent".into(),
     })?;
     File::open(parent)
         .and_then(|dir| dir.sync_all())
         .map_err(Error::io("sync database backup directory"))?;
-    fs::remove_file(&temporary).map_err(Error::io("remove completed backup temporary file"))?;
     Ok(())
 }
 

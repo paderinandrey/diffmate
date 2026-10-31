@@ -1,4 +1,6 @@
 mod backup;
+#[cfg(test)]
+mod tests;
 
 use crate::error::Error;
 use rusqlite::{Connection, TransactionBehavior};

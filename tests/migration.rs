@@ -71,3 +71,19 @@ fn phase_one_database_is_upgraded_and_kept() {
     assert_eq!(count(&backup, "PRAGMA user_version"), 1);
     assert_preserved(&backup, &before);
 }
+
+#[test]
+fn status_on_phase_one_database_asks_for_an_upgrade() {
+    let sandbox = Sandbox::new();
+    let before = create(&sandbox);
+    let bytes = std::fs::read(sandbox.db_path()).unwrap();
+    let output = sandbox.run(&["status"]);
+    assert_eq!(output.status.code(), Some(1));
+    let error = String::from_utf8_lossy(&output.stderr);
+    assert!(error.contains("schema version 1") && error.contains("diffmate review"));
+    let conn = database(&sandbox);
+    assert_eq!(count(&conn, "PRAGMA user_version"), 1);
+    assert_preserved(&conn, &before);
+    assert_eq!(std::fs::read(sandbox.db_path()).unwrap(), bytes);
+    assert_eq!(std::fs::read_dir(sandbox.state_dir()).unwrap().count(), 1);
+}
