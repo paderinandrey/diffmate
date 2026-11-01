@@ -22,7 +22,7 @@ fn running(raw: u32) -> bool {
     !stat.trim().is_empty() && !stat.trim().starts_with('Z')
 }
 
-fn interrupted_by(signal: Signal) {
+fn interrupted_by(signal: Signal, expected: &str) {
     let sandbox = Sandbox::new();
     with_pr(&sandbox);
     sandbox.claude.spawn_child();
@@ -60,10 +60,20 @@ fn interrupted_by(signal: Signal) {
     };
     let (state, kind, cause, process, group) = db.query_row(sql, [], row).unwrap();
     assert_eq!(
-        (state.as_deref(), kind.as_deref(), cause),
-        (Some("failed"), Some("interrupted"), None)
+        (state.as_deref(), kind.as_deref(), cause.as_deref()),
+        (Some("failed"), Some("interrupted"), Some(expected))
     );
     assert_eq!((process, group), (agent, agent));
+    let (stop, reason): (String, String) = db
+        .query_row("SELECT stop_reason, failure_reason FROM jobs", [], |r| {
+            Ok((r.get(0)?, r.get(1)?))
+        })
+        .unwrap();
+    assert_eq!(stop, expected);
+    assert!(
+        reason.ends_with(&format!("(interrupted: {expected})")),
+        "{reason}"
+    );
     assert_eq!(
         count(&db, "SELECT count(*) FROM jobs WHERE state = 'failed'"),
         1
@@ -76,10 +86,10 @@ fn interrupted_by(signal: Signal) {
 
 #[test]
 fn sigint_during_agent_run_stops_group_and_records_interrupted() {
-    interrupted_by(Signal::INT);
+    interrupted_by(Signal::INT, "user_cancel");
 }
 
 #[test]
 fn sigterm_during_agent_run_is_handled_the_same_way() {
-    interrupted_by(Signal::TERM);
+    interrupted_by(Signal::TERM, "shutdown");
 }

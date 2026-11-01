@@ -2,6 +2,7 @@ use super::jobs::EnqueuedJob;
 use super::records::{Metrics, Revision};
 use super::{JobId, RunId, Store, now_ms};
 use crate::agent::{FailureDetail, FailureKind};
+use crate::cancel::StopReason;
 use crate::error::Error;
 use rusqlite::{TransactionBehavior, params};
 
@@ -28,24 +29,35 @@ impl Store {
         run: RunId,
         job: JobId,
         kind: FailureKind,
+        stop: Option<StopReason>,
         detail: FailureDetail,
         metrics: Metrics,
     ) -> Result<(), Error> {
         let detail = serde_json::to_string(&detail)?;
-        let reason = format!("run {run} failed ({})", kind.as_str());
+        let cause = stop.filter(|reason| {
+            matches!(kind, FailureKind::Interrupted)
+                && matches!(reason, StopReason::Shutdown | StopReason::UserCancel)
+        });
+        let failure = cause.map_or_else(
+            || kind.as_str().to_string(),
+            |cause| format!("interrupted: {}", cause.as_str()),
+        );
+        let reason = format!("run {run} failed ({failure})");
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let now = now_ms();
             tx.execute(
                 "UPDATE runs SET state = 'failed', failure_kind = ?1, failure_detail = ?2,
-                 total_cost_usd = ?3, duration_ms = ?4, finished_at = ?5 WHERE id = ?6",
+                 total_cost_usd = ?3, duration_ms = ?4, finished_at = ?5, interrupted_cause = ?7
+                 WHERE id = ?6",
                 params![
                     kind.as_str(),
                     detail,
                     metrics.total_cost_usd,
                     metrics.duration_ms,
                     now,
-                    run
+                    run,
+                    cause.map(StopReason::as_str)
                 ],
             )?;
             let sql = "UPDATE jobs SET state = 'failed', failure_reason = ?1, updated_at = ?2

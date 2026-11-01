@@ -1,5 +1,6 @@
 use crate::agent::claude::ClaudeCli;
 use crate::app::AppConfig;
+use crate::cancel::StopReason;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
@@ -53,7 +54,8 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
     let (stop, cancel) = watch::channel(false);
     let paths = &config.paths;
     let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
-    let result = signals::until_done(stop, job_run).await?;
+    let result =
+        signals::until_done(stop, job_run, &store, job.job_id, StopReason::UserCancel).await?;
     let (stdout, stderr) = (std::io::stdout(), std::io::stderr());
     let printed = render::review(pr, &result, &mut stdout.lock(), &mut stderr.lock());
     printed.map_err(Error::io("write the result"))?;

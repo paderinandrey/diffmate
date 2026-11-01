@@ -20,6 +20,7 @@ pub(crate) enum FailureKind {
     CliError,
     AgentError,
     InvalidOutput,
+    Timeout,
     Interrupted,
 }
 
@@ -29,6 +30,7 @@ impl FailureKind {
             FailureKind::CliError => "cli_error",
             FailureKind::AgentError => "agent_error",
             FailureKind::InvalidOutput => "invalid_output",
+            FailureKind::Timeout => "timeout",
             FailureKind::Interrupted => "interrupted",
         }
     }

@@ -1,5 +1,6 @@
 use super::{JobId, Store, TargetId, now_ms};
 use crate::app::ProcessInfo;
+use crate::cancel::StopReason;
 use crate::error::Error;
 use crate::pr_url::PrRef;
 use rusqlite::{TransactionBehavior, params};
@@ -10,6 +11,25 @@ pub(crate) struct EnqueuedJob {
 }
 
 impl Store {
+    pub async fn set_stop_reason(&self, job: JobId, reason: StopReason) -> Result<bool, Error> {
+        self.call(move |conn| {
+            let sql = "UPDATE jobs SET stop_reason = ?1, updated_at = ?2
+                       WHERE id = ?3 AND stop_reason IS NULL";
+            conn.execute(sql, params![reason.as_str(), now_ms(), job])
+                .map(|changed| changed == 1)
+        })
+        .await
+    }
+
+    pub async fn stop_reason(&self, job: JobId) -> Result<Option<StopReason>, Error> {
+        self.call(move |conn| {
+            let sql = "SELECT stop_reason FROM jobs WHERE id = ?1";
+            let reason: Option<String> = conn.query_row(sql, [job], |row| row.get(0))?;
+            Ok(reason.as_deref().and_then(StopReason::parse))
+        })
+        .await
+    }
+
     pub async fn enqueue_review(
         &self,
         pr: &PrRef,
