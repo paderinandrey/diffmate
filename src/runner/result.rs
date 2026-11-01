@@ -36,6 +36,10 @@ pub(super) async fn job_failed(store: &Store, job: &EnqueuedJob, reason: String)
 
 pub(super) async fn cancelled_before_run(store: &Store, job: &EnqueuedJob) -> ReviewResult {
     let reason = "interrupted before the run started".to_string();
+    let reason = match store.stop_reason(job.job_id).await.unwrap_or(None) {
+        Some(cause) => format!("{reason} ({})", cause.as_str()),
+        None => reason,
+    };
     match store.fail_job(job.job_id, reason.clone()).await {
         Ok(()) => ReviewResult::Cancelled { run_id: None },
         Err(error) => ReviewResult::JobFailed {

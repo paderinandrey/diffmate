@@ -8,6 +8,8 @@ use crate::store::{RunId, Store};
 use failed::failed;
 
 mod failed;
+#[cfg(test)]
+mod tests;
 
 fn draft_record(
     output: ReviewOutput,
