@@ -1,0 +1,108 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-11-01T00:19:13.188Z",
+  "phase": "02",
+  "phase_name": "Reliability",
+  "phase_dir": ".planning/phases/02-reliability",
+  "plan": 4,
+  "task": 1,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_plans": [
+    "02-01",
+    "02-02",
+    "02-03"
+  ],
+  "completed_tasks": [
+    {
+      "id": 1,
+      "plan": "02-03",
+      "name": "Persist stop causes before cancelling review jobs",
+      "status": "done",
+      "commit": "7228269"
+    },
+    {
+      "id": 2,
+      "plan": "02-03",
+      "name": "Preserve first cause and completed-result precedence",
+      "status": "done",
+      "commit": "19616d3"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 1,
+      "plan": "02-04",
+      "name": "Live draft freshness in status",
+      "status": "not_started"
+    },
+    {
+      "id": 2,
+      "plan": "02-04",
+      "name": "Retry budget display",
+      "status": "not_started"
+    },
+    {
+      "id": 3,
+      "plan": "02-04",
+      "name": "Freshness, budget and read-only regression matrix",
+      "status": "not_started"
+    }
+  ],
+  "remaining_plans": [
+    "02-04",
+    "02-05",
+    "02-06",
+    "02-07",
+    "02-08",
+    "02-09",
+    "02-10"
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Run end-of-phase live database migration and real-Claude signal/crash/timeout UAT",
+      "context": "Deferred hand checks in plans and WINDOWS.md; no live user database or configuration was touched",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    {
+      "decision": "User approved additive-backup and toml",
+      "rationale": "Explicit reply: additive-backup, approved. Both Task 1 blocking-human gates are satisfied; do not ask again.",
+      "phase": "02"
+    },
+    {
+      "decision": "Sequential execution on the phase branch",
+      "rationale": "GSD worktree.base-check returned shouldDegrade=true because HEAD differs from origin/HEAD; no executor worktrees created.",
+      "phase": "02"
+    },
+    {
+      "decision": "Stop after completed plan 02-03",
+      "rationale": "Owner requested the nearest clean stopping point. Do not resume without a new instruction.",
+      "phase": "02"
+    }
+  ],
+  "uncommitted_files": [
+    " M .planning/REQUIREMENTS.md",
+    " M .planning/ROADMAP.md",
+    " M .planning/STATE.md",
+    " M .planning/config.json",
+    "?? .planning/state.json"
+  ],
+  "uncommitted_snapshot_note": "Measured before writing/committing this handoff. REQUIREMENTS, ROADMAP and STATE are included in the pause commit. config.json (_auto_chain_active:false) and untracked state.json predated execution and remain unstaged. The run-created milestone.lock was removed at pause.",
+  "verification": {
+    "latest": "Final 02-03: mise run --force test 210 passed, 11 ignored; mise run --force lint passed; hooks passed.",
+    "earlier": "Wave 1 release build and 202-test suite passed; deps:check and vuln passed in02-02; coverage93.73% after02-01.",
+    "not_run_on_final_source": [
+      "coverage",
+      "release build",
+      "test:e2e",
+      "phase-wide code review and verification"
+    ],
+    "partial_wave": "Wave2 incomplete:02-03 done,02-04 not started. Wave2 post-build/test gate still due after02-04."
+  },
+  "next_action": "On explicit resume, read .continue-here.md, SPEC.md and summaries02-01..03, then execute02-04 using gsd-execute-phase2. Reconcile committed summaries before dispatch; do not repeat completed plans or prior approvals.",
+  "context_notes": "Branch gsd/phase-02-reliability; production and summaries committed through31d378f. No active agents, build/test sessions or async jobs remain. GSD is the only planning workflow. Preserve unrelated dirty planning files. Phase2 is not complete."
+}

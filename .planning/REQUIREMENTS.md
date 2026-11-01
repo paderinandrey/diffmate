@@ -46,7 +46,7 @@ Slice description: idempotent runs, crash recovery, freshness, timeouts, `--forc
 - [ ] **REL-06**: A PR whose review crashes diffmate every time is retried only within the retry budget, across restarts, and then reported as failed.
 - [ ] **REL-07**: Recovery after a stop whose cause was stored but whose cleanup did not finish keeps the cause: `shutdown` re-queues an automatic job without using the budget, `user_cancel` ends the job without a retry.
 - [ ] **REL-08**: Stopping `watch` with SIGTERM during an automatic run records `failed (interrupted: shutdown)`, removes the worktree, and re-queues the job without using the retry budget.
-- [ ] **REL-09**: Ctrl-C on a `review` that acts as the runner stops and waits for the agent, records `failed (interrupted: user_cancel)` (never `agent_error`), leaves no agent or `rg` processes in its group, removes the worktree, and says so before exiting.
+- [x] **REL-09**: Ctrl-C on a `review` that acts as the runner stops and waits for the agent, records `failed (interrupted: user_cancel)` (never `agent_error`), leaves no agent or `rg` processes in its group, removes the worktree, and says so before exiting.
 - [ ] **REL-10**: Without `watch`, a `review` that attached to a `tui` re-run executes it, and does not start orphaned or automatic jobs.
 - [ ] **REL-11**: Two `review` commands for the same URL produce one run, a `review` started while a `tui` re-run is queued attaches to it, and `review --force` during a running non-forced job produces a second run.
 - [ ] **REL-12**: Run timeout (slice scope line "timeouts"; SPEC "Agent contract"): a run that exceeds the timeout, 15 minutes by default, is recorded as `failed (timeout)`, and its agent process group is stopped with SIGTERM then SIGKILL after a bounded wait.
@@ -162,7 +162,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REL-06 | Phase 2 | Pending |
 | REL-07 | Phase 2 | Pending |
 | REL-08 | Phase 2 | Pending |
-| REL-09 | Phase 2 | Pending |
+| REL-09 | Phase 2 | Complete |
 | REL-10 | Phase 2 | Pending |
 | REL-11 | Phase 2 | Pending |
 | REL-12 | Phase 2 | Pending |
