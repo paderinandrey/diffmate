@@ -93,12 +93,12 @@ Plans:
   - Several scenarios run the `watch` and `tui` roles before those features exist. The plan needs a minimal `watch` runner loop (executes every job, handles SIGTERM and SIGINT) and a way to enqueue an automatic job and a `tui`-style `review` job as a test seam. Polling, tracking, debounce, and notifications stay in Phase 3; the TUI stays in Phase 4.
   - This phase introduces the automatic/manual job distinction and the retry budget and next-attempt time persisted in SQLite, and `status` gains draft freshness with the time of the last head check.
 
-**Plans:** 10 plans
+**Plans:** 2/10 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 02-01-PLAN.md — Schema v2 migration that keeps Phase 1 data (owner confirms the shape; one-way)
-- [ ] 02-02-PLAN.md — `config.toml` with SPEC defaults and hard errors (REL-13; toml crate gate)
+- [x] 02-01-PLAN.md — Schema v2 migration that keeps Phase 1 data (owner confirms the shape; one-way)
+- [x] 02-02-PLAN.md — `config.toml` with SPEC defaults and hard errors (REL-13; toml crate gate)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 02-03-PLAN.md — Stop causes stored first: Ctrl-C → user_cancel, SIGTERM → shutdown (REL-09)
@@ -194,7 +194,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
-| 2. Reliability | 0/10 | Planned | - |
+| 2. Reliability | 2/10 | In Progress | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |

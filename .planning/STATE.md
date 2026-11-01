@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Reliability
 status: executing
-stopped_at: Phase 2 context gathered
-last_updated: "2026-10-27T21:18:12.189Z"
-last_activity: 2026-10-27
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
-state_head: f343680bb17179c5abd9563ed94e82e622b025f8
+stopped_at: Starting 02-03 after completed wave 1
+last_updated: "2026-11-01T00:06:42.578Z"
+last_activity: 2026-11-01
+last_activity_desc: "Wave 1 complete: 02-01 and 02-02; release build and 202 tests passed, 11 skipped"
+state_head: bf5c8c1cec8a4c51fd3840efcf2f76526b1c69ea
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,15 +23,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-27)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 2 — Reliability
+**Current focus:** Phase 02 — Reliability
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
 
-Phase: 02 (Reliability) — READY TO EXECUTE
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-10-27 — Phase 01 complete, transitioned to Phase 2
+Phase: 02 (Reliability) — EXECUTING
+Plan: 3 of 10
+Status: Executing Phase 02
+Last activity: 2026-11-01 — Wave 1 complete: 02-01 and 02-02; release build and 202 tests passed, 11 skipped
 
 Progress: [██░░░░░░░░] 20%
 
@@ -105,6 +105,10 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-12: mise.toml keeps hk as a plain version string because scripts/deps.sh parses that form
 - [Phase 01]: UAT: substitute isolation controls kept (owner decision 2026-10-22, option a); D6 residual risk accepted; `MIT-0` allowed in deny.toml
 
+Phase 02 checkpoint answers (2026-11-01): the owner selected `additive-backup`
+for 02-01 and replied `approved` for the `toml` dependency in 02-02.
+Both Task 1 blocking-human gates are satisfied; do not ask again.
+
 ### Pending Todos
 
 None yet.
@@ -134,5 +138,5 @@ Items acknowledged and deferred at milestone close, most recent first:
 ## Session Continuity
 
 Last session: 2026-10-27T16:41:54.044Z
-Stopped at: Phase 2 context gathered
+Stopped at: Starting 02-03 after completed wave 1
 Resume file: .planning/phases/02-reliability/02-CONTEXT.md
