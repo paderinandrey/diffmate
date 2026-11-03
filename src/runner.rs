@@ -48,6 +48,9 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
     match resolved {
         None => cancelled_before_run(store, job, &deps.settings).await,
         Some(Ok((meta, revision))) => {
+            if let Err(error) = store.set_known_head(job.target_id, &meta.head_sha).await {
+                return job_failed(store, job, error.to_string()).await;
+            }
             if !started.force {
                 match store
                     .succeeded_run_for_head(job.target_id, &revision.head_sha)

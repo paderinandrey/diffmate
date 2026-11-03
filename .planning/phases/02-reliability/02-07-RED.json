@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-07-nextest.toml --no-fail-fast -E 'binary(stale_review)'",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"0419a61c-7980-49c0-955f-fafcaedfa192\" timestamp=\"2026-11-03T16:34:24.335+03:00\" time=\"4.265\">\n    <testsuite name=\"diffmate::stale_review\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"push_during_run_makes_the_draft_stale\" classname=\"diffmate::stale_review\" timestamp=\"2026-11-03T16:34:24.336+03:00\" time=\"4.263\">\n            <failure message=\"thread &apos;push_during_run_makes_the_draft_stale&apos; (39976546) panicked at tests/stale_review.rs:32:5\" type=\"test failure with exit code 101\">thread &apos;push_during_run_makes_the_draft_stale&apos; (39976546) panicked at tests/stale_review.rs:32:5:\nassertion `left == right` failed\n  left: &quot;o/r#1 at d8b8fb85d4fc: succeeded (no_findings)&quot;\n right: &quot;o/r#1 at d8b8fb85d4fc: succeeded (no_findings), stale: PR head is now 365e56a481c2&quot;\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest push_during_run_makes_the_draft_stale ... FAILED\n\nfailures:\n\nfailures:\n    push_during_run_makes_the_draft_stale\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.15s\n\n</system-out>\n            <system-err>\nthread &apos;push_during_run_makes_the_draft_stale&apos; (39976546) panicked at tests/stale_review.rs:32:5:\nassertion `left == right` failed\n  left: &quot;o/r#1 at d8b8fb85d4fc: succeeded (no_findings)&quot;\n right: &quot;o/r#1 at d8b8fb85d4fc: succeeded (no_findings), stale: PR head is now 365e56a481c2&quot;\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "push_during_run_makes_the_draft_stale",
+  "targetFile": "tests/stale_review.rs",
+  "expected": "the first review line contains the new PR head in the stale suffix",
+  "actual": "the first review line ends succeeded (no_findings) without a stale suffix",
+  "semanticAssessment": "VALID_RED: after repairing a non-fast-forward fixture push, the compiled test executed the held agent and reached the planned first-line freshness assertion",
+  "reportPath": "/private/tmp/diffmate-02-07-red.xml",
+  "runStartedAt": "2026-11-03T16:34:24.335+03:00",
+  "reportModifiedAt": "2026-11-03T13:34:28.600631+00:00"
+}

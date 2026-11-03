@@ -41,6 +41,7 @@ async fn dedup_uses_the_pinned_retry_head_instead_of_the_current_github_head() {
     let ReviewResult::Succeeded {
         run_id,
         head_sha,
+        known_head,
         reused,
         ..
     } = result
@@ -49,6 +50,7 @@ async fn dedup_uses_the_pinned_retry_head_instead_of_the_current_github_head() {
     };
     assert_eq!(run_id, 2);
     assert_eq!(head_sha, "old-head");
+    assert_eq!(known_head.as_deref(), Some("new-head"));
     assert!(reused);
     assert_eq!(*deps.git.0.lock().unwrap(), ["clone"]);
     assert!(!paths.runs_dir().exists());

@@ -17,6 +17,7 @@ impl ReviewResult {
             ) => Self::Succeeded {
                 run_id,
                 head_sha,
+                known_head: stored.known_head,
                 findings,
                 limitation,
                 future_improvements,

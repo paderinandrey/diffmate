@@ -44,7 +44,7 @@ fn status_shows_a_moved_head_as_stale() {
         .query_row("SELECT head_sha FROM targets", [], |r| r.get(0))
         .unwrap();
     assert_eq!(stored, head);
-    assert_eq!(known, None);
+    assert_eq!(known.as_deref(), Some(head.as_str()));
 }
 
 #[test]
@@ -52,6 +52,13 @@ fn status_reports_a_failed_live_check() {
     let sandbox = Sandbox::new();
     let (_, head) = with_pr(&sandbox);
     assert!(review(&sandbox).status.success());
+    rusqlite::Connection::open(sandbox.db_path())
+        .unwrap()
+        .execute(
+            "UPDATE targets SET head_sha = NULL, head_checked_at = NULL",
+            [],
+        )
+        .unwrap();
     sandbox.gh.replace_route_fail(
         &format!("pr view {URL}"),
         "off\u{1b}\u{202e}line\ntry\tagain",

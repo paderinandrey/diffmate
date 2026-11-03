@@ -11,6 +11,7 @@ pub(crate) enum ReviewResult {
         reused: bool,
         run_id: RunId,
         head_sha: String,
+        known_head: Option<String>,
         findings: Vec<FindingRecord>,
         limitation: Option<String>,
         future_improvements: Vec<String>,

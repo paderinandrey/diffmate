@@ -9,6 +9,7 @@ pub(crate) mod result;
 pub(crate) mod retry;
 pub(crate) mod runs;
 pub(crate) mod status;
+mod targets;
 
 use crate::error::Error;
 use crate::paths::{Paths, create_private_dir};

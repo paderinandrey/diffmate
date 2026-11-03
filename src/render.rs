@@ -20,6 +20,7 @@ pub(crate) fn review(
     match result {
         ReviewResult::Succeeded {
             head_sha,
+            known_head,
             findings: all,
             limitation,
             future_improvements,
@@ -31,7 +32,12 @@ pub(crate) fn review(
                 0 => "no_findings".to_string(),
                 count => format!("findings: {count}"),
             };
-            writeln!(out, "{label} at {head}: succeeded ({summary})")?;
+            write!(out, "{label} at {head}: succeeded ({summary})")?;
+            if let Some(known) = known_head.as_ref().filter(|known| *known != head_sha) {
+                let known: String = known.chars().take(12).collect();
+                write!(out, ", stale: PR head is now {known}")?;
+            }
+            writeln!(out)?;
             if !all.is_empty() || limitation.is_some() || !future_improvements.is_empty() {
                 writeln!(out)?;
             }

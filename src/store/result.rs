@@ -11,6 +11,7 @@ pub(crate) struct StoredJob {
     pub reason: Option<String>,
     pub run: Option<StoredRun>,
     pub reused: bool,
+    pub known_head: Option<String>,
 }
 
 pub(crate) enum StoredRun {
@@ -62,11 +63,16 @@ impl Store {
 
     pub async fn stored_result(&self, job: JobId) -> Result<StoredJob, Error> {
         self.call(move |conn| {
-            let (state, reason, run_id) = conn.query_row(
+            let (state, reason, run_id, known_head) = conn.query_row(
                 "SELECT state, failure_reason, coalesce(result_run_id,
-                 (SELECT max(id) FROM runs WHERE job_id = jobs.id)) FROM jobs WHERE id = ?1",
+                 (SELECT max(id) FROM runs WHERE job_id = jobs.id)),
+                 (SELECT head_sha FROM targets WHERE id = jobs.target_id)
+                 FROM jobs WHERE id = ?1",
                 [job],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get::<_, Option<RunId>>(2)?)),
+                |row| {
+                    let run: Option<RunId> = row.get(2)?;
+                    Ok((row.get(0)?, row.get(1)?, run, row.get(3)?))
+                },
             )?;
             let reused = match run_id {
                 Some(run) => conn.query_row(
@@ -85,6 +91,7 @@ impl Store {
                 reason,
                 run,
                 reused,
+                known_head,
             })
         })
         .await

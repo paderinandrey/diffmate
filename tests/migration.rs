@@ -50,8 +50,18 @@ fn phase_one_database_is_upgraded_and_kept() {
         ]
     );
     assert_eq!(
-        count(&conn, "SELECT count(*) FROM targets WHERE head_sha IS NULL"),
-        2
+        count(
+            &conn,
+            "SELECT count(*) FROM targets WHERE id = 1 AND head_sha IS NULL"
+        ),
+        1
+    );
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT count(*) FROM targets WHERE id = 2 AND head_sha IS NOT NULL"
+        ),
+        1
     );
     assert_eq!(
         count(

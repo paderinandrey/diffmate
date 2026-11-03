@@ -1,6 +1,6 @@
 use super::{Deps, ReviewResult, agent_run, cleanup, job_failed, outcome};
 use crate::agent::{Agent, AgentOutcome};
-use crate::cancel::CancelRx;
+use crate::cancel::{self, CancelRx};
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
@@ -26,6 +26,18 @@ pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
     let mut warnings = std::mem::take(&mut prepared.warnings);
     warnings.extend(cleanup::run(&deps.git, paths, &repo, run).await);
+    if matches!(outcome, AgentOutcome::Succeeded { .. }) {
+        let mut stop = cancel.clone();
+        match cancel::raced(&mut stop, deps.gh.pr_view(pr)).await {
+            Some(Ok(latest)) => {
+                if let Err(error) = store.set_known_head(job.target_id, &latest.head_sha).await {
+                    return job_failed(store, job, error.to_string()).await;
+                }
+            }
+            Some(Err(error)) => warnings.push(format!("could not re-check the PR head: {error}")),
+            None => {}
+        }
+    }
     if meta.head_sha != revision.head_sha {
         let (seen, reviewed) = (&meta.head_sha, &revision.head_sha);
         warnings.push(format!(

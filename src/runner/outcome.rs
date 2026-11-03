@@ -17,7 +17,7 @@ mod tests;
 
 pub(super) async fn store(
     store: &Store,
-    (job, run, revision): (&EnqueuedJob, RunId, &Revision),
+    (job, run, _revision): (&EnqueuedJob, RunId, &Revision),
     (outcome, normalized): (AgentOutcome, Normalized),
     cleanup_warnings: Vec<String>,
     settings: &Settings,
@@ -30,7 +30,7 @@ pub(super) async fn store(
         } => {
             succeeded::store(
                 store,
-                (job, run, revision),
+                (job, run),
                 (output, raw, metrics),
                 normalized,
                 cleanup_warnings,
