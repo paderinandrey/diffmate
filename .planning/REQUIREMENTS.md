@@ -41,8 +41,8 @@ Slice description: idempotent runs, crash recovery, freshness, timeouts, `--forc
 - [ ] **REL-01**: Killing diffmate at any step and starting it again leaves no duplicate runs, no orphaned worktrees, and no stale worktree metadata, and interrupted runs show as `failed (interrupted: crash)`.
 - [ ] **REL-02**: Pushing to the PR during a run makes the draft stale.
 - [ ] **REL-03**: Advancing the base branch, without a push to the PR, does not make the draft stale.
-- [ ] **REL-04**: Running `review` twice on the same head reuses the run unless `--force` is given.
-- [ ] **REL-05**: An invalid `previous_finding_id` is nulled with a warning and the run still succeeds.
+- [x] **REL-04**: Running `review` twice on the same head reuses the run unless `--force` is given.
+- [x] **REL-05**: An invalid `previous_finding_id` is nulled with a warning and the run still succeeds.
 - [ ] **REL-06**: A PR whose review crashes diffmate every time is retried only within the retry budget, across restarts, and then reported as failed.
 - [ ] **REL-07**: Recovery after a stop whose cause was stored but whose cleanup did not finish keeps the cause: `shutdown` re-queues an automatic job without using the budget, `user_cancel` ends the job without a retry.
 - [ ] **REL-08**: Stopping `watch` with SIGTERM during an automatic run records `failed (interrupted: shutdown)`, removes the worktree, and re-queues the job without using the retry budget.
@@ -157,8 +157,8 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REL-01 | Phase 2 | Pending |
 | REL-02 | Phase 2 | Pending |
 | REL-03 | Phase 2 | Pending |
-| REL-04 | Phase 2 | Pending |
-| REL-05 | Phase 2 | Pending |
+| REL-04 | Phase 2 | Complete |
+| REL-05 | Phase 2 | Complete |
 | REL-06 | Phase 2 | Pending |
 | REL-07 | Phase 2 | Pending |
 | REL-08 | Phase 2 | Pending |

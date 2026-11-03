@@ -169,7 +169,7 @@ Observed results:
 - All three task commits passed mandatory hk hooks. Hooks reused immediately preceding successful full-suite and lint source caches and ran secrets and large-file checks; no hook was bypassed.
 - Final diff inspection and `git diff --check` passed. Every changed Rust file is at most 100 lines. No task commit deleted a tracked file. GSD evaluation-scope resolved all three task commits on this branch. Stub and threat-surface scans found no unfinished implementation markers or unplanned external trust boundary.
 
-Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final coverage and release acceptance belong to 02-10. No live owner state was accessed and no new human-only verification was deferred.
+Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final coverage and release acceptance belong to 02-10. No live owner state was accessed. Task 3's real CLI reuse, force and concurrent attachment hand check remains deferred to end-of-phase UAT in WINDOWS entry 3; the orchestrator recorded it when closing the wave.
 
 ## RED / GREEN Evidence
 
