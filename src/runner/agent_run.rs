@@ -16,6 +16,8 @@ mod deadline;
 mod fakes;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod timing_tests;
 
 pub(super) async fn run_agent<G: Git, H: Gh, A: Agent>(
     paths: &Paths,

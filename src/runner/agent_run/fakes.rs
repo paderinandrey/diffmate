@@ -7,10 +7,14 @@ use crate::gh::{Annotation, CheckRuns, Discussion, Gh, PrMeta};
 use crate::pr_url::PrRef;
 use crate::store::records::Metrics;
 use std::future::{Ready, ready};
+use std::time::Duration;
 
 type Done<T> = Ready<Result<T, Error>>;
 pub(super) struct FakeGh;
-pub(super) struct FakeAgent;
+pub(super) enum FakeAgent {
+    WaitForCancel,
+    FinishAfter(Duration),
+}
 
 fn unavailable<T>() -> Done<T> {
     ready(Err(Error::Command {
@@ -50,6 +54,21 @@ impl Gh for FakeGh {
 impl Agent for FakeAgent {
     async fn run(&self, request: &AgentRequest) -> AgentOutcome {
         let mut cancel = request.cancel_receiver().unwrap();
+        if let Self::FinishAfter(delay) = self
+            && crate::cancel::raced(&mut cancel, tokio::time::sleep(*delay))
+                .await
+                .is_some()
+        {
+            let raw = serde_json::json!({
+                "status": "no_findings", "limitation": null,
+                "findings": [], "future_improvements": []
+            });
+            return AgentOutcome::Succeeded {
+                output: serde_json::from_value(raw.clone()).unwrap(),
+                raw,
+                metrics: Metrics::default(),
+            };
+        }
         crate::cancel::cancelled(&mut cancel).await;
         AgentOutcome::Cancelled {
             metrics: Metrics::default(),

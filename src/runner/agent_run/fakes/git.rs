@@ -4,7 +4,10 @@ use crate::git::{Git, TreeEntry};
 use std::future::ready;
 use std::path::Path;
 
-pub(crate) struct FakeGit;
+#[derive(Default)]
+pub(crate) struct FakeGit {
+    pub preparation: std::time::Duration,
+}
 
 #[allow(refining_impl_trait)]
 impl Git for FakeGit {
@@ -27,8 +30,11 @@ impl Git for FakeGit {
             .await
             .map_err(Error::io("create fake worktree"))
     }
-    fn diff(&self, _: &Path, _: &str, _: &str) -> Done<Vec<u8>> {
-        ready(Ok(Vec::new()))
+    async fn diff(&self, _: &Path, _: &str, _: &str) -> Result<Vec<u8>, Error> {
+        if !self.preparation.is_zero() {
+            tokio::time::sleep(self.preparation).await;
+        }
+        Ok(Vec::new())
     }
     async fn worktree_remove(&self, _: &Path, worktree: &Path) -> Result<(), Error> {
         tokio::fs::remove_dir_all(worktree)
