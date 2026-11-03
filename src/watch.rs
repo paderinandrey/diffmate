@@ -3,9 +3,11 @@ mod run;
 
 use crate::agent::claude::ClaudeCli;
 use crate::app::AppConfig;
+use crate::cancel::StopReason;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
+use crate::review::signals::Signals;
 use crate::runner::Deps;
 use crate::{lock, recovery, store::Store};
 use std::process::ExitCode;
@@ -25,6 +27,7 @@ pub(crate) async fn run(config: &AppConfig) -> ExitCode {
 }
 
 async fn execute(config: &AppConfig) -> Result<(), Error> {
+    let mut signals = Signals::new()?;
     let store = Store::open(&config.paths).await?;
     let deps = Deps {
         git: GitCli::new(&config.env),
@@ -32,13 +35,21 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
         agent: ClaudeCli::new(&config.env)?,
         settings: config.settings.clone(),
     };
-    let _lock = lock::acquire(&config.paths.lock(), WATCH_LOCK_POLL, || {
+    let path = config.paths.lock();
+    let acquire = lock::acquire(&path, WATCH_LOCK_POLL, || {
         events::print("waiting for the runner lock");
-    })
-    .await?;
+    });
+    let _lock = tokio::select! {
+        biased;
+        _ = signals.next(StopReason::Shutdown) => {
+            run::stopped();
+            return Ok(());
+        },
+        lock = acquire => lock?,
+    };
     let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
     for line in report.lines() {
         events::print(&line);
     }
-    run::jobs(config, &store, &deps).await
+    run::jobs(config, &store, &deps, &mut signals).await
 }

@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use tokio::sync::watch;
 
 mod print;
-mod signals;
+pub(crate) mod signals;
 mod wait;
 
 pub(crate) async fn run(config: &AppConfig, url: &str, force: bool) -> ExitCode {
@@ -68,7 +68,15 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
     let (stop, cancel) = watch::channel(false);
     let paths = &config.paths;
     let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
-    let result =
-        signals::until_done(stop, job_run, &store, job.job_id, StopReason::UserCancel).await?;
+    let mut signals = signals::Signals::new()?;
+    let result = signals::until_done(
+        stop,
+        job_run,
+        &store,
+        job.job_id,
+        StopReason::UserCancel,
+        &mut signals,
+    )
+    .await?;
     print::result(pr, &result)
 }

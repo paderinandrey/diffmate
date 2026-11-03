@@ -1,13 +1,22 @@
+#[allow(dead_code)]
+#[path = "concurrency/helpers.rs"]
+mod concurrency;
 #[path = "watch/debug.rs"]
 mod debug;
 #[path = "watch/helpers.rs"]
 mod helpers;
+#[path = "watch/persistence.rs"]
+mod persistence;
 #[allow(dead_code)]
 #[path = "signals/process.rs"]
 mod process;
+#[path = "watch/shutdown.rs"]
+mod shutdown;
 mod support;
 #[allow(dead_code)]
 mod tracer;
+#[path = "watch/wait.rs"]
+mod wait;
 
 use helpers::{debug_enqueue, read_until, spawn_watch};
 use rustix::process::{Signal, kill_process};
