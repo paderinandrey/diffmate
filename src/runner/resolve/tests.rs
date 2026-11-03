@@ -1,5 +1,6 @@
 mod gh;
 mod git;
+mod reuse;
 use super::*;
 use crate::app::ProcessInfo;
 

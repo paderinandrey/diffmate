@@ -5,6 +5,8 @@ use crate::error::Error;
 use rusqlite::params;
 
 mod attach;
+#[cfg(test)]
+mod tests;
 
 pub(crate) struct EnqueuedJob {
     pub target_id: TargetId,
