@@ -6,7 +6,6 @@ use crate::store::{Store, now_ms};
 use rusqlite::OptionalExtension;
 
 impl Store {
-    #[cfg_attr(not(test), expect(dead_code))]
     pub async fn next_runnable_job(&self, now: i64) -> Result<Option<QueuedJob>, Error> {
         self.call(move |conn| {
             conn.query_row(
@@ -39,7 +38,6 @@ impl Store {
         .await
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
     pub async fn earliest_next_attempt(&self) -> Result<Option<i64>, Error> {
         self.call(|conn| {
             conn.query_row(

@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-09-nextest.toml -E test(watch_runs_an_automatic_job_and_stops_when_idle)",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"169b9dec-7229-4a89-9bd3-ffb4ec041b08\" timestamp=\"2026-11-03T17:10:23.144+03:00\" time=\"1.366\">\n    <testsuite name=\"diffmate::watch\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"watch_runs_an_automatic_job_and_stops_when_idle\" classname=\"diffmate::watch\" timestamp=\"2026-11-03T17:10:23.145+03:00\" time=\"1.363\">\n            <failure message=\"thread &apos;watch_runs_an_automatic_job_and_stops_when_idle&apos; (40327315) panicked at tests/watch.rs:21:5\" type=\"test failure with exit code 101\">thread &apos;watch_runs_an_automatic_job_and_stops_when_idle&apos; (40327315) panicked at tests/watch.rs:21:5:\nOutput { status: ExitStatus(unix_wait_status(512)), stdout: &quot;&quot;, stderr: &quot;error: unrecognized subcommand &apos;debug&apos;\\n\\nUsage: diffmate &lt;COMMAND&gt;\\n\\nFor more information, try &apos;--help&apos;.\\n&quot; }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest watch_runs_an_automatic_job_and_stops_when_idle ... FAILED\n\nfailures:\n\nfailures:\n    watch_runs_an_automatic_job_and_stops_when_idle\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.28s\n\n</system-out>\n            <system-err>\nthread &apos;watch_runs_an_automatic_job_and_stops_when_idle&apos; (40327315) panicked at tests/watch.rs:21:5:\nOutput { status: ExitStatus(unix_wait_status(512)), stdout: &quot;&quot;, stderr: &quot;error: unrecognized subcommand &apos;debug&apos;\\n\\nUsage: diffmate &lt;COMMAND&gt;\\n\\nFor more information, try &apos;--help&apos;.\\n&quot; }\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "watch_runs_an_automatic_job_and_stops_when_idle",
+  "targetFile": "tests/watch.rs",
+  "expected": "debug enqueue queues the automatic job and watch runs it",
+  "actual": "debug is an unrecognized subcommand",
+  "semanticAssessment": "VALID_RED: the compiled black-box tracer reaches the enqueue success assertion",
+  "reportPath": "/private/tmp/diffmate-02-09-red.xml",
+  "runStartedAt": "2026-11-03T17:10:23.144+03:00",
+  "reportModifiedAt": "2026-11-03T14:10:24.513088+00:00"
+}

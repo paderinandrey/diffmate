@@ -4,6 +4,7 @@ mod cancel;
 mod cli;
 mod config;
 mod context;
+mod debug;
 mod diff;
 mod error;
 mod gh;
@@ -22,6 +23,7 @@ mod status;
 mod store;
 #[cfg(test)]
 mod tests;
+mod watch;
 
 use clap::Parser;
 use std::process::ExitCode;
@@ -35,7 +37,10 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    if matches!(cli.command, cli::Command::Review { .. }) {
+    if matches!(
+        cli.command,
+        cli::Command::Review { .. } | cli::Command::Watch
+    ) {
         match config::load(&config.config_file) {
             Ok(settings) => config.settings = settings,
             Err(error) => {
@@ -58,5 +63,14 @@ fn main() -> ExitCode {
     match cli.command {
         cli::Command::Review { url, force } => runtime.block_on(review::run(&config, &url, force)),
         cli::Command::Status => runtime.block_on(status::run(&config)),
+        cli::Command::Watch => runtime.block_on(watch::run(&config)),
+        cli::Command::Debug {
+            command:
+                cli::DebugCommand::Enqueue {
+                    url,
+                    automatic,
+                    force,
+                },
+        } => runtime.block_on(debug::enqueue(&config, &url, automatic, force)),
     }
 }

@@ -9,7 +9,6 @@ mod revision;
 #[cfg(test)]
 mod tests;
 
-#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) struct QueuedJob {
     pub job: super::jobs::EnqueuedJob,
     pub pr: crate::pr_url::PrRef,

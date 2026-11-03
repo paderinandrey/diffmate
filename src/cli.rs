@@ -15,4 +15,21 @@ pub(crate) enum Command {
         force: bool,
     },
     Status,
+    Watch,
+    #[command(hide = true)]
+    Debug {
+        #[command(subcommand)]
+        command: DebugCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DebugCommand {
+    Enqueue {
+        url: String,
+        #[arg(long)]
+        automatic: bool,
+        #[arg(long)]
+        force: bool,
+    },
 }
