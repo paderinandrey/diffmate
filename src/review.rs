@@ -37,6 +37,7 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
         git: GitCli::new(&config.env),
         gh: GhCli::new(&config.env),
         agent: ClaudeCli::new(&config.env)?,
+        settings: config.settings.clone(),
     };
     let store = Store::open(&config.paths).await?;
     let job = store.enqueue_review(pr, &config.process).await?;

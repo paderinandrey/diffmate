@@ -5,11 +5,17 @@ use crate::git::Git;
 use crate::paths::Paths;
 use crate::pr_url::{self, PrRef};
 use crate::store::records::Revision;
+use crate::store::{Store, jobs::EnqueuedJob};
+
+#[cfg(test)]
+mod tests;
 
 pub(super) async fn resolve<G: Git, H: Gh, A>(
     paths: &Paths,
+    store: &Store,
     deps: &Deps<G, H, A>,
     pr: &PrRef,
+    job: &EnqueuedJob,
 ) -> Result<(PrMeta, Revision), Error> {
     let meta = deps.gh.pr_view(pr).await?;
     let canonical = pr_url::parse(&meta.url)?;
@@ -20,6 +26,9 @@ pub(super) async fn resolve<G: Git, H: Gh, A>(
     deps.git
         .ensure_clone(&repo, &pr.remote_url(), &paths.empty_hooks_dir())
         .await?;
+    if let Some(revision) = store.retry_revision(job.job_id).await? {
+        return Ok((meta, revision));
+    }
     deps.git.fetch_pr(&repo, pr.number, &meta.base_ref).await?;
     let head = deps
         .git

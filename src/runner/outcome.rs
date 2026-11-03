@@ -1,34 +1,26 @@
 use super::{ReviewResult, job_failed};
-use crate::agent::{AgentOutcome, FailureDetail, FailureKind, ReviewOutput};
+use crate::agent::{AgentOutcome, FailureDetail, FailureKind};
 use crate::cancel::StopReason;
+use crate::config::Settings;
+use crate::error::Error;
 use crate::normalize::Normalized;
+use crate::recovery::rules::{Failure, JobNext, after_failure};
 use crate::store::jobs::EnqueuedJob;
-use crate::store::records::{DraftRecord, FindingRecord, Revision};
+use crate::store::records::Revision;
 use crate::store::{RunId, Store};
 use failed::failed;
 
 mod failed;
+mod succeeded;
 #[cfg(test)]
 mod tests;
-
-fn draft_record(
-    output: ReviewOutput,
-    raw: serde_json::Value,
-    findings: Vec<FindingRecord>,
-) -> DraftRecord {
-    DraftRecord {
-        original_output: raw,
-        limitation: output.limitation,
-        future_improvements: output.future_improvements,
-        findings,
-    }
-}
 
 pub(super) async fn store(
     store: &Store,
     (job, run, revision): (&EnqueuedJob, RunId, &Revision),
     (outcome, normalized): (AgentOutcome, Normalized),
     cleanup_warnings: Vec<String>,
+    settings: &Settings,
 ) -> ReviewResult {
     match outcome {
         AgentOutcome::Succeeded {
@@ -36,24 +28,14 @@ pub(super) async fn store(
             raw,
             metrics,
         } => {
-            let mut warnings = normalized.warnings;
-            warnings.extend(cleanup_warnings);
-            let draft = draft_record(output, raw, normalized.findings);
-            let result = ReviewResult::Succeeded {
-                run_id: run,
-                head_sha: revision.head_sha.clone(),
-                findings: draft.findings.clone(),
-                limitation: draft.limitation.clone(),
-                future_improvements: draft.future_improvements.clone(),
-                warnings: warnings.clone(),
-            };
-            match store
-                .finish_succeeded(run, job.job_id, draft, warnings, metrics)
-                .await
-            {
-                Ok(()) => result,
-                Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
-            }
+            succeeded::store(
+                store,
+                (job, run, revision),
+                (output, raw, metrics),
+                normalized,
+                cleanup_warnings,
+            )
+            .await
         }
         AgentOutcome::Cancelled { metrics } => {
             let stop = store.stop_reason(job.job_id).await.unwrap_or(None);
@@ -77,6 +59,7 @@ pub(super) async fn store(
                 (kind, detail, metrics),
                 stop,
                 cleanup_warnings,
+                settings,
             )
             .await
         }
@@ -91,8 +74,25 @@ pub(super) async fn store(
                 (kind, detail, metrics),
                 None,
                 cleanup_warnings,
+                settings,
             )
             .await
         }
     }
+}
+
+pub(super) async fn next(
+    store: &Store,
+    job: &EnqueuedJob,
+    failure: &Failure,
+    settings: &Settings,
+) -> Result<JobNext, Error> {
+    let (origin, state) = store.job_retry_state(job.job_id).await?;
+    Ok(after_failure(
+        origin,
+        failure,
+        state,
+        settings.max_retries(),
+        crate::store::now_ms(),
+    ))
 }

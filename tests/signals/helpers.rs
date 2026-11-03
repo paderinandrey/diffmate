@@ -60,10 +60,7 @@ pub(super) fn interrupted_by(signal: Signal, expected: &str, following: Option<S
         })
         .unwrap();
     assert_eq!(stop, expected);
-    assert!(
-        reason.ends_with(&format!("(interrupted: {expected})")),
-        "{reason}"
-    );
+    assert_eq!(reason, format!("interrupted: {expected}"));
     assert_eq!(
         count(&db, "SELECT count(*) FROM jobs WHERE state = 'failed'"),
         1

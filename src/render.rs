@@ -4,7 +4,7 @@ mod sanitize;
 mod tests;
 
 use crate::pr_url::PrRef;
-use crate::runner::ReviewResult;
+use crate::runner::{JobEnd, ReviewResult};
 use findings::{findings, notes};
 use std::io::{self, Write};
 
@@ -49,10 +49,21 @@ pub(crate) fn review(
         ReviewResult::JobFailed { reason } => {
             writeln!(err, "{label}: failed (cli_error): {}", sanitize(reason))
         }
-        ReviewResult::Cancelled { run_id: Some(_) } => {
+        ReviewResult::Cancelled {
+            job_end: JobEnd::Requeued { .. },
+            ..
+        } => {
+            writeln!(
+                err,
+                "{label}: Run cancelled; recorded as interrupted; the job is queued again"
+            )
+        }
+        ReviewResult::Cancelled {
+            run_id: Some(_), ..
+        } => {
             writeln!(err, "{label}: Run cancelled; recorded as interrupted")
         }
-        ReviewResult::Cancelled { run_id: None } => {
+        ReviewResult::Cancelled { run_id: None, .. } => {
             writeln!(
                 err,
                 "{label}: Cancelled before the run started; the job failed"

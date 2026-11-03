@@ -5,6 +5,7 @@ use crate::recovery::rules::{JobNext, RetryState};
 use rusqlite::{Transaction, params};
 
 mod queue;
+mod revision;
 #[cfg(test)]
 mod tests;
 
@@ -47,7 +48,6 @@ pub(super) fn apply_job_next(
 }
 
 impl Store {
-    #[expect(dead_code)]
     pub async fn job_retry_state(&self, job: JobId) -> Result<(JobOrigin, RetryState), Error> {
         self.call(move |conn| {
             conn.query_row(
@@ -63,6 +63,16 @@ impl Store {
                     ))
                 },
             )
+        })
+        .await
+    }
+
+    pub async fn resolve_job(&self, job: JobId, next: &JobNext) -> Result<(), Error> {
+        let next = next.clone();
+        self.call(move |conn| {
+            let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            apply_job_next(&tx, job, &next, super::now_ms())?;
+            tx.commit()
         })
         .await
     }

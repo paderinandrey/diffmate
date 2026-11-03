@@ -15,6 +15,16 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
+    pub async fn automatic(&self) {
+        self.store
+            .call(|conn| {
+                conn.execute("UPDATE jobs SET origin = 'automatic'", [])
+                    .map(drop)
+            })
+            .await
+            .unwrap();
+    }
+
     pub async fn new() -> Self {
         let tmp = TempDir::new().unwrap();
         let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
@@ -61,6 +71,7 @@ impl Fixture {
             (&self.job, self.run, &self.revision),
             (outcome, Normalized::default()),
             Vec::new(),
+            &crate::config::Settings::default(),
         )
         .await
     }

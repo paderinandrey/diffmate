@@ -17,12 +17,14 @@ pub(crate) enum ReviewResult {
         run_id: RunId,
         kind: FailureKind,
         message: String,
+        job_end: JobEnd,
     },
     JobFailed {
         reason: String,
     },
     Cancelled {
         run_id: Option<RunId>,
+        job_end: JobEnd,
     },
 }
 
@@ -34,16 +36,28 @@ pub(super) async fn job_failed(store: &Store, job: &EnqueuedJob, reason: String)
     ReviewResult::JobFailed { reason }
 }
 
-pub(super) async fn cancelled_before_run(store: &Store, job: &EnqueuedJob) -> ReviewResult {
-    let reason = "interrupted before the run started".to_string();
-    let reason = match store.stop_reason(job.job_id).await.unwrap_or(None) {
-        Some(cause) => format!("{reason} ({})", cause.as_str()),
-        None => reason,
-    };
-    match store.fail_job(job.job_id, reason.clone()).await {
-        Ok(()) => ReviewResult::Cancelled { run_id: None },
-        Err(error) => ReviewResult::JobFailed {
-            reason: format!("{reason}; recording it failed: {error}"),
-        },
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum JobEnd {
+    Failed,
+    Requeued {
+        retry: Option<(u32, u32)>,
+        next_attempt_at: Option<i64>,
+    },
+}
+
+impl From<&crate::recovery::rules::JobNext> for JobEnd {
+    fn from(next: &crate::recovery::rules::JobNext) -> Self {
+        use crate::recovery::rules::JobNext;
+        match next {
+            JobNext::Fail { .. } => Self::Failed,
+            JobNext::Requeue {
+                retry_count,
+                max_retries,
+                next_attempt_at,
+            } => Self::Requeued {
+                retry: next_attempt_at.and_then(|_| max_retries.map(|max| (*retry_count, max))),
+                next_attempt_at: *next_attempt_at,
+            },
+        }
     }
 }

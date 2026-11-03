@@ -6,7 +6,6 @@ pub(crate) enum Failure {
     Shutdown,
     UserCancel,
     Crash,
-    #[cfg_attr(not(test), expect(dead_code))]
     Terminal(FailureKind),
 }
 

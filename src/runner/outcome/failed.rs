@@ -1,6 +1,9 @@
 use super::{ReviewResult, job_failed};
 use crate::agent::{FailureDetail, FailureKind};
 use crate::cancel::StopReason;
+use crate::config::Settings;
+use crate::recovery::rules::Failure;
+use crate::runner::JobEnd;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::Metrics;
 use crate::store::{RunId, Store};
@@ -11,22 +14,35 @@ pub(super) async fn failed(
     (kind, detail, metrics): (FailureKind, FailureDetail, Metrics),
     stop: Option<StopReason>,
     cleanup_warnings: Vec<String>,
+    settings: &Settings,
 ) -> ReviewResult {
+    let failure = match kind {
+        FailureKind::Timeout => Failure::Timeout,
+        FailureKind::Interrupted => Failure::from_stop(stop),
+        other => Failure::Terminal(other),
+    };
+    let next = match super::next(store, job, &failure, settings).await {
+        Ok(next) => next,
+        Err(error) => return job_failed(store, job, format!("reading retry state: {error}")).await,
+    };
+    let job_end = JobEnd::from(&next);
     let mut message = detail.message.clone();
     for warning in cleanup_warnings {
         message = format!("{message}; {warning}");
     }
     match store
-        .finish_failed(run, job.job_id, kind, stop, detail, metrics)
+        .finish_failed(run, job.job_id, (kind, stop), detail, metrics, &next)
         .await
     {
-        Ok(()) if matches!(kind, FailureKind::Interrupted) => {
-            ReviewResult::Cancelled { run_id: Some(run) }
-        }
+        Ok(()) if matches!(kind, FailureKind::Interrupted) => ReviewResult::Cancelled {
+            run_id: Some(run),
+            job_end,
+        },
         Ok(()) => ReviewResult::RunFailed {
             run_id: run,
             kind,
             message,
+            job_end,
         },
         Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
     }

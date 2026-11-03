@@ -1,6 +1,8 @@
 mod agent_run;
+mod cancelled;
 mod cleanup;
 mod outcome;
+mod process;
 mod resolve;
 mod result;
 mod steps;
@@ -9,37 +11,25 @@ mod tests;
 
 use crate::agent::{Agent, AgentOutcome};
 use crate::cancel::{self, CancelRx};
+use crate::config::Settings;
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
+use crate::store::Store;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::Revision;
-use crate::store::{RunId, Store};
-use result::{cancelled_before_run, job_failed};
-use tokio::sync::mpsc::UnboundedReceiver;
+use cancelled::cancelled_before_run;
+use result::job_failed;
 
-pub(crate) use result::ReviewResult;
-
-async fn record_agent_process(
-    store: &Store,
-    run: RunId,
-    mut pids: UnboundedReceiver<u32>,
-) -> Vec<String> {
-    let mut problems = Vec::new();
-    while let Some(pid) = pids.recv().await {
-        if let Err(error) = store.set_agent_process(run, pid, pid).await {
-            problems.push(format!("recording the agent process failed: {error}"));
-        }
-    }
-    problems
-}
+pub(crate) use result::{JobEnd, ReviewResult};
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,
     pub gh: H,
     pub agent: A,
+    pub settings: Settings,
 }
 
 pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
@@ -52,11 +42,11 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
 ) -> ReviewResult {
     let mut stop = cancel.clone();
     let resolved = match store.start_job(job.job_id).await {
-        Ok(()) => cancel::raced(&mut stop, resolve::resolve(paths, deps, pr)).await,
+        Ok(()) => cancel::raced(&mut stop, resolve::resolve(paths, store, deps, pr, job)).await,
         Err(error) => Some(Err(error)),
     };
     match resolved {
-        None => cancelled_before_run(store, job).await,
+        None => cancelled_before_run(store, job, &deps.settings).await,
         Some(Ok((meta, revision))) => {
             let revisions = (&meta, &revision);
             review_run(paths, store, deps, (pr, job), revisions, cancel).await
@@ -86,7 +76,7 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
     if meta.head_sha != revision.head_sha {
         let (seen, reviewed) = (&meta.head_sha, &revision.head_sha);
         warnings.push(format!(
-            "PR head moved during preparation: gh reported {seen}, reviewed {reviewed}"
+            "PR head differs from reviewed revision: gh reported {seen}, reviewed {reviewed}"
         ));
     }
     let normalized = match &outcome {
@@ -95,5 +85,12 @@ async fn review_run<G: Git, H: Gh, A: Agent>(
         }
         AgentOutcome::Failed { .. } | AgentOutcome::Cancelled { .. } => Normalized::default(),
     };
-    outcome::store(store, (job, run, revision), (outcome, normalized), warnings).await
+    outcome::store(
+        store,
+        (job, run, revision),
+        (outcome, normalized),
+        warnings,
+        &deps.settings,
+    )
+    .await
 }

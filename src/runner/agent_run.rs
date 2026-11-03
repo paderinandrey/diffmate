@@ -1,5 +1,6 @@
+use super::Deps;
+use super::process::record_agent_process;
 use super::steps::{Prepared, prepare};
-use super::{Deps, record_agent_process};
 use crate::agent::{Agent, AgentOutcome, FailureDetail, FailureKind};
 use crate::cancel::{self, CancelRx};
 use crate::gh::{Gh, PrMeta};

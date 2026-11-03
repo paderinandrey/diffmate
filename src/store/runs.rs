@@ -1,9 +1,11 @@
 use super::jobs::EnqueuedJob;
 use super::records::{Metrics, Revision};
+use super::retry::apply_job_next;
 use super::{JobId, RunId, Store, now_ms};
 use crate::agent::{FailureDetail, FailureKind};
 use crate::cancel::StopReason;
 use crate::error::Error;
+use crate::recovery::rules::JobNext;
 use rusqlite::{TransactionBehavior, params};
 
 impl Store {
@@ -28,21 +30,18 @@ impl Store {
         &self,
         run: RunId,
         job: JobId,
-        kind: FailureKind,
-        stop: Option<StopReason>,
+        failure: (FailureKind, Option<StopReason>),
         detail: FailureDetail,
         metrics: Metrics,
+        next: &JobNext,
     ) -> Result<(), Error> {
+        let (kind, stop) = failure;
+        let next = next.clone();
         let detail = serde_json::to_string(&detail)?;
         let cause = stop.filter(|reason| {
             matches!(kind, FailureKind::Interrupted)
                 && matches!(reason, StopReason::Shutdown | StopReason::UserCancel)
         });
-        let failure = cause.map_or_else(
-            || kind.as_str().to_string(),
-            |cause| format!("interrupted: {}", cause.as_str()),
-        );
-        let reason = format!("run {run} failed ({failure})");
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let now = now_ms();
@@ -60,9 +59,7 @@ impl Store {
                     cause.map(StopReason::as_str)
                 ],
             )?;
-            let sql = "UPDATE jobs SET state = 'failed', failure_reason = ?1, updated_at = ?2
-                       WHERE id = ?3";
-            tx.execute(sql, params![reason, now, job])?;
+            apply_job_next(&tx, job, &next, now)?;
             tx.commit()
         })
         .await
