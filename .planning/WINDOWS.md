@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 4
+open_count: 6
 waived_count: 0
 fixed_count: 0
-total_count: 4
-last_updated: 2026-11-03T13:41:54.559Z
+total_count: 6
+last_updated: 2026-11-03T14:03:40.124Z
 ---
 
 # Broken Windows Ledger
@@ -19,6 +19,8 @@ last_updated: 2026-11-03T13:41:54.559Z
 | 2 | 02 | unrun-verify | .planning/phases/02-reliability/02-04-PLAN.md |  | Release-binary real GitHub base-branch advance hand check is deferred to end-of-phase UAT; isolated base-only push and live-head freshness tests pass. | open |  | 2026-11-03T12:39:21.370Z |  |
 | 3 | 02 | unrun-verify | .planning/phases/02-reliability/02-06-PLAN.md |  | Release-binary real CLI reuse, force and concurrent attachment hand check is deferred to end-of-phase UAT; isolated integration and property tests pass. | open |  | 2026-11-03 |  |
 | 4 | 02 | unrun-verify | .planning/phases/02-reliability/02-07-PLAN.md |  | Release-binary real GitHub push-during-review hand check is deferred to end-of-phase UAT; isolated FIFO push, stored-result and status freshness tests pass. | open |  | 2026-11-03T13:41:54.559Z |  |
+| 5 | 02 | unrun-verify | .planning/phases/02-reliability/02-08-PLAN.md |  | Release-binary real Claude one-minute timeout hand check is deferred to end-of-phase UAT; paused-time runner, durable-reason and shared process-group signal checks pass. | open |  | 2026-11-03T14:03:39.652Z |  |
+| 6 | 02 | deviation | src/review/signals.rs | 26 | 02-09 must fix signal cancellation after failed stop-reason persistence; the existing path warns and cancels without a durable reason, contrary to SPEC Agent contract. Timeout persistence in 02-08 retries before cancellation. | open |  | 2026-11-03T14:03:40.124Z |  |
 
 ````json
 [
@@ -71,6 +73,32 @@ last_updated: 2026-11-03T13:41:54.559Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-03T13:41:54.559Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 5,
+    "kind": "unrun-verify",
+    "phase": "02",
+    "file": ".planning/phases/02-reliability/02-08-PLAN.md",
+    "line": null,
+    "description": "Release-binary real Claude one-minute timeout hand check is deferred to end-of-phase UAT; paused-time runner, durable-reason and shared process-group signal checks pass.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-03T14:03:39.652Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 6,
+    "kind": "deviation",
+    "phase": "02",
+    "file": "src/review/signals.rs",
+    "line": 26,
+    "description": "02-09 must fix signal cancellation after failed stop-reason persistence; the existing path warns and cancels without a durable reason, contrary to SPEC Agent contract. Timeout persistence in 02-08 retries before cancellation.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-03T14:03:40.124Z",
     "resolved_at": null,
     "milestone": null
   }
