@@ -19,8 +19,12 @@ pub fn with_two_prs(sandbox: &Sandbox) {
 }
 
 pub fn spawn_review(sandbox: &Sandbox, number: u64) -> Child {
+    spawn_review_with(sandbox, number, &[])
+}
+
+pub fn spawn_review_with(sandbox: &Sandbox, number: u64, extra_args: &[&str]) -> Child {
     let mut command = sandbox.diffmate();
-    command.args(["review", &url(number)]);
+    command.args(["review", &url(number)]).args(extra_args);
     command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())

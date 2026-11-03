@@ -37,6 +37,9 @@ fn same_head_reuses_the_run() {
         2
     );
     assert_eq!(sandbox.claude.run_calls().len(), 1);
+    let status = sandbox.run(&["status"]);
+    assert!(status.status.success());
+    assert!(String::from_utf8_lossy(&status.stdout).contains("succeeded (findings: 1)"));
     assert!(String::from_utf8_lossy(&second.stderr).contains(&format!(
         "reused run 1 for head {}; --force starts a new run",
         &head[..12]

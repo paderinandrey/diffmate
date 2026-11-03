@@ -5,6 +5,8 @@ use crate::pr_url::PrRef;
 use crate::store::{Store, now_ms};
 use rusqlite::{TransactionBehavior, params};
 
+mod active;
+
 impl Store {
     pub async fn enqueue_review(
         &self,
@@ -29,6 +31,13 @@ impl Store {
                 params![owner, repo, number],
                 |row| row.get(0),
             )?;
+            if let Some(job_id) = active::find(&tx, target_id, request.force, now)? {
+                tx.commit()?;
+                return Ok(Enqueued {
+                    job: EnqueuedJob { target_id, job_id },
+                    attached: true,
+                });
+            }
             tx.execute(
                 "INSERT INTO jobs (kind, target_id, state, enqueued_by_pid,
                  enqueued_by_started_at, created_at, updated_at, origin, force)

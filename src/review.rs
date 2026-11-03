@@ -4,7 +4,6 @@ use crate::cancel::StopReason;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
-use crate::lock::{self, LOCK_POLL};
 use crate::pr_url::{self, PrRef};
 use crate::recovery;
 use crate::render;
@@ -13,7 +12,9 @@ use crate::store::Store;
 use std::process::ExitCode;
 use tokio::sync::watch;
 
+mod print;
 mod signals;
+mod wait;
 
 pub(crate) async fn run(config: &AppConfig, url: &str, force: bool) -> ExitCode {
     let Ok(pr) = pr_url::parse(url) else {
@@ -44,43 +45,30 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
         origin: crate::store::records::JobOrigin::Manual,
         force,
     };
-    let job = store
-        .enqueue_review(pr, &config.process, request)
+    let enqueued = store.enqueue_review(pr, &config.process, request).await?;
+    let job = enqueued.job;
+    if enqueued.attached {
+        eprintln!("attached to job {}", job.job_id);
+    }
+    let _lock = match wait::until_lock_or_end(&config.paths.lock(), &store, job.job_id, &pr.label())
         .await?
-        .job;
-    let waiting = || {
-        let id = job.job_id;
-        eprintln!(
-            "waiting: another diffmate process holds the runner lock; job {id} stays queued until it is released"
-        );
+    {
+        wait::Waited::Locked(lock) => lock,
+        wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
+        wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
     };
-    let _lock = lock::acquire(&config.paths.lock(), LOCK_POLL, waiting).await?;
     let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
     for line in report.lines() {
         eprintln!("{}", render::sanitize(&line));
+    }
+    let stored = store.stored_result(job.job_id).await?;
+    if stored.state != "queued" {
+        return print::result(pr, &ReviewResult::from_stored(stored, false));
     }
     let (stop, cancel) = watch::channel(false);
     let paths = &config.paths;
     let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
     let result =
         signals::until_done(stop, job_run, &store, job.job_id, StopReason::UserCancel).await?;
-    let (stdout, stderr) = (std::io::stdout(), std::io::stderr());
-    let printed = render::review(pr, &result, &mut stdout.lock(), &mut stderr.lock());
-    printed.map_err(Error::io("write the result"))?;
-    if let ReviewResult::Succeeded {
-        run_id,
-        head_sha,
-        reused: true,
-        ..
-    } = &result
-    {
-        let head: String = head_sha.chars().take(12).collect();
-        eprintln!("reused run {run_id} for head {head}; --force starts a new run");
-    }
-    let succeeded = matches!(result, ReviewResult::Succeeded { .. });
-    Ok(if succeeded {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
-    })
+    print::result(pr, &result)
 }

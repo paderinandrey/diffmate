@@ -66,6 +66,10 @@ async fn automatic_retries_keep_the_stored_revision_when_the_pr_head_moves() {
     let (_, current) = resolve(&paths, &store, &deps, &pr, &job).await.unwrap();
     assert_eq!(current.head_sha, "new-head");
     assert_eq!(current.base_ref, "new-main");
+    store
+        .fail_job(job.job_id, "finished fixture".into())
+        .await
+        .unwrap();
     let fresh = store
         .enqueue_review(
             &pr,

@@ -18,7 +18,6 @@ pub(crate) struct EnqueueRequest {
 
 pub(crate) struct Enqueued {
     pub job: EnqueuedJob,
-    #[expect(dead_code)]
     pub attached: bool,
 }
 
@@ -26,7 +25,25 @@ pub(crate) struct StartedJob {
     pub force: bool,
 }
 
+pub(crate) enum JobProgress {
+    Active,
+    Finished,
+}
+
 impl Store {
+    pub async fn job_progress(&self, job: JobId) -> Result<JobProgress, Error> {
+        self.call(move |conn| {
+            conn.query_row("SELECT state FROM jobs WHERE id = ?1", [job], |row| {
+                let state: String = row.get(0)?;
+                Ok(match state.as_str() {
+                    "queued" | "running" | "needs_confirmation" => JobProgress::Active,
+                    _ => JobProgress::Finished,
+                })
+            })
+        })
+        .await
+    }
+
     pub async fn set_stop_reason(&self, job: JobId, reason: StopReason) -> Result<bool, Error> {
         self.call(move |conn| {
             let sql = "UPDATE jobs SET stop_reason = ?1, updated_at = ?2

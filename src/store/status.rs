@@ -34,7 +34,8 @@ const SQL: &str = "SELECT t.owner, t.repo, t.number, t.tracking,
        EXISTS (SELECT 1 FROM runs WHERE job_id = j.id AND state = 'failed')
     FROM targets t
     LEFT JOIN jobs j ON j.id = (SELECT max(id) FROM jobs WHERE target_id = t.id)
-    LEFT JOIN runs r ON r.id = (SELECT max(id) FROM runs WHERE job_id = j.id)
+    LEFT JOIN runs r ON r.id = coalesce(j.result_run_id,
+        (SELECT max(id) FROM runs WHERE job_id = j.id))
     ORDER BY t.id";
 
 impl Store {

@@ -30,6 +30,7 @@ pub(crate) async fn try_acquire(path: &Path) -> Result<Option<RunnerLock>, Error
     .await?
 }
 
+#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) async fn acquire(
     path: &Path,
     poll: Duration,
