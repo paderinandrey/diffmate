@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod fake;
+pub(crate) mod rules;
 mod scan;
 #[cfg(test)]
 mod tests;
 
+use crate::config::Settings;
 use crate::error::Error;
 use crate::git::Git;
 use crate::paths::Paths;
@@ -11,19 +13,22 @@ use crate::store::{JobId, RunId, Store};
 
 #[derive(Default)]
 pub(crate) struct RecoveryReport {
-    pub interrupted_runs: Vec<RunId>,
-    pub failed_jobs: Vec<JobId>,
+    pub runs: Vec<(RunId, String)>,
+    pub jobs: Vec<(JobId, String)>,
     pub removed_run_dirs: Vec<RunId>,
     pub warnings: Vec<String>,
 }
 
 impl RecoveryReport {
     pub fn lines(&self) -> Vec<String> {
-        let runs = self.interrupted_runs.iter();
-        let marked =
-            runs.map(|run| format!("recovery: run {run} marked failed (interrupted: crash)"));
-        let jobs = self.failed_jobs.iter();
-        let jobs = jobs.map(|job| format!("recovery: job {job} failed (interrupted: crash)"));
+        let marked = self
+            .runs
+            .iter()
+            .map(|(run, text)| format!("recovery: run {run} marked failed ({text})"));
+        let jobs = self
+            .jobs
+            .iter()
+            .map(|(job, text)| format!("recovery: job {job} {text}"));
         let removed = self.removed_run_dirs.iter();
         let removed = removed.map(|run| format!("recovery: removed run directory {run}"));
         let warnings = self.warnings.iter();
@@ -72,11 +77,14 @@ pub(crate) async fn run<G: Git>(
     paths: &Paths,
     store: &Store,
     git: &G,
+    settings: &Settings,
 ) -> Result<RecoveryReport, Error> {
-    let stopped = store.stop_running().await?;
+    let stopped = store
+        .resolve_running(settings.max_retries(), crate::store::now_ms())
+        .await?;
     let mut report = RecoveryReport {
-        interrupted_runs: stopped.runs,
-        failed_jobs: stopped.jobs,
+        runs: stopped.runs,
+        jobs: stopped.jobs,
         ..RecoveryReport::default()
     };
     clean_runs(paths, store, git, &mut report).await?;

@@ -1,5 +1,21 @@
 use crate::agent::{Severity, Side};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JobOrigin {
+    Manual,
+    Automatic,
+}
+
+impl JobOrigin {
+    pub fn parse(value: &str) -> rusqlite::Result<Self> {
+        match value {
+            "manual" => Ok(Self::Manual),
+            "automatic" => Ok(Self::Automatic),
+            _ => Err(rusqlite::Error::InvalidQuery),
+        }
+    }
+}
+
 pub(crate) struct Revision {
     pub head_sha: String,
     pub merge_base_sha: String,

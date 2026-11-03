@@ -47,7 +47,7 @@ async fn execute(config: &AppConfig, pr: &PrRef) -> Result<ExitCode, Error> {
         );
     };
     let _lock = lock::acquire(&config.paths.lock(), LOCK_POLL, waiting).await?;
-    let report = recovery::run(&config.paths, &store, &deps.git).await?;
+    let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
     for line in report.lines() {
         eprintln!("{}", render::sanitize(&line));
     }

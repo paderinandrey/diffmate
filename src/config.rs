@@ -32,7 +32,6 @@ impl Settings {
         Duration::from_secs(self.run_timeout_minutes * 60)
     }
 
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn max_retries(&self) -> u32 {
         self.max_retries
     }

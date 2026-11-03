@@ -1,11 +1,15 @@
-use super::{JobId, RunId, Store, now_ms};
+mod resolve;
+
+use super::retry::apply_job_next;
+use super::{JobId, RunId, Store};
 use crate::error::Error;
-use rusqlite::{OptionalExtension, Transaction, TransactionBehavior};
+use crate::recovery::rules::{Failure, after_failure};
+use rusqlite::{OptionalExtension, TransactionBehavior};
 use std::collections::HashMap;
 
 pub(crate) struct Stopped {
-    pub runs: Vec<RunId>,
-    pub jobs: Vec<JobId>,
+    pub runs: Vec<(RunId, String)>,
+    pub jobs: Vec<(JobId, String)>,
 }
 
 pub(crate) struct RunLocation {
@@ -14,35 +18,24 @@ pub(crate) struct RunLocation {
     pub running: bool,
 }
 
-fn ids(tx: &Transaction, sql: &str) -> rusqlite::Result<Vec<i64>> {
-    let mut statement = tx.prepare(sql)?;
-    statement.query_map([], |row| row.get(0))?.collect()
-}
-
 impl Store {
-    pub async fn stop_running(&self) -> Result<Stopped, Error> {
-        self.call(|conn| {
+    pub async fn resolve_running(&self, config_max: u32, now: i64) -> Result<Stopped, Error> {
+        self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let runs = ids(
-                &tx,
-                "SELECT id FROM runs WHERE state = 'running' ORDER BY id",
-            )?;
-            let jobs =
-                "SELECT id FROM jobs WHERE state = 'running' AND kind = 'review' ORDER BY id";
-            let jobs = ids(&tx, jobs)?;
-            let now = now_ms();
-            tx.execute(
-                "UPDATE runs SET state = 'failed', failure_kind = 'interrupted',
-                 interrupted_cause = 'crash', finished_at = ?1 WHERE state = 'running'",
-                [now],
-            )?;
-            tx.execute(
-                "UPDATE jobs SET state = 'failed', failure_reason = 'interrupted: crash',
-                 updated_at = ?1 WHERE state = 'running' AND kind = 'review'",
-                [now],
-            )?;
+            let mut stopped = Stopped {
+                runs: resolve::runs(&tx, now)?,
+                jobs: Vec::new(),
+            };
+            for job in resolve::jobs(&tx)? {
+                let failure = Failure::from_stop(job.stop);
+                let next = after_failure(job.origin, &failure, job.retry, config_max, now);
+                apply_job_next(&tx, job.id, &next, now)?;
+                stopped
+                    .jobs
+                    .push((job.id, resolve::description(&next, &failure)));
+            }
             tx.commit()?;
-            Ok(Stopped { runs, jobs })
+            Ok(stopped)
         })
         .await
     }

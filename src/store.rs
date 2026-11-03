@@ -5,6 +5,7 @@ pub(crate) mod previous;
 pub(crate) mod readonly;
 pub(crate) mod records;
 pub(crate) mod recovery;
+pub(crate) mod retry;
 pub(crate) mod runs;
 pub(crate) mod status;
 
