@@ -9,6 +9,21 @@ use crate::recovery::rules::JobNext;
 use rusqlite::{TransactionBehavior, params};
 
 impl Store {
+    pub async fn set_stop_reason_for_run(
+        &self,
+        run: RunId,
+        reason: StopReason,
+    ) -> Result<bool, Error> {
+        self.call(move |conn| {
+            let sql = "UPDATE jobs SET stop_reason = ?1, updated_at = ?2
+                       WHERE id = (SELECT job_id FROM runs WHERE id = ?3)
+                       AND stop_reason IS NULL";
+            conn.execute(sql, params![reason.as_str(), now_ms(), run])
+                .map(|changed| changed == 1)
+        })
+        .await
+    }
+
     pub async fn insert_running_run(
         &self,
         job: &EnqueuedJob,

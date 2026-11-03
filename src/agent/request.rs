@@ -11,6 +11,11 @@ pub(crate) struct AgentRequest {
 }
 
 impl AgentRequest {
+    #[cfg(test)]
+    pub fn cancel_receiver(&self) -> Option<CancelRx> {
+        self.cancel.clone()
+    }
+
     pub fn new(worktree: PathBuf, context_dir: PathBuf, prompt_file: PathBuf) -> AgentRequest {
         AgentRequest {
             worktree,

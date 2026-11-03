@@ -11,7 +11,34 @@ use crate::store::records::{Metrics, Revision};
 use crate::store::{RunId, Store, TargetId};
 use tokio::sync::mpsc;
 
+mod deadline;
+#[cfg(test)]
+mod fakes;
+#[cfg(test)]
+mod tests;
+
 pub(super) async fn run_agent<G: Git, H: Gh, A: Agent>(
+    paths: &Paths,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+    ids: (&PrRef, TargetId, RunId),
+    revisions: (&PrMeta, &Revision),
+    cancel: &CancelRx,
+) -> (AgentOutcome, Prepared) {
+    let mut warning = None;
+    let persist = async { warning = deadline::persist_timeout(store, ids.2).await };
+    let (outcome, mut prepared) = deadline::with_deadline(
+        cancel,
+        deps.settings.run_timeout(),
+        || persist,
+        |cancel| async move { execute(paths, store, deps, ids, revisions, &cancel).await },
+    )
+    .await;
+    prepared.warnings.extend(warning);
+    (outcome, prepared)
+}
+
+async fn execute<G: Git, H: Gh, A: Agent>(
     paths: &Paths,
     store: &Store,
     deps: &Deps<G, H, A>,

@@ -27,7 +27,6 @@ impl Default for Settings {
 }
 
 impl Settings {
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn run_timeout(&self) -> Duration {
         Duration::from_secs(self.run_timeout_minutes * 60)
     }
