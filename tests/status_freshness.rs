@@ -50,11 +50,13 @@ fn status_shows_a_moved_head_as_stale() {
 #[test]
 fn status_reports_a_failed_live_check() {
     let sandbox = Sandbox::new();
-    with_pr(&sandbox);
+    let (_, head) = with_pr(&sandbox);
     assert!(review(&sandbox).status.success());
-    sandbox
-        .gh
-        .replace_route_fail(&format!("pr view {URL}"), "offline", 1);
+    sandbox.gh.replace_route_fail(
+        &format!("pr view {URL}"),
+        "off\u{1b}\u{202e}line\ntry\tagain",
+        1,
+    );
     let output = sandbox.run(&["status"]);
     assert!(output.status.success());
     assert!(
@@ -65,6 +67,12 @@ fn status_reports_a_failed_live_check() {
         String::from_utf8_lossy(&output.stderr)
             .contains("warning: live head check for o/r#1 failed")
     );
+    let warning = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(warning.lines().count(), 1);
+    assert!(!warning.contains(['\u{1b}', '\u{202e}', '\t']));
+    let json = pr_view_json("o", "r", 1, &head, "main", false);
+    sandbox.gh.replace_route(&format!("pr view {URL}"), &json);
+    assert!(status(&sandbox).contains("current: head"));
 }
 
 #[test]

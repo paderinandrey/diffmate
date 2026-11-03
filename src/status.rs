@@ -7,6 +7,8 @@ use freshness::LiveHead;
 use std::process::ExitCode;
 
 mod freshness;
+#[cfg(test)]
+mod tests;
 mod when;
 
 fn line<const N: usize>(parts: [&str; N]) -> String {
