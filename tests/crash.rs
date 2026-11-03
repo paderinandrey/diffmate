@@ -1,12 +1,25 @@
+#[path = "crash/budget.rs"]
+mod budget;
+#[allow(dead_code)]
+#[path = "concurrency/helpers.rs"]
+mod concurrency;
 #[path = "crash/helpers.rs"]
 mod helpers;
+#[path = "crash/manual_stop.rs"]
+mod manual_stop;
 #[path = "crash/matrix.rs"]
 mod matrix;
+#[path = "crash/process.rs"]
+mod process;
 #[path = "crash/restart.rs"]
 mod restart;
+#[path = "crash/stop_stored.rs"]
+mod stop_stored;
 mod support;
 #[allow(dead_code)]
 mod tracer;
+#[path = "watch/helpers.rs"]
+mod watch_helpers;
 
 use helpers::{assert_clean, crash_at};
 use support::sandbox::Sandbox;

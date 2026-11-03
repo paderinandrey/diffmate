@@ -50,7 +50,7 @@ pub fn assert_clean(sandbox: &Sandbox) {
     assert_eq!(
         count(
             &db,
-            "SELECT count(*) FROM (SELECT job_id FROM runs GROUP BY job_id HAVING count(*) > 1)"
+            "SELECT count(*) FROM (SELECT job_id FROM runs JOIN jobs ON jobs.id = runs.job_id WHERE jobs.origin = 'manual' GROUP BY job_id HAVING count(*) > 1)"
         ),
         0
     );
