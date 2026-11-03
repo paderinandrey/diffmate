@@ -1,3 +1,5 @@
+#[path = "stale_review/edges.rs"]
+mod edges;
 mod support;
 #[allow(dead_code)]
 mod tracer;

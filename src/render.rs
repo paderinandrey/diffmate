@@ -34,6 +34,7 @@ pub(crate) fn review(
             };
             write!(out, "{label} at {head}: succeeded ({summary})")?;
             if let Some(known) = known_head.as_ref().filter(|known| *known != head_sha) {
+                let known = sanitize(known).replace(['\n', '\t'], " ");
                 let known: String = known.chars().take(12).collect();
                 write!(out, ", stale: PR head is now {known}")?;
             }

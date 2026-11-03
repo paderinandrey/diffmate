@@ -28,3 +28,17 @@ fn stale_heads_change_only_the_first_line() {
         assert_eq!(err, original_err);
     }
 }
+
+#[test]
+fn the_known_head_cannot_insert_terminal_controls_or_another_line() {
+    let mut result = succeeded(Vec::new(), None, &[]);
+    if let ReviewResult::Succeeded { known_head, .. } = &mut result {
+        *known_head = Some("9\u{1b}\u{202e}9\n\t99".into());
+    }
+    let (out, err) = render(&result);
+    assert_eq!(
+        out,
+        "o/r#1 at 0123456789ab: succeeded (no_findings), stale: PR head is now 99  99\n"
+    );
+    assert_eq!(err, "");
+}
