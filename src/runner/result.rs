@@ -3,9 +3,12 @@ use crate::store::jobs::EnqueuedJob;
 use crate::store::records::FindingRecord;
 use crate::store::{RunId, Store};
 
+mod stored;
+
 #[expect(dead_code)]
 pub(crate) enum ReviewResult {
     Succeeded {
+        reused: bool,
         run_id: RunId,
         head_sha: String,
         findings: Vec<FindingRecord>,
@@ -34,6 +37,18 @@ pub(super) async fn job_failed(store: &Store, job: &EnqueuedJob, reason: String)
         Err(error) => format!("{reason}; recording the failure also failed: {error}"),
     };
     ReviewResult::JobFailed { reason }
+}
+
+pub(super) async fn reuse(store: &Store, job: &EnqueuedJob, run: RunId) -> ReviewResult {
+    if let Err(error) = store.finish_reused(job.job_id, run).await {
+        return job_failed(store, job, error.to_string()).await;
+    }
+    match store.stored_result(job.job_id).await {
+        Ok(stored) => ReviewResult::from_stored(stored, true),
+        Err(error) => ReviewResult::JobFailed {
+            reason: error.to_string(),
+        },
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

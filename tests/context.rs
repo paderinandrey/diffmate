@@ -63,7 +63,7 @@ fn previous_json_lists_earlier_findings() {
     assert!(review(&sandbox).status.success());
     set_output(&sandbox, finding("\"previous_finding_id\":\"1.1\""));
 
-    let second = review(&sandbox);
+    let second = sandbox.run(&["review", tracer::URL, "--force"]);
 
     let stderr = String::from_utf8_lossy(&second.stderr);
     assert!(

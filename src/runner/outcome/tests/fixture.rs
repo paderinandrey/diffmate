@@ -38,7 +38,18 @@ impl Fixture {
             pid: 1,
             started_at_ms: 0,
         };
-        let job = store.enqueue_review(&pr, &process).await.unwrap();
+        let job = store
+            .enqueue_review(
+                &pr,
+                &process,
+                crate::store::jobs::EnqueueRequest {
+                    origin: crate::store::records::JobOrigin::Manual,
+                    force: false,
+                },
+            )
+            .await
+            .unwrap()
+            .job;
         store.start_job(job.job_id).await.unwrap();
         let revision = Revision {
             head_sha: "head".into(),

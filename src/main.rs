@@ -56,7 +56,7 @@ fn main() -> ExitCode {
         }
     };
     match cli.command {
-        cli::Command::Review { url } => runtime.block_on(review::run(&config, &url)),
+        cli::Command::Review { url, force } => runtime.block_on(review::run(&config, &url, force)),
         cli::Command::Status => runtime.block_on(status::run(&config)),
     }
 }

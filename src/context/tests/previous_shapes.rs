@@ -5,6 +5,7 @@ use crate::paths::Paths;
 use crate::pr_url::PrRef;
 use crate::store::Store;
 use crate::store::records::{DraftRecord, FindingRecord, Metrics, Revision};
+use crate::store::{jobs::EnqueueRequest, records::JobOrigin};
 use serde_json::{Value, json};
 use std::fs;
 use tempfile::TempDir;
@@ -46,7 +47,15 @@ async fn previous_json_is_unavailable_for_a_first_run_and_lists_earlier_findings
         pid: 1,
         started_at_ms: 0,
     };
-    let job = store.enqueue_review(&pr, &process).await.unwrap();
+    let request = EnqueueRequest {
+        origin: JobOrigin::Manual,
+        force: false,
+    };
+    let job = store
+        .enqueue_review(&pr, &process, request)
+        .await
+        .unwrap()
+        .job;
     let sha = "a".repeat(40);
     let revision = Revision {
         head_sha: sha.clone(),
@@ -57,7 +66,6 @@ async fn previous_json_is_unavailable_for_a_first_run_and_lists_earlier_findings
     let run = store.insert_running_run(&job, &revision).await.unwrap();
     let first = tmp.path().join("first");
     fs::create_dir(&first).unwrap();
-
     let (document, ids) = written(&store, &first, (job.target_id, run)).await;
 
     let reason = "no earlier successful run of this target";
@@ -75,7 +83,6 @@ async fn previous_json_is_unavailable_for_a_first_run_and_lists_earlier_findings
         .unwrap();
     let second = tmp.path().join("second");
     fs::create_dir(&second).unwrap();
-
     let (document, ids) = written(&store, &second, (job.target_id, run + 1)).await;
 
     assert_eq!(ids, [format!("{run}.1"), format!("{run}.2")]);

@@ -17,7 +17,18 @@ async fn automatic_retries_keep_the_stored_revision_when_the_pr_head_moves() {
         pid: 1,
         started_at_ms: 0,
     };
-    let job = store.enqueue_review(&pr, &process).await.unwrap();
+    let job = store
+        .enqueue_review(
+            &pr,
+            &process,
+            crate::store::jobs::EnqueueRequest {
+                origin: crate::store::records::JobOrigin::Manual,
+                force: false,
+            },
+        )
+        .await
+        .unwrap()
+        .job;
     store
         .call(|conn| {
             conn.execute("UPDATE jobs SET origin = 'automatic'", [])
@@ -55,7 +66,18 @@ async fn automatic_retries_keep_the_stored_revision_when_the_pr_head_moves() {
     let (_, current) = resolve(&paths, &store, &deps, &pr, &job).await.unwrap();
     assert_eq!(current.head_sha, "new-head");
     assert_eq!(current.base_ref, "new-main");
-    let fresh = store.enqueue_review(&pr, &process).await.unwrap();
+    let fresh = store
+        .enqueue_review(
+            &pr,
+            &process,
+            crate::store::jobs::EnqueueRequest {
+                origin: crate::store::records::JobOrigin::Manual,
+                force: false,
+            },
+        )
+        .await
+        .unwrap()
+        .job;
     store
         .call(|conn| {
             conn.execute("UPDATE jobs SET origin = 'automatic' WHERE id = 2", [])

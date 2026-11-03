@@ -56,7 +56,12 @@ fn two_reviews_of_one_url_create_two_runs() {
     sandbox
         .claude
         .set_run(&success_envelope(&output_json(&[], None, &[])), 0);
-    assert!(review(&sandbox).status.success());
+    assert!(
+        sandbox
+            .run(&["review", tracer::URL, "--force"])
+            .status
+            .success()
+    );
 
     let db = database(&sandbox);
     assert_eq!(count(&db, "SELECT count(*) FROM jobs"), 2);

@@ -11,11 +11,12 @@ mod stop;
 use crate::store::records::Metrics;
 pub(crate) use output::{ReviewOutput, ReviewStatus, Severity, Side};
 pub(crate) use request::AgentRequest;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::future::Future;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum FailureKind {
     CliError,
     AgentError,
@@ -36,7 +37,7 @@ impl FailureKind {
     }
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub(crate) struct FailureDetail {
     pub message: String,
     pub exit_code: Option<i32>,

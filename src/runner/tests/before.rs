@@ -13,7 +13,18 @@ pub(super) async fn cancelled_before_run(stop: Option<StopReason>, automatic: bo
         pid: 1,
         started_at_ms: 0,
     };
-    let job = store.enqueue_review(&pr, &process).await.unwrap();
+    let job = store
+        .enqueue_review(
+            &pr,
+            &process,
+            crate::store::jobs::EnqueueRequest {
+                origin: crate::store::records::JobOrigin::Manual,
+                force: false,
+            },
+        )
+        .await
+        .unwrap()
+        .job;
     if automatic {
         store
             .call(|conn| {

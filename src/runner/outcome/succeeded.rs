@@ -21,6 +21,7 @@ pub(super) async fn store(
         findings: normalized.findings,
     };
     let result = ReviewResult::Succeeded {
+        reused: false,
         run_id: run,
         head_sha: revision.head_sha.clone(),
         findings: draft.findings.clone(),

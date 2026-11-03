@@ -7,7 +7,6 @@ pub(crate) enum JobOrigin {
 }
 
 impl JobOrigin {
-    #[cfg_attr(not(test), expect(dead_code))]
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Manual => "manual",
