@@ -50,25 +50,40 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
     if enqueued.attached {
         eprintln!("attached to job {}", job.job_id);
     }
-    let _lock = match wait::until_lock_or_end(&config.paths.lock(), &store, job.job_id, &pr.label())
+    let mut signals = signals::Signals::new()?;
+    let _lock = loop {
+        let lock = match wait::until_lock_or_end(
+            &config.paths.lock(),
+            &store,
+            job.job_id,
+            &pr.label(),
+            &mut signals,
+        )
         .await?
-    {
-        wait::Waited::Locked(lock) => lock,
-        wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
-        wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
+        {
+            wait::Waited::Locked(lock) => lock,
+            wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
+            wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
+        };
+        lock.announce(crate::lock::Role::Review).await?;
+        let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
+        for line in report.lines() {
+            eprintln!("{}", render::sanitize(&line));
+        }
+        let stored = store.stored_result(job.job_id).await?;
+        if stored.state != "queued" {
+            return print::result(pr, &ReviewResult::from_stored(stored, false));
+        }
+        if !store
+            .job_delayed(job.job_id, crate::store::now_ms())
+            .await?
+        {
+            break lock;
+        }
     };
-    let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
-    for line in report.lines() {
-        eprintln!("{}", render::sanitize(&line));
-    }
-    let stored = store.stored_result(job.job_id).await?;
-    if stored.state != "queued" {
-        return print::result(pr, &ReviewResult::from_stored(stored, false));
-    }
     let (stop, cancel) = watch::channel(false);
     let paths = &config.paths;
     let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
-    let mut signals = signals::Signals::new()?;
     let result = signals::until_done(
         stop,
         job_run,

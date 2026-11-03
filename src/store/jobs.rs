@@ -5,6 +5,7 @@ use crate::error::Error;
 use rusqlite::params;
 
 mod attach;
+mod due;
 #[cfg(test)]
 mod tests;
 

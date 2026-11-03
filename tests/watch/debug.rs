@@ -48,3 +48,16 @@ fn enqueue_rejects_invalid_urls_before_opening_the_store() {
     assert_eq!(output.status.code(), Some(2));
     assert!(!sandbox.db_path().exists());
 }
+
+#[test]
+fn watch_rejects_invalid_configuration_before_opening_the_store() {
+    let sandbox = Sandbox::new();
+    let config = sandbox.home.join(".config/diffmate");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(config.join("config.toml"), "run_timeout_minutes = 0").unwrap();
+    let output = sandbox.run(&["watch"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("run_timeout_minutes"));
+    assert!(!sandbox.db_path().exists());
+    assert_eq!(sandbox.gh.calls(), [] as [Vec<String>; 0]);
+}

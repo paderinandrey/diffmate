@@ -1,3 +1,5 @@
+#[path = "watch/attach.rs"]
+mod attach;
 #[allow(dead_code)]
 #[path = "concurrency/helpers.rs"]
 mod concurrency;

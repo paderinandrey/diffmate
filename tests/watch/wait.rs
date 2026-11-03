@@ -10,7 +10,7 @@ fn watch_waits_for_the_lock_and_stops_on_sigterm() {
         hold.wait_started();
         let mut watch = spawn_watch(&sandbox);
         let mut reader = BufReader::new(watch.stderr.take().unwrap());
-        read_until(&mut reader, "waiting for the runner lock");
+        read_until(&mut reader, "waiting for the runner lock (held by review)");
         assert!(watch.try_wait().unwrap().is_none());
         kill_process(process::pid(watch.id()), signal).unwrap();
         assert!(watch.wait().unwrap().success());

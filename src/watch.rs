@@ -1,5 +1,6 @@
 mod events;
 mod run;
+mod wait;
 
 use crate::agent::claude::ClaudeCli;
 use crate::app::AppConfig;
@@ -9,7 +10,7 @@ use crate::gh::GhCli;
 use crate::git::GitCli;
 use crate::review::signals::Signals;
 use crate::runner::Deps;
-use crate::{lock, recovery, store::Store};
+use crate::{recovery, store::Store};
 use std::process::ExitCode;
 use std::time::Duration;
 
@@ -36,10 +37,8 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
         settings: config.settings.clone(),
     };
     let path = config.paths.lock();
-    let acquire = lock::acquire(&path, WATCH_LOCK_POLL, || {
-        events::print("waiting for the runner lock");
-    });
-    let _lock = tokio::select! {
+    let acquire = wait::lock(&path);
+    let runner_lock = tokio::select! {
         biased;
         _ = signals.next(StopReason::Shutdown) => {
             run::stopped();
@@ -47,6 +46,7 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
         },
         lock = acquire => lock?,
     };
+    runner_lock.announce(crate::lock::Role::Watch).await?;
     let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
     for line in report.lines() {
         events::print(&line);

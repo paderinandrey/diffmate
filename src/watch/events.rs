@@ -1,5 +1,7 @@
 mod date;
 #[cfg(test)]
+mod outcomes;
+#[cfg(test)]
 mod tests;
 
 use crate::runner::{JobEnd, ReviewResult};
