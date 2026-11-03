@@ -2,6 +2,30 @@ use super::{LiveHead, fixture, freshness};
 use crate::store::Store;
 
 #[tokio::test]
+async fn a_queued_crash_retry_appends_its_persisted_budget_to_latest() {
+    let (_tmp, paths, store) = fixture::store().await;
+    fixture::failed_run(&store).await;
+    store
+        .call(|conn| {
+            conn.execute_batch(
+                "UPDATE jobs SET state = 'queued', origin = 'automatic', retry_count = 1,
+            max_retries = 2, next_attempt_at = 70000;",
+            )
+        })
+        .await
+        .unwrap();
+    drop(store);
+    let reader = Store::open_read_only(&paths).await.unwrap().unwrap();
+    let rows = reader.target_statuses().await.unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(
+        super::super::latest(&rows[0], 10_000),
+        "failed (interrupted: crash); retry 1 of 2 in 1m"
+    );
+    assert!(!paths.lock().exists());
+}
+
+#[tokio::test]
 async fn fallback_uses_the_stored_head_and_latest_successful_run() {
     let (_tmp, paths, store) = fixture::store().await;
     store

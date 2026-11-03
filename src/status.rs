@@ -2,10 +2,12 @@ use crate::app::AppConfig;
 use crate::error::Error;
 use crate::gh::{Gh, GhCli};
 use crate::render::sanitize;
+use crate::store::status::TargetStatus;
 use crate::store::{Store, now_ms};
 use freshness::LiveHead;
 use std::process::ExitCode;
 
+mod budget;
 mod freshness;
 #[cfg(test)]
 mod tests;
@@ -14,6 +16,13 @@ mod when;
 fn line<const N: usize>(parts: [&str; N]) -> String {
     let clean = parts.map(|part| sanitize(part).replace(['\n', '\t'], " "));
     clean.join("  ")
+}
+
+fn latest(target: &TargetStatus, now_ms: i64) -> String {
+    match budget::describe(&target.retry, now_ms) {
+        Some(retry) => format!("{}; {retry}", target.latest),
+        None => target.latest.clone(),
+    }
 }
 
 async fn lines(config: &AppConfig) -> Result<Vec<String>, Error> {
@@ -27,7 +36,7 @@ async fn lines(config: &AppConfig) -> Result<Vec<String>, Error> {
     let gh = GhCli::new(&config.env);
     let mut rows = Vec::with_capacity(targets.len());
     for target in targets {
-        let mut row = line([&target.label, &target.tracking, &target.latest]);
+        let mut row = line([&target.label, &target.tracking, &latest(&target, now_ms())]);
         if let Some(draft) = &target.draft_head {
             let live = match gh.pr_view(&target.pr).await {
                 Ok(meta) => LiveHead::Fetched(meta.head_sha),

@@ -2,6 +2,7 @@ use super::{freshness, when};
 use freshness::LiveHead;
 use proptest::prelude::*;
 
+mod budget;
 mod fixture;
 mod stored;
 

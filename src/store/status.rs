@@ -12,11 +12,9 @@ pub(crate) struct TargetStatus {
     pub latest: String,
     pub draft_head: Option<String>,
     pub known_head: Option<(String, i64)>,
-    #[expect(dead_code)]
     pub retry: RetryView,
 }
 
-#[expect(dead_code)]
 pub(crate) struct RetryView {
     pub job_state: Option<String>,
     pub origin: Option<String>,

@@ -7,7 +7,6 @@ pub(crate) fn ago(elapsed_ms: i64) -> String {
     }
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) fn until(remaining_ms: i64) -> String {
     match remaining_ms {
         ..=0 => "now".to_string(),
