@@ -9,7 +9,9 @@ use std::fs;
 use tempfile::TempDir;
 
 mod budget;
+mod causes;
 mod fixture;
+mod orphan;
 
 fn revision() -> Revision {
     let sha = "a".repeat(40);

@@ -10,6 +10,33 @@ pub(super) struct Fixture {
 }
 
 impl Fixture {
+    pub async fn recover(&self) -> super::super::RecoveryReport {
+        recover(
+            &self.paths,
+            &self.store,
+            &self.git,
+            &crate::config::Settings::default(),
+        )
+        .await
+        .unwrap()
+    }
+
+    pub async fn snapshot(&self) -> String {
+        self.store
+            .call(|conn| {
+                conn.query_row(
+                    "SELECT json_object('job', json_group_array(json_array(state, retry_count,
+                max_retries, next_attempt_at, stop_reason, failure_reason, updated_at)),
+                'runs', (SELECT json_group_array(json_array(state, failure_kind,
+                    interrupted_cause, finished_at)) FROM runs)) FROM jobs",
+                    [],
+                    |row| row.get(0),
+                )
+            })
+            .await
+            .unwrap()
+    }
+
     pub async fn new() -> Self {
         let tmp = TempDir::new().unwrap();
         let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));

@@ -4,6 +4,16 @@ use crate::error::Error;
 use crate::recovery::rules::{JobNext, RetryState};
 use rusqlite::{Transaction, params};
 
+mod queue;
+#[cfg(test)]
+mod tests;
+
+#[cfg_attr(not(test), expect(dead_code))]
+pub(crate) struct QueuedJob {
+    pub job: super::jobs::EnqueuedJob,
+    pub pr: crate::pr_url::PrRef,
+}
+
 pub(super) fn apply_job_next(
     tx: &Transaction,
     job: JobId,

@@ -7,6 +7,14 @@ pub(crate) enum JobOrigin {
 }
 
 impl JobOrigin {
+    #[cfg_attr(not(test), expect(dead_code))]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Manual => "manual",
+            Self::Automatic => "automatic",
+        }
+    }
+
     pub fn parse(value: &str) -> rusqlite::Result<Self> {
         match value {
             "manual" => Ok(Self::Manual),

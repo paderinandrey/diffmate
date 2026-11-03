@@ -1,37 +1,9 @@
-use crate::agent::FailureKind;
-use crate::cancel::StopReason;
+mod failure;
+#[cfg(test)]
+mod tests;
 use crate::store::records::JobOrigin;
+pub(crate) use failure::Failure;
 use std::time::Duration;
-
-pub(crate) enum Failure {
-    Timeout,
-    Shutdown,
-    UserCancel,
-    Crash,
-    #[expect(dead_code)]
-    Terminal(FailureKind),
-}
-
-impl Failure {
-    pub fn from_stop(stop: Option<StopReason>) -> Self {
-        match stop {
-            Some(StopReason::Timeout) => Self::Timeout,
-            Some(StopReason::Shutdown) => Self::Shutdown,
-            Some(StopReason::UserCancel) => Self::UserCancel,
-            None => Self::Crash,
-        }
-    }
-
-    pub fn text(&self) -> &str {
-        match self {
-            Self::Timeout => "timeout",
-            Self::Shutdown => "interrupted: shutdown",
-            Self::UserCancel => "interrupted: user_cancel",
-            Self::Crash => "interrupted: crash",
-            Self::Terminal(kind) => kind.as_str(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RetryState {
