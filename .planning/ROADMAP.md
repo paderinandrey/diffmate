@@ -93,7 +93,7 @@ Plans:
   - Several scenarios run the `watch` and `tui` roles before those features exist. The plan needs a minimal `watch` runner loop (executes every job, handles SIGTERM and SIGINT) and a way to enqueue an automatic job and a `tui`-style `review` job as a test seam. Polling, tracking, debounce, and notifications stay in Phase 3; the TUI stays in Phase 4.
   - This phase introduces the automatic/manual job distinction and the retry budget and next-attempt time persisted in SQLite, and `status` gains draft freshness with the time of the last head check.
 
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 implementations complete; code review is clean and verification is `human_needed`. Plan 02-10 remains halted at the external live gate; UAT has 12 pending and 2 blocked items.
 
 Plans:
 **Wave 1**
@@ -116,7 +116,7 @@ Plans:
 - [x] 02-09-PLAN.md — `diffmate watch` runner loop and hidden `debug enqueue` (REL-08, REL-10)
 
 **Wave 6** *(blocked on Wave 5 completion)*
-- [ ] 02-10-PLAN.md — Crash points: kill at every step, budget across restarts, kept causes, phase gate (REL-01, REL-06, REL-07)
+- [ ] 02-10-PLAN.md — Implementation complete: crash matrix, restart budgets and kept causes; final live gate blocked by Anthropic 403 (owner chose to preserve the blocker). Verification is human_needed; UAT remains open (REL-01, REL-06, REL-07).
 
 ### Phase 3: Queue
 
@@ -194,7 +194,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
-| 2. Reliability | 9/10 | In Progress | - |
+| 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
