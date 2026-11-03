@@ -93,7 +93,7 @@ Plans:
   - Several scenarios run the `watch` and `tui` roles before those features exist. The plan needs a minimal `watch` runner loop (executes every job, handles SIGTERM and SIGINT) and a way to enqueue an automatic job and a `tui`-style `review` job as a test seam. Polling, tracking, debounce, and notifications stay in Phase 3; the TUI stays in Phase 4.
   - This phase introduces the automatic/manual job distinction and the retry budget and next-attempt time persisted in SQLite, and `status` gains draft freshness with the time of the last head check.
 
-**Plans:** 6/10 plans executed
+**Plans:** 9/10 plans executed
 
 Plans:
 **Wave 1**
@@ -111,9 +111,9 @@ Plans:
 - [x] 02-06-PLAN.md — Reuse per head, attach in one transaction, `--force`, waiting review (REL-04, REL-05, REL-11)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 02-07-PLAN.md — Runner stores the last known head; `review` reports a stale draft (REL-02, REL-03)
-- [ ] 02-08-PLAN.md — Run timeout from `config.toml` (REL-12)
-- [ ] 02-09-PLAN.md — `diffmate watch` runner loop and hidden `debug enqueue` (REL-08, REL-10)
+- [x] 02-07-PLAN.md — Runner stores the last known head; `review` reports a stale draft (REL-02, REL-03)
+- [x] 02-08-PLAN.md — Run timeout from `config.toml` (REL-12)
+- [x] 02-09-PLAN.md — `diffmate watch` runner loop and hidden `debug enqueue` (REL-08, REL-10)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 - [ ] 02-10-PLAN.md — Crash points: kill at every step, budget across restarts, kept causes, phase gate (REL-01, REL-06, REL-07)
@@ -194,7 +194,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
-| 2. Reliability | 6/10 | In Progress | - |
+| 2. Reliability | 9/10 | In Progress | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
