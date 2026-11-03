@@ -93,7 +93,7 @@ Plans:
   - Several scenarios run the `watch` and `tui` roles before those features exist. The plan needs a minimal `watch` runner loop (executes every job, handles SIGTERM and SIGINT) and a way to enqueue an automatic job and a `tui`-style `review` job as a test seam. Polling, tracking, debounce, and notifications stay in Phase 3; the TUI stays in Phase 4.
   - This phase introduces the automatic/manual job distinction and the retry budget and next-attempt time persisted in SQLite, and `status` gains draft freshness with the time of the last head check.
 
-**Plans:** 3/10 plans executed
+**Plans:** 4/10 plans executed
 
 Plans:
 **Wave 1**
@@ -102,7 +102,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 02-03-PLAN.md — Stop causes stored first: Ctrl-C → user_cancel, SIGTERM → shutdown (REL-09)
-- [ ] 02-04-PLAN.md — `status` freshness from a live head check and the retry budget (REL-02, REL-03, D-16)
+- [x] 02-04-PLAN.md — `status` freshness from a live head check and the retry budget (REL-02, REL-03, D-16)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 02-05-PLAN.md — Recovery keeps the stored cause; retry budget and next attempt in SQLite (REL-06, REL-07)
@@ -194,7 +194,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
-| 2. Reliability | 3/10 | In Progress | - |
+| 2. Reliability | 4/10 | In Progress | - |
 | 3. Queue | 0/TBD | Not started | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
