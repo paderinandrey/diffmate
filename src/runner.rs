@@ -13,6 +13,7 @@ mod tests;
 use crate::agent::Agent;
 use crate::cancel::{self, CancelRx};
 use crate::config::Settings;
+use crate::crash::crash_point;
 use crate::gh::Gh;
 use crate::git::Git;
 use crate::paths::Paths;
@@ -44,10 +45,12 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
         Ok(started) => started,
         Err(error) => return job_failed(store, job, error.to_string()).await,
     };
+    crash_point!("job-started");
     let resolved = cancel::raced(&mut stop, resolve::resolve(paths, store, deps, pr, job)).await;
     match resolved {
         None => cancelled_before_run(store, job, &deps.settings).await,
         Some(Ok((meta, revision))) => {
+            crash_point!("revision");
             if let Err(error) = store.set_known_head(job.target_id, &meta.head_sha).await {
                 return job_failed(store, job, error.to_string()).await;
             }

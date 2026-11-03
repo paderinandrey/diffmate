@@ -1,6 +1,7 @@
 use super::{Deps, ReviewResult, agent_run, cleanup, job_failed, outcome};
 use crate::agent::{Agent, AgentOutcome};
 use crate::cancel::{self, CancelRx};
+use crate::crash::crash_point;
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
@@ -20,12 +21,14 @@ pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
         Ok(run) => run,
         Err(error) => return job_failed(store, job, error.to_string()).await,
     };
+    crash_point!("run-created");
     let ids = (pr, job.target_id, run);
     let ran = agent_run::run_agent(paths, store, deps, ids, (meta, revision), cancel);
     let (outcome, mut prepared) = ran.await;
     let repo = paths.repo_dir(&pr.owner, &pr.repo);
     let mut warnings = std::mem::take(&mut prepared.warnings);
     warnings.extend(cleanup::run(&deps.git, paths, &repo, run).await);
+    crash_point!("cleaned");
     if matches!(outcome, AgentOutcome::Succeeded { .. }) {
         let mut stop = cancel.clone();
         match cancel::raced(&mut stop, deps.gh.pr_view(pr)).await {

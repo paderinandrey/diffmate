@@ -5,6 +5,7 @@ mod wait;
 use crate::agent::claude::ClaudeCli;
 use crate::app::AppConfig;
 use crate::cancel::StopReason;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
@@ -47,7 +48,9 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
         lock = acquire => lock?,
     };
     runner_lock.announce(crate::lock::Role::Watch).await?;
+    crash_point!("locked");
     let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
+    crash_point!("recovered");
     for line in report.lines() {
         events::print(&line);
     }

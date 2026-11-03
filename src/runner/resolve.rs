@@ -1,4 +1,5 @@
 use super::Deps;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
@@ -30,6 +31,7 @@ pub(super) async fn resolve<G: Git, H: Gh, A>(
         return Ok((meta, revision));
     }
     deps.git.fetch_pr(&repo, pr.number, &meta.base_ref).await?;
+    crash_point!("fetched");
     let head = deps
         .git
         .rev_parse(&repo, &format!("refs/diffmate/pull/{}/head", pr.number))

@@ -1,6 +1,7 @@
 use crate::agent::claude::ClaudeCli;
 use crate::app::AppConfig;
 use crate::cancel::StopReason;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
@@ -46,6 +47,7 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
         force,
     };
     let enqueued = store.enqueue_review(pr, &config.process, request).await?;
+    crash_point!("enqueued");
     let mut job = enqueued.job;
     if enqueued.attached {
         eprintln!("attached to job {}", job.job_id);

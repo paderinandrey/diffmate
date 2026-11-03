@@ -2,6 +2,7 @@ use super::{ReviewResult, job_failed};
 use crate::agent::{FailureDetail, FailureKind};
 use crate::cancel::StopReason;
 use crate::config::Settings;
+use crate::crash::crash_point;
 use crate::recovery::rules::Failure;
 use crate::runner::JobEnd;
 use crate::store::jobs::EnqueuedJob;
@@ -34,16 +35,22 @@ pub(super) async fn failed(
         .finish_failed(run, job.job_id, (kind, stop), detail, metrics, &next)
         .await
     {
-        Ok(()) if matches!(kind, FailureKind::Interrupted) => ReviewResult::Cancelled {
-            run_id: Some(run),
-            job_end,
-        },
-        Ok(()) => ReviewResult::RunFailed {
-            run_id: run,
-            kind,
-            message,
-            job_end,
-        },
+        Ok(()) => {
+            crash_point!("stored");
+            if matches!(kind, FailureKind::Interrupted) {
+                ReviewResult::Cancelled {
+                    run_id: Some(run),
+                    job_end,
+                }
+            } else {
+                ReviewResult::RunFailed {
+                    run_id: run,
+                    kind,
+                    message,
+                    job_end,
+                }
+            }
+        }
         Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
     }
 }

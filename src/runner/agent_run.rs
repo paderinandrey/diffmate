@@ -3,6 +3,7 @@ use super::process::record_agent_process;
 use super::steps::{Prepared, prepare};
 use crate::agent::{Agent, AgentOutcome, FailureDetail, FailureKind};
 use crate::cancel::{self, CancelRx};
+use crate::crash::crash_point;
 use crate::gh::{Gh, PrMeta};
 use crate::git::Git;
 use crate::paths::Paths;
@@ -79,6 +80,7 @@ async fn execute<G: Git, H: Gh, A: Agent>(
     let (hook, pids) = mpsc::unbounded_channel();
     let request = request.with_cancel(cancel.clone()).with_spawn_hook(hook);
     let running = async {
+        crash_point!("agent-start");
         let outcome = deps.agent.run(&request).await;
         drop(request);
         outcome

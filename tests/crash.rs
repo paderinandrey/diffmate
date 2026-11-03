@@ -1,5 +1,9 @@
 #[path = "crash/helpers.rs"]
 mod helpers;
+#[path = "crash/matrix.rs"]
+mod matrix;
+#[path = "crash/restart.rs"]
+mod restart;
 mod support;
 #[allow(dead_code)]
 mod tracer;

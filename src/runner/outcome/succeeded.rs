@@ -1,5 +1,6 @@
 use super::{ReviewResult, job_failed};
 use crate::agent::ReviewOutput;
+use crate::crash::crash_point;
 use crate::normalize::Normalized;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::{DraftRecord, Metrics};
@@ -24,10 +25,13 @@ pub(super) async fn store(
         .finish_succeeded(run, job.job_id, draft, warnings, metrics)
         .await
     {
-        Ok(()) => match store.stored_result(job.job_id).await {
-            Ok(stored) => ReviewResult::from_stored(stored, false),
-            Err(error) => job_failed(store, job, error.to_string()).await,
-        },
+        Ok(()) => {
+            crash_point!("stored");
+            match store.stored_result(job.job_id).await {
+                Ok(stored) => ReviewResult::from_stored(stored, false),
+                Err(error) => job_failed(store, job, error.to_string()).await,
+            }
+        }
         Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
     }
 }

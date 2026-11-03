@@ -1,4 +1,5 @@
 use crate::cancel::StopReason;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::render;
 use crate::store::{JobId, Store};
@@ -70,5 +71,6 @@ async fn request_stop(
             }
         }
     }
+    crash_point!("stop-stored");
     stop.send_replace(true);
 }

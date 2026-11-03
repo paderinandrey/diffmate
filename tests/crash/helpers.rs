@@ -5,6 +5,10 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
 pub fn crash_at(command: &mut Command, point: &str) {
+    crash_at_ready(command, point, || {});
+}
+
+pub fn crash_at_ready(command: &mut Command, point: &str, ready: impl FnOnce()) {
     let mut child = command
         .env("DIFFMATE_CRASH_POINT", point)
         .stdin(Stdio::null())
@@ -27,6 +31,7 @@ pub fn crash_at(command: &mut Command, point: &str) {
             break;
         }
     }
+    ready();
     child.kill().unwrap();
     assert!(!child.wait().unwrap().success());
 }

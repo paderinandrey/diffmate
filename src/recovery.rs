@@ -7,6 +7,7 @@ mod scan;
 mod tests;
 
 use crate::config::Settings;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::git::Git;
 use crate::paths::Paths;
@@ -48,6 +49,7 @@ pub(crate) async fn run<G: Git>(
     let stopped = store
         .resolve_running(settings.max_retries(), crate::store::now_ms())
         .await?;
+    crash_point!("recovery-db");
     let mut report = RecoveryReport {
         runs: stopped.runs,
         jobs: stopped.jobs,

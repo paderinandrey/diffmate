@@ -1,4 +1,5 @@
 use crate::agent::FailureKind;
+use crate::crash::crash_point;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::FindingRecord;
 use crate::store::{RunId, Store};
@@ -44,6 +45,7 @@ pub(super) async fn reuse(store: &Store, job: &EnqueuedJob, run: RunId) -> Revie
     if let Err(error) = store.finish_reused(job.job_id, run).await {
         return job_failed(store, job, error.to_string()).await;
     }
+    crash_point!("stored");
     match store.stored_result(job.job_id).await {
         Ok(stored) => ReviewResult::from_stored(stored, true),
         Err(error) => ReviewResult::JobFailed {

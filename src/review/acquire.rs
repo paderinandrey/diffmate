@@ -1,6 +1,7 @@
 use super::signals::Signals;
 use super::wait::{self, Waited};
 use crate::app::AppConfig;
+use crate::crash::crash_point;
 use crate::error::Error;
 use crate::git::Git;
 use crate::pr_url::PrRef;
@@ -29,7 +30,9 @@ pub(super) async fn for_job<G: Git>(
             return Ok(waited);
         };
         lock.announce(crate::lock::Role::Review).await?;
+        crash_point!("locked");
         let report = recovery::run(&config.paths, store, git, &config.settings).await?;
+        crash_point!("recovered");
         for line in report.lines() {
             eprintln!("{}", render::sanitize(&line));
         }

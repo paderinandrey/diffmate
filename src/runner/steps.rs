@@ -1,6 +1,7 @@
 use super::Deps;
 use crate::agent::AgentRequest;
 use crate::context::{self, ContextInputs};
+use crate::crash::crash_point;
 use crate::diff::{self, DiffIndex};
 use crate::error::Error;
 use crate::gh::{Gh, PrMeta};
@@ -32,6 +33,7 @@ pub(super) async fn prepare<G: Git, H: Gh, A>(
     deps.git
         .worktree_add(&repo, &worktree, &revision.head_sha)
         .await?;
+    crash_point!("worktree");
     let diff = deps
         .git
         .diff(&repo, &revision.merge_base_sha, &revision.head_sha)
@@ -52,6 +54,7 @@ pub(super) async fn prepare<G: Git, H: Gh, A>(
     let written = context::write(inputs).await?;
     let prompt_file = paths.prompt_file(run);
     context::write_prompt(&prompt_file).await?;
+    crash_point!("context");
     let prepared = Prepared {
         index: diff::parse(&written.diff_as_written),
         previous_ids: written.previous_ids,
