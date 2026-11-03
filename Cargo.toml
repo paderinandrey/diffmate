@@ -5,6 +5,14 @@ edition = "2024"
 rust-version = "1.99.1"
 publish = false
 
+[features]
+crash-points = []
+
+[[test]]
+name = "crash"
+path = "tests/crash.rs"
+required-features = ["crash-points"]
+
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 jsonschema = { version = "0.60.2", default-features = false }

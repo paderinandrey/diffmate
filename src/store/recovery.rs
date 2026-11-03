@@ -1,5 +1,6 @@
 mod resolve;
 
+use super::records::JobOrigin;
 use super::retry::apply_job_next;
 use super::{JobId, RunId, Store};
 use crate::error::Error;
@@ -10,6 +11,7 @@ use std::collections::HashMap;
 pub(crate) struct Stopped {
     pub runs: Vec<(RunId, String)>,
     pub jobs: Vec<(JobId, String)>,
+    pub manual_crashes: Vec<JobId>,
 }
 
 pub(crate) struct RunLocation {
@@ -25,9 +27,13 @@ impl Store {
             let mut stopped = Stopped {
                 runs: resolve::runs(&tx, now)?,
                 jobs: Vec::new(),
+                manual_crashes: Vec::new(),
             };
             for job in resolve::jobs(&tx)? {
                 let failure = Failure::from_stop(job.stop);
+                if job.origin == JobOrigin::Manual && matches!(failure, Failure::Crash) {
+                    stopped.manual_crashes.push(job.id);
+                }
                 let next = after_failure(job.origin, &failure, job.retry, config_max, now);
                 apply_job_next(&tx, job.id, &next, now)?;
                 stopped

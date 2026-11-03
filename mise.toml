@@ -28,7 +28,7 @@ run = "cargo build --locked --release"
 [tasks.test]
 description = "Run the test suite with nextest"
 sources = ["**/*.rs", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"]
-run = "cargo nextest run --locked"
+run = "cargo nextest run --locked --features crash-points"
 
 [tasks."test:e2e"]
 description = "Run the local-only #[ignore] live checks that need real claude and gh auth (never run in CI)"
@@ -36,7 +36,7 @@ run = "cargo nextest run --locked --run-ignored only --no-tests=warn"
 
 [tasks.coverage]
 description = "Run the test suite under llvm-cov and fail below 80% line coverage"
-run = "cargo llvm-cov nextest --locked --fail-under-lines 80"
+run = "cargo llvm-cov nextest --locked --features crash-points --fail-under-lines 80"
 
 [tasks.lint]
 description = "Run all lint checks"

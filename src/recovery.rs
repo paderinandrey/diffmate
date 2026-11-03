@@ -1,3 +1,4 @@
+mod cleanup;
 #[cfg(test)]
 mod fake;
 pub(crate) mod rules;
@@ -15,6 +16,7 @@ use crate::store::{JobId, RunId, Store};
 pub(crate) struct RecoveryReport {
     pub runs: Vec<(RunId, String)>,
     pub jobs: Vec<(JobId, String)>,
+    pub manual_crashes: Vec<JobId>,
     pub removed_run_dirs: Vec<RunId>,
     pub warnings: Vec<String>,
 }
@@ -37,42 +39,6 @@ impl RecoveryReport {
     }
 }
 
-async fn clean_runs<G: Git>(
-    paths: &Paths,
-    store: &Store,
-    git: &G,
-    report: &mut RecoveryReport,
-) -> Result<(), Error> {
-    let found = scan::run_dirs(&paths.runs_dir()).await?;
-    for name in &found.others {
-        report
-            .warnings
-            .push(format!("left {name} in the runs directory: not a run"));
-    }
-    let locations = store.run_locations(found.runs.clone()).await?;
-    for run in found.runs {
-        let location = locations.get(&run);
-        if location.is_some_and(|known| known.running) {
-            continue;
-        }
-        let worktree = paths.worktree(run);
-        let present = matches!(tokio::fs::try_exists(&worktree).await, Ok(true));
-        if let (Some(known), true) = (location, present) {
-            let repo = paths.repo_dir(&known.owner, &known.repo);
-            if let Err(error) = git.worktree_remove(&repo, &worktree).await {
-                report.warnings.push(format!("run {run}: {error}"));
-            }
-        }
-        match tokio::fs::remove_dir_all(paths.run_dir(run)).await {
-            Ok(()) => report.removed_run_dirs.push(run),
-            Err(error) => report
-                .warnings
-                .push(format!("run {run}: remove directory: {error}")),
-        }
-    }
-    Ok(())
-}
-
 pub(crate) async fn run<G: Git>(
     paths: &Paths,
     store: &Store,
@@ -85,9 +51,10 @@ pub(crate) async fn run<G: Git>(
     let mut report = RecoveryReport {
         runs: stopped.runs,
         jobs: stopped.jobs,
+        manual_crashes: stopped.manual_crashes,
         ..RecoveryReport::default()
     };
-    clean_runs(paths, store, git, &mut report).await?;
+    cleanup::clean_runs(paths, store, git, &mut report).await?;
     for clone in scan::clones(&paths.repos_dir()).await? {
         if let Err(error) = git.worktree_prune(&clone).await {
             report

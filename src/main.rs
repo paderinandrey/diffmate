@@ -4,6 +4,7 @@ mod cancel;
 mod cli;
 mod config;
 mod context;
+mod crash;
 mod debug;
 mod diff;
 mod error;
