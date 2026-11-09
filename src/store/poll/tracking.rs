@@ -25,13 +25,9 @@ pub(super) fn apply(
     now: i64,
 ) -> rusqlite::Result<()> {
     for row in seen {
-        let _ = (row.is_draft, &row.head_sha);
         see(tx, &row.pr, now)?;
     }
     for (pr, kind) in absent {
-        if let Absent::Open { is_draft, head_sha } = kind {
-            let _ = (*is_draft, head_sha);
-        }
         miss(tx, pr, kind)?;
     }
     Ok(())

@@ -5,6 +5,7 @@ use crate::pr_url::PrRef;
 use rusqlite::TransactionBehavior;
 
 mod known;
+mod schedule;
 #[cfg(test)]
 mod tests;
 mod tracking;
@@ -54,10 +55,27 @@ impl Store {
         debounce_ms: i64,
         process: &ProcessInfo,
     ) -> Result<(), Error> {
-        let _ = (debounce_ms, process.pid, process.started_at_ms);
+        let (pid, started) = (process.pid, process.started_at_ms);
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             tracking::apply(&tx, &seen, &absent, now_ms)?;
+            schedule::apply(&tx, &seen, &absent, now_ms, debounce_ms, pid, started)?;
+            tx.commit()
+        })
+        .await
+    }
+
+    pub async fn schedule_after_run(
+        &self,
+        target: super::TargetId,
+        now_ms: i64,
+        debounce_ms: i64,
+        process: &ProcessInfo,
+    ) -> Result<(), Error> {
+        let (pid, started) = (process.pid, process.started_at_ms);
+        self.call(move |conn| {
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            schedule::after_run(&tx, target, now_ms, debounce_ms, pid, started)?;
             tx.commit()
         })
         .await

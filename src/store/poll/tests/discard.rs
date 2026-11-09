@@ -19,7 +19,10 @@ async fn discard_hides_a_request_until_it_leaves_and_returns() {
     expect(&fix, 1, "untracked", false).await;
     fix.poll(vec![seen(1, false, Some("ccc"))], vec![], 3_000, 60_000)
         .await;
-    expect(&fix, 1, "tracked", true).await;
+    let row = fix.target(1).await.unwrap();
+    assert_eq!((row.tracking.as_str(), row.seen), ("tracked", true));
+    assert_eq!(row.queued_head.as_deref(), Some("ccc"));
+    assert_eq!((row.head.as_deref(), row.checked), (None, None));
     assert_eq!(fix.store.known_targets().await.unwrap().len(), 1);
 }
 

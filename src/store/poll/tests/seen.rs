@@ -25,7 +25,7 @@ async fn a_new_request_tracks_and_a_repeat_does_not_change_tracking() {
     assert_eq!(known.len(), 4);
     assert_eq!(row.tracking, "tracked");
     assert!(row.request_seen);
-    assert_eq!(row.queued_head, None);
+    assert_eq!(row.queued_head.as_deref(), Some("aaa"));
 }
 
 impl Fix {

@@ -1,6 +1,12 @@
+mod absent;
+mod block;
 mod discard;
 mod enqueue;
 mod fixture;
+mod follow;
+mod heads;
+mod hold;
 mod jobs;
 mod runs;
+mod schedule;
 mod seen;
