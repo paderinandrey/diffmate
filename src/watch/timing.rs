@@ -9,6 +9,9 @@ pub(super) fn idle_delay(now_ms: i64, next_poll_at: i64, next_attempt_at: Option
     }
 }
 
+#[cfg(test)]
+mod tests;
+
 fn until(now_ms: i64, at: i64) -> Duration {
     match u64::try_from(at.saturating_sub(now_ms)) {
         Ok(millis) => Duration::from_millis(millis),

@@ -1,7 +1,13 @@
 #[path = "poll/absent.rs"]
 mod absent;
+#[path = "poll/debounce.rs"]
+mod debounce;
 #[path = "poll/draft.rs"]
 mod draft;
+#[path = "poll/follow.rs"]
+mod follow;
+#[path = "poll/head.rs"]
+mod head;
 #[path = "poll/manual.rs"]
 mod manual;
 #[path = "poll/ready.rs"]
