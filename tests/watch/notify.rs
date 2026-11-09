@@ -1,3 +1,5 @@
+#[path = "notify/attached.rs"]
+mod attached;
 #[path = "notify/give_up.rs"]
 mod give_up;
 #[path = "notify/ready.rs"]
