@@ -63,17 +63,42 @@ impl Store {
 
     pub async fn stored_result(&self, job: JobId) -> Result<StoredJob, Error> {
         self.call(move |conn| {
-            let (state, reason, run_id, known_head) = conn.query_row(
+            let (state, reason, mut run_id, known_head, updated_at): (
+                String,
+                Option<String>,
+                Option<RunId>,
+                Option<String>,
+                i64,
+            ) = conn.query_row(
                 "SELECT state, failure_reason, coalesce(result_run_id,
                  (SELECT max(id) FROM runs WHERE job_id = jobs.id)),
-                 (SELECT head_sha FROM targets WHERE id = jobs.target_id)
+                 (SELECT head_sha FROM targets WHERE id = jobs.target_id), updated_at
                  FROM jobs WHERE id = ?1",
                 [job],
                 |row| {
-                    let run: Option<RunId> = row.get(2)?;
-                    Ok((row.get(0)?, row.get(1)?, run, row.get(3)?))
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get::<_, Option<RunId>>(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
                 },
             )?;
+            let finished_at: Option<i64> = match run_id {
+                Some(run) => {
+                    conn.query_row("SELECT finished_at FROM runs WHERE id = ?1", [run], |row| {
+                        row.get(0)
+                    })?
+                }
+                None => None,
+            };
+            if state == "failed"
+                && reason.is_some()
+                && finished_at.is_some_and(|finished| updated_at > finished)
+            {
+                run_id = None;
+            }
             let reused = match run_id {
                 Some(run) => conn.query_row(
                     "SELECT job_id != ?1 FROM runs WHERE id = ?2",
