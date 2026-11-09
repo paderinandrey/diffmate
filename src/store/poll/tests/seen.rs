@@ -69,7 +69,7 @@ async fn absence_writes_only_the_column_for_that_variant() {
     .await;
     expect(&fix, 1, "tracked", false).await;
     assert_eq!(fix.target(1).await.unwrap().head, None);
-    expect(&fix, 2, "untracked", true).await;
+    expect(&fix, 2, "untracked", false).await;
     expect(&fix, 3, "untracked", false).await;
     expect(&fix, 4, "untracked", true).await;
     expect(&fix, 5, "tracked", true).await;

@@ -61,7 +61,8 @@ fn miss(tx: &Transaction, pr: &PrRef, kind: &Absent, now: i64) -> rusqlite::Resu
         Absent::Skip => Ok(()),
         Absent::Closed => {
             tx.execute(
-                "UPDATE targets SET tracking = 'untracked' WHERE id = ?1",
+                "UPDATE targets SET tracking = 'untracked', request_seen = 0
+                 WHERE id = ?1 AND tracking = 'tracked'",
                 [id],
             )?;
             tx.execute(

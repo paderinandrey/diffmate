@@ -1,5 +1,5 @@
 use super::super::Absent;
-use super::fixture::{Fix, absent_open, pr};
+use super::fixture::{Fix, absent_open, pr, seen};
 
 const DEBOUNCE: i64 = 60_000;
 
@@ -55,6 +55,43 @@ async fn a_closed_pr_cancels_queued_automatic_work() {
     let still = &fix.jobs(4).await[0];
     assert_eq!((still.id, still.state.as_str()), (open, "queued"));
     assert_eq!(fix.target(4).await.unwrap().tracking, "tracked");
+}
+
+#[tokio::test]
+async fn a_closed_target_tracks_again_and_a_discard_stays_latched() {
+    let fix = Fix::open().await;
+    fix.seed(1, true, true).await;
+    fix.seed(2, false, true).await;
+    fix.poll(
+        vec![],
+        vec![(pr(1), Absent::Closed), (pr(2), Absent::Closed)],
+        1_000,
+        DEBOUNCE,
+    )
+    .await;
+    let closed = fix.target(1).await.unwrap();
+    assert_eq!(
+        (closed.tracking.as_str(), closed.seen),
+        ("untracked", false)
+    );
+    let discarded = fix.target(2).await.unwrap();
+    assert_eq!(
+        (discarded.tracking.as_str(), discarded.seen),
+        ("untracked", true)
+    );
+    fix.poll(
+        vec![seen(1, false, Some("aaa")), seen(2, false, Some("bbb"))],
+        vec![],
+        2_000,
+        DEBOUNCE,
+    )
+    .await;
+    let again = fix.target(1).await.unwrap();
+    assert_eq!((again.tracking.as_str(), again.seen), ("tracked", true));
+    assert_eq!(fix.jobs(1).await.len(), 1);
+    let still = fix.target(2).await.unwrap();
+    assert_eq!((still.tracking.as_str(), still.seen), ("untracked", true));
+    assert!(fix.jobs(2).await.is_empty());
 }
 
 async fn runs(fix: &Fix, job: i64) -> i64 {

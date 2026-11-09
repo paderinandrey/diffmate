@@ -73,6 +73,6 @@ fn a_closed_absence_untracks_and_inserts_no_job() {
     });
     watch.stop();
     let db = database(&sandbox);
-    assert_eq!(count(&db, "SELECT request_seen FROM targets"), 1);
+    assert_eq!(count(&db, "SELECT request_seen FROM targets"), 0);
     assert_eq!(count(&db, "SELECT count(*) FROM jobs"), 0);
 }
