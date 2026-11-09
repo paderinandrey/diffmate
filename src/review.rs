@@ -81,7 +81,7 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
             &mut signals,
         )
         .await?;
-        if follow::again(&result) {
+        if follow::again(&result, *cancel.borrow()) {
             print::result(pr, &result)?;
             drop(lock);
             continue;

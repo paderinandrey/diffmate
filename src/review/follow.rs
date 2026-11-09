@@ -1,13 +1,14 @@
 use crate::runner::{JobEnd, ReviewResult};
 
-pub(super) fn again(result: &ReviewResult) -> bool {
-    matches!(
-        result,
-        ReviewResult::RunFailed {
-            job_end: JobEnd::Requeued { .. },
-            ..
-        }
-    )
+pub(super) fn again(result: &ReviewResult, externally_cancelled: bool) -> bool {
+    !externally_cancelled
+        && matches!(
+            result,
+            ReviewResult::RunFailed {
+                job_end: JobEnd::Requeued { .. },
+                ..
+            }
+        )
 }
 
 #[cfg(test)]
@@ -31,7 +32,18 @@ mod tests {
             message: "stopped by the run timeout".into(),
             job_end: requeued(),
         };
-        assert!(again(&result));
+        assert!(again(&result, false));
+    }
+
+    #[test]
+    fn an_external_cancel_during_timeout_cleanup_stops_the_review() {
+        let result = ReviewResult::RunFailed {
+            run_id: 1,
+            kind: FailureKind::Timeout,
+            message: "stopped by the run timeout".into(),
+            job_end: requeued(),
+        };
+        assert!(!again(&result, true));
     }
 
     #[test]
@@ -42,7 +54,7 @@ mod tests {
             message: "stopped by the run timeout".into(),
             job_end: JobEnd::Failed,
         };
-        assert!(!again(&result));
+        assert!(!again(&result, false));
     }
 
     #[test]
@@ -51,6 +63,6 @@ mod tests {
             run_id: Some(1),
             job_end: requeued(),
         };
-        assert!(!again(&result));
+        assert!(!again(&result, false));
     }
 }
