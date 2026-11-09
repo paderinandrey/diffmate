@@ -1,3 +1,4 @@
+pub(crate) mod recovery;
 mod script;
 #[cfg(test)]
 mod tests;

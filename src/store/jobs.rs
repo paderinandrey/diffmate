@@ -77,6 +77,30 @@ impl Store {
         .await
     }
 
+    pub async fn job_label(&self, job: JobId) -> Result<String, Error> {
+        self.call(move |conn| {
+            let sql = "SELECT t.owner, t.repo, t.number FROM jobs j
+                       JOIN targets t ON t.id = j.target_id WHERE j.id = ?1";
+            conn.query_row(sql, [job], |row| {
+                let number: i64 = row.get(2)?;
+                let number = u64::try_from(number).map_err(|error| {
+                    rusqlite::Error::FromSqlConversionFailure(
+                        2,
+                        rusqlite::types::Type::Integer,
+                        Box::new(error),
+                    )
+                })?;
+                Ok(crate::pr_url::PrRef {
+                    owner: row.get(0)?,
+                    repo: row.get(1)?,
+                    number,
+                }
+                .label())
+            })
+        })
+        .await
+    }
+
     pub async fn job_failure_reason(&self, job: JobId) -> Result<Option<String>, Error> {
         self.call(move |conn| {
             let sql = "SELECT failure_reason FROM jobs WHERE id = ?1";

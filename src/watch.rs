@@ -12,6 +12,7 @@ use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
+use crate::notify;
 use crate::review::signals::Signals;
 use crate::runner::Deps;
 use crate::{recovery, store::Store};
@@ -56,6 +57,11 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
     crash_point!("recovered");
     for line in report.lines() {
         events::print(&line);
+    }
+    for notice in notify::recovery::notices(&store, &report.jobs).await? {
+        if let Err(error) = notify::deliver(&notice).await {
+            events::print(&format!("notification-failed: {error}"));
+        }
     }
     run::jobs(config, &store, &deps, &mut signals).await
 }
