@@ -3,7 +3,8 @@ use super::super::search_args;
 #[test]
 fn search_args_request_the_owner_and_not_a_team() {
     let args = search_args(100);
-    assert!(args.iter().any(|arg| arg == "--review-requested=@me"));
+    assert!(args.iter().any(|arg| arg == "user-review-requested:@me"));
+    assert!(!args.iter().any(|arg| arg.contains("review-requested=")));
     assert!(args.iter().any(|arg| arg == "--state=open"));
     let fields = args.iter().find(|arg| arg.contains("isDraft")).unwrap();
     for field in ["number", "repository", "url", "isDraft", "state"] {

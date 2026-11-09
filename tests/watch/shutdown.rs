@@ -71,6 +71,30 @@ fn stopped_automatic(signal: Signal, repeated: bool) {
 }
 
 #[test]
+fn sigterm_during_a_poll_stops_watch() {
+    let sandbox = Sandbox::new();
+    sandbox.gh.route_sleep("search prs", "[]", 30);
+    let started = std::time::Instant::now();
+    let child = spawn_watch(&sandbox);
+    while sandbox.gh.calls().is_empty() {
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(5),
+            "search did not start"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    kill_process(process::pid(child.id()), Signal::TERM).unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "watch did not stop during the poll"
+    );
+    assert!(output.status.success(), "{output:?}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("watch stopped (shutdown)"), "{stderr}");
+}
+
+#[test]
 fn sigterm_during_an_automatic_run_requeues_it() {
     stopped_automatic(Signal::TERM, false);
 }

@@ -7,6 +7,7 @@ use rusqlite::Transaction;
 mod rows;
 mod write;
 use rows::{consider, tracked};
+use write::{hold, release};
 
 struct When {
     now: i64,
@@ -53,6 +54,9 @@ pub(super) fn after_run(
     pid: u32,
     started: i64,
 ) -> rusqlite::Result<()> {
+    if !tracked(tx, target)? {
+        return Ok(());
+    }
     let head: Option<String> = tx.query_row(
         "SELECT head_sha FROM targets WHERE id = ?1",
         [target],
@@ -81,11 +85,15 @@ fn arm(
     head: Option<&str>,
     when: &When,
 ) -> rusqlite::Result<()> {
+    if draft {
+        return hold(tx, target, when);
+    }
     let Some(head) = head else {
         return Ok(());
     };
-    if draft || !tracked(tx, target)? {
+    if !tracked(tx, target)? {
         return Ok(());
     }
+    release(tx, target, when)?;
     consider(tx, target, head, when)
 }

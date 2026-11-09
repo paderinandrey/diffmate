@@ -21,8 +21,19 @@ pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
             return Ok(());
         }
         if now_ms() >= next_poll_at {
-            let polled =
-                poll::once(&deps.gh, store, config.settings.debounce(), &config.process).await;
+            let polled = tokio::select! {
+                biased;
+                _ = signals.next(StopReason::Shutdown) => {
+                    stopped();
+                    return Ok(());
+                }
+                result = poll::once(
+                    &deps.gh,
+                    store,
+                    config.settings.debounce(),
+                    &config.process,
+                ) => result,
+            };
             next_poll_at = now_ms().saturating_add(interval(config));
             if let Err(error) = polled {
                 events::print(&format!("poll failed: {error}"));

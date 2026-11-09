@@ -69,11 +69,11 @@ async fn schedule_after_run_holds_resets_or_blocks() {
     assert_eq!(queued.len(), 2);
     assert_eq!(queued[1].id, extra);
     assert_eq!(queued[1].next, None);
-    let retried = &fix.jobs(3).await[0];
-    assert_eq!(
-        (retried.id, retried.retry, retried.next),
-        (reset, 0, Some(62_000))
-    );
+    let retried = fix.jobs(3).await;
+    assert_eq!(retried.len(), 2);
+    assert_eq!(retried[0].state, "cancelled");
+    assert_eq!((retried[0].id, retried[0].retry), (reset, 1));
+    assert_eq!((retried[1].retry, retried[1].next), (0, Some(62_000)));
     assert_eq!(
         fix.target(3).await.unwrap().queued_head.as_deref(),
         Some("bbb")

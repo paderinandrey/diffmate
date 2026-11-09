@@ -29,6 +29,11 @@ impl FakeGh {
         self.add(prefix, stdout);
     }
 
+    pub fn route_sleep(&self, prefix: &str, stdout: &str, seconds: u64) {
+        let stem = self.add(prefix, stdout);
+        fs::write(stem.with_extension("sleep"), seconds.to_string()).unwrap();
+    }
+
     pub fn route_fail(&self, prefix: &str, stderr: &str, exit: i32) {
         let stem = self.add(prefix, "");
         fs::write(stem.with_extension("stderr"), stderr).unwrap();

@@ -1,5 +1,5 @@
 use super::When;
-use super::write::{insert, reset};
+use super::write::{cancel, insert, reset};
 use crate::store::{JobId, TargetId};
 use rusqlite::{OptionalExtension, Transaction, params};
 
@@ -18,12 +18,19 @@ pub(super) fn consider(
 ) -> rusqlite::Result<()> {
     if let Some(job) = live(tx, target)? {
         let blocked = job.running || job.next_at.is_none() || !job.automatic;
-        if !blocked && waiting(tx, target)?.as_deref() != Some(head) {
-            reset(tx, job.id, target, head, when)?;
+        if blocked || waiting(tx, target)?.as_deref() == Some(head) {
+            return Ok(());
         }
-        return Ok(());
+        if has_runs(tx, job.id)? {
+            cancel(tx, job.id, when)?;
+        } else if run_exists(tx, target, head)? || failed_attempt(tx, target, head)? {
+            cancel(tx, job.id, when)?;
+            return Ok(());
+        } else {
+            return reset(tx, job.id, target, head, when);
+        }
     }
-    if run_exists(tx, target, head)? {
+    if run_exists(tx, target, head)? || failed_attempt(tx, target, head)? {
         return Ok(());
     }
     insert(tx, target, head, when)
@@ -70,6 +77,24 @@ fn waiting(tx: &Transaction, target: TargetId) -> rusqlite::Result<Option<String
         |row| row.get(0),
     )
     .optional()
+}
+
+fn has_runs(tx: &Transaction, job: JobId) -> rusqlite::Result<bool> {
+    tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM runs WHERE job_id = ?1)",
+        [job],
+        |row| row.get(0),
+    )
+}
+
+fn failed_attempt(tx: &Transaction, target: TargetId, head: &str) -> rusqlite::Result<bool> {
+    tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM jobs WHERE target_id = ?1 AND kind = 'review'
+         AND origin = 'automatic' AND state = 'failed' AND head_sha = ?2
+         AND NOT EXISTS (SELECT 1 FROM runs WHERE job_id = jobs.id))",
+        params![target, head],
+        |row| row.get(0),
+    )
 }
 
 fn run_exists(tx: &Transaction, target: TargetId, head: &str) -> rusqlite::Result<bool> {

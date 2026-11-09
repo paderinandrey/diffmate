@@ -39,7 +39,8 @@ fn a_ready_request_becomes_one_automatic_run() {
         .into_iter()
         .find(|call| call.first().is_some_and(|arg| arg == "search"))
         .unwrap();
-    assert!(search.iter().any(|arg| arg == "--review-requested=@me"));
+    assert!(search.iter().any(|arg| arg == "user-review-requested:@me"));
+    assert!(search.iter().all(|arg| !arg.contains("review-requested=")));
     assert!(search.iter().any(|arg| arg == "--state=open"));
     assert!(search.iter().all(|arg| arg != "--draft"));
 }

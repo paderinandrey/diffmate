@@ -29,7 +29,7 @@ async fn a_new_head_is_armed_once_and_the_same_head_waits() {
 }
 
 #[tokio::test]
-async fn a_different_head_resets_the_waiting_job_and_its_budget() {
+async fn a_different_head_on_a_started_job_gets_its_own_attempt() {
     let fix = Fix::open().await;
     fix.seed(1, true, true).await;
     let job = fix.enqueue(1, true).await;
@@ -39,9 +39,18 @@ async fn a_different_head_resets_the_waiting_job_and_its_budget() {
     fix.poll(vec![seen(1, false, Some("bbb"))], vec![], 2_000, DEBOUNCE)
         .await;
     let jobs = fix.jobs(1).await;
-    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs.len(), 2);
     assert_eq!(jobs[0].id, job);
-    assert_eq!((jobs[0].retry, jobs[0].next), (0, Some(62_000)));
+    assert_eq!(jobs[0].state, "cancelled");
+    assert_eq!((jobs[0].retry, jobs[0].next), (1, Some(5_000)));
+    assert_eq!((jobs[1].retry, jobs[1].next), (0, Some(62_000)));
+    assert!(
+        fix.store
+            .retry_revision(jobs[1].id)
+            .await
+            .unwrap()
+            .is_none()
+    );
     let row = fix.target(1).await.unwrap();
     assert_eq!(row.queued_head.as_deref(), Some("bbb"));
     assert_eq!(
@@ -50,8 +59,12 @@ async fn a_different_head_resets_the_waiting_job_and_its_budget() {
     );
     fix.poll(vec![seen(1, false, Some("bbb"))], vec![], 3_000, DEBOUNCE)
         .await;
-    let held = &fix.jobs(1).await[0];
-    assert_eq!((held.id, held.retry, held.next), (job, 0, Some(62_000)));
+    let again = fix.jobs(1).await;
+    assert_eq!(again.len(), 2);
+    assert_eq!(
+        (again[1].id, again[1].retry, again[1].next),
+        (jobs[1].id, 0, Some(62_000))
+    );
 }
 
 #[tokio::test]

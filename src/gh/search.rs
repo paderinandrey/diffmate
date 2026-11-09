@@ -13,7 +13,7 @@ pub(super) fn search_args(limit: u32) -> [String; 8] {
     [
         "search".into(),
         "prs".into(),
-        "--review-requested=@me".into(),
+        "user-review-requested:@me".into(),
         "--state=open".into(),
         "--limit".into(),
         limit.to_string(),

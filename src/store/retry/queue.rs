@@ -12,7 +12,8 @@ impl Store {
             conn.query_row(
                 "SELECT j.id, j.target_id, j.origin, t.owner, t.repo, t.number FROM jobs j
              JOIN targets t ON t.id = j.target_id WHERE j.kind = 'review' AND j.state = 'queued'
-             AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?1) ORDER BY j.id LIMIT 1",
+             AND j.held = 0 AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?1)
+             ORDER BY j.id LIMIT 1",
                 [now],
                 |row| {
                     let number = row.get::<_, i64>(5)?;
@@ -45,7 +46,7 @@ impl Store {
         self.call(|conn| {
             conn.query_row(
                 "SELECT min(next_attempt_at) FROM jobs WHERE kind = 'review'
-             AND state = 'queued' AND next_attempt_at > ?1",
+             AND state = 'queued' AND held = 0 AND next_attempt_at > ?1",
                 [now_ms()],
                 |row| row.get(0),
             )
