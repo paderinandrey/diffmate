@@ -8,6 +8,11 @@ use crate::store::records::Revision;
 use std::fs;
 use tempfile::TempDir;
 
+mod budget;
+mod causes;
+mod fixture;
+mod orphan;
+
 fn revision() -> Revision {
     let sha = "a".repeat(40);
     Revision {
@@ -32,7 +37,18 @@ async fn a_running_run_and_job_are_failed_and_their_leftovers_removed() {
         pid: 1,
         started_at_ms: 0,
     };
-    let job = store.enqueue_review(&pr, &process).await.unwrap();
+    let job = store
+        .enqueue_review(
+            &pr,
+            &process,
+            crate::store::jobs::EnqueueRequest {
+                origin: crate::store::records::JobOrigin::Manual,
+                force: false,
+            },
+        )
+        .await
+        .unwrap()
+        .job;
     store.start_job(job.job_id).await.unwrap();
     let run = store.insert_running_run(&job, &revision()).await.unwrap();
     let clone = paths.repo_dir("o", "r");
@@ -42,10 +58,15 @@ async fn a_running_run_and_job_are_failed_and_their_leftovers_removed() {
     fs::create_dir_all(paths.runs_dir().join("notes")).unwrap();
     let git = FakeGit::default();
 
-    let report = recover(&paths, &store, &git).await.unwrap();
+    let report = recover(&paths, &store, &git, &crate::config::Settings::default())
+        .await
+        .unwrap();
 
-    assert_eq!(report.interrupted_runs, [run]);
-    assert_eq!(report.failed_jobs, [job.job_id]);
+    assert_eq!(report.runs, [(run, "interrupted: crash".into())]);
+    assert_eq!(
+        report.jobs,
+        [(job.job_id, "failed (interrupted: crash)".into())]
+    );
     assert_eq!(report.removed_run_dirs, [run, 77]);
     assert_eq!(report.warnings.len(), 1);
     assert!(report.warnings[0].contains("notes"));

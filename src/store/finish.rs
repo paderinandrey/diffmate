@@ -71,8 +71,9 @@ impl Store {
             for (n, finding) in (1_i64..).zip(&draft.findings) {
                 insert_finding(&tx, (run, draft_id, n), finding)?;
             }
-            let sql = "UPDATE jobs SET state = 'succeeded', updated_at = ?1 WHERE id = ?2";
-            tx.execute(sql, params![now, job])?;
+            let sql = "UPDATE jobs SET state = 'succeeded', updated_at = ?1, result_run_id = ?3
+                       WHERE id = ?2";
+            tx.execute(sql, params![now, job, run])?;
             tx.commit()
         })
         .await

@@ -63,6 +63,10 @@ impl FakeClaude {
         self.put("spawn_child", "");
     }
 
+    pub fn ignore_child_term(&self) {
+        self.put("ignore_child_term", "");
+    }
+
     pub fn calls(&self) -> Vec<FakeCall> {
         let calls = self.dir.join("calls");
         call_numbers(&calls)

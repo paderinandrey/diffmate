@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-08-nextest.toml -E 'test(a_run_over_the_timeout_is_failed_timeout)'",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"2ddd4b87-bd61-4b5a-b801-2a1d0dc23dc1\" timestamp=\"2026-11-03T16:53:30.467+03:00\" time=\"0.185\">\n    <testsuite name=\"diffmate::bin/diffmate\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout\" classname=\"diffmate::bin/diffmate\" timestamp=\"2026-11-03T16:53:30.469+03:00\" time=\"0.181\">\n            <failure message=\"thread &apos;runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout&apos; (40180308) panicked at src/runner/agent_run/tests.rs:32:5\" type=\"test failure with exit code 101\">thread &apos;runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout&apos; (40180308) panicked at src/runner/agent_run/tests.rs:32:5:\nrun must finish at the 60-second timeout\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout ... FAILED\n\nfailures:\n\nfailures:\n    runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 202 filtered out; finished in 0.03s\n\n</system-out>\n            <system-err>\nthread &apos;runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout&apos; (40180308) panicked at src/runner/agent_run/tests.rs:32:5:\nrun must finish at the 60-second timeout\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "runner::agent_run::tests::a_run_over_the_timeout_is_failed_timeout",
+  "targetFile": "src/runner/agent_run/tests.rs",
+  "expected": "the review completes at its 60-second deadline with failed timeout",
+  "actual": "the review remained pending until the 61-second test guard expired",
+  "semanticAssessment": "VALID_RED: the compiled tracer reached its planned completion assertion with a waiting fake agent",
+  "reportPath": "/private/tmp/diffmate-02-08-red.xml",
+  "runStartedAt": "2026-11-03T16:53:30.467+03:00",
+  "reportModifiedAt": "2026-11-03T13:53:30.653045+00:00"
+}

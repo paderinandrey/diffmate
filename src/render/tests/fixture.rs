@@ -29,8 +29,10 @@ pub fn succeeded(
     items: &[&str],
 ) -> ReviewResult {
     ReviewResult::Succeeded {
+        reused: false,
         run_id: 1,
         head_sha: HEAD.into(),
+        known_head: None,
         findings,
         limitation: limitation.map(Into::into),
         future_improvements: items.iter().map(|item| (*item).into()).collect(),

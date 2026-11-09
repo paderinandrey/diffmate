@@ -1,11 +1,29 @@
 use super::jobs::EnqueuedJob;
 use super::records::{Metrics, Revision};
+use super::retry::apply_job_next;
 use super::{JobId, RunId, Store, now_ms};
 use crate::agent::{FailureDetail, FailureKind};
+use crate::cancel::StopReason;
 use crate::error::Error;
+use crate::recovery::rules::JobNext;
 use rusqlite::{TransactionBehavior, params};
 
 impl Store {
+    pub async fn set_stop_reason_for_run(
+        &self,
+        run: RunId,
+        reason: StopReason,
+    ) -> Result<bool, Error> {
+        self.call(move |conn| {
+            let sql = "UPDATE jobs SET stop_reason = ?1, updated_at = ?2
+                       WHERE id = (SELECT job_id FROM runs WHERE id = ?3)
+                       AND stop_reason IS NULL";
+            conn.execute(sql, params![reason.as_str(), now_ms(), run])
+                .map(|changed| changed == 1)
+        })
+        .await
+    }
+
     pub async fn insert_running_run(
         &self,
         job: &EnqueuedJob,
@@ -27,30 +45,36 @@ impl Store {
         &self,
         run: RunId,
         job: JobId,
-        kind: FailureKind,
+        failure: (FailureKind, Option<StopReason>),
         detail: FailureDetail,
         metrics: Metrics,
+        next: &JobNext,
     ) -> Result<(), Error> {
+        let (kind, stop) = failure;
+        let next = next.clone();
         let detail = serde_json::to_string(&detail)?;
-        let reason = format!("run {run} failed ({})", kind.as_str());
+        let cause = stop.filter(|reason| {
+            matches!(kind, FailureKind::Interrupted)
+                && matches!(reason, StopReason::Shutdown | StopReason::UserCancel)
+        });
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let now = now_ms();
             tx.execute(
                 "UPDATE runs SET state = 'failed', failure_kind = ?1, failure_detail = ?2,
-                 total_cost_usd = ?3, duration_ms = ?4, finished_at = ?5 WHERE id = ?6",
+                 total_cost_usd = ?3, duration_ms = ?4, finished_at = ?5, interrupted_cause = ?7
+                 WHERE id = ?6",
                 params![
                     kind.as_str(),
                     detail,
                     metrics.total_cost_usd,
                     metrics.duration_ms,
                     now,
-                    run
+                    run,
+                    cause.map(StopReason::as_str)
                 ],
             )?;
-            let sql = "UPDATE jobs SET state = 'failed', failure_reason = ?1, updated_at = ?2
-                       WHERE id = ?3";
-            tx.execute(sql, params![reason, now, job])?;
+            apply_job_next(&tx, job, &next, now)?;
             tx.commit()
         })
         .await

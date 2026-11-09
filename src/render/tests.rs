@@ -1,8 +1,10 @@
 mod fixture;
+mod freshness;
+mod retry;
 mod sanitize;
 
 use crate::agent::{FailureKind, Severity};
-use crate::runner::ReviewResult;
+use crate::runner::{JobEnd, ReviewResult};
 use fixture::{finding, render, succeeded};
 
 #[test]
@@ -53,6 +55,7 @@ fn failures_never_claim_there_were_no_findings() {
         run_id: 1,
         kind: FailureKind::AgentError,
         message: "boom".into(),
+        job_end: JobEnd::Failed,
     };
     let job = ReviewResult::JobFailed {
         reason: "gh failed".into(),
@@ -62,11 +65,17 @@ fn failures_never_claim_there_were_no_findings() {
         (run, "failed (agent_error): boom"),
         (job, "failed (cli_error): gh failed"),
         (
-            ReviewResult::Cancelled { run_id: Some(1) },
+            ReviewResult::Cancelled {
+                run_id: Some(1),
+                job_end: JobEnd::Failed,
+            },
             "Run cancelled; recorded as interrupted",
         ),
         (
-            ReviewResult::Cancelled { run_id: None },
+            ReviewResult::Cancelled {
+                run_id: None,
+                job_end: JobEnd::Failed,
+            },
             "Cancelled before the run started; the job failed",
         ),
     ] {

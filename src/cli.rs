@@ -9,6 +9,27 @@ pub(crate) struct Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
-    Review { url: String },
+    Review {
+        url: String,
+        #[arg(long)]
+        force: bool,
+    },
     Status,
+    Watch,
+    #[command(hide = true)]
+    Debug {
+        #[command(subcommand)]
+        command: DebugCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DebugCommand {
+    Enqueue {
+        url: String,
+        #[arg(long)]
+        automatic: bool,
+        #[arg(long)]
+        force: bool,
+    },
 }

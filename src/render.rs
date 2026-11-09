@@ -4,7 +4,7 @@ mod sanitize;
 mod tests;
 
 use crate::pr_url::PrRef;
-use crate::runner::ReviewResult;
+use crate::runner::{JobEnd, ReviewResult};
 use findings::{findings, notes};
 use std::io::{self, Write};
 
@@ -20,6 +20,7 @@ pub(crate) fn review(
     match result {
         ReviewResult::Succeeded {
             head_sha,
+            known_head,
             findings: all,
             limitation,
             future_improvements,
@@ -31,7 +32,13 @@ pub(crate) fn review(
                 0 => "no_findings".to_string(),
                 count => format!("findings: {count}"),
             };
-            writeln!(out, "{label} at {head}: succeeded ({summary})")?;
+            write!(out, "{label} at {head}: succeeded ({summary})")?;
+            if let Some(known) = known_head.as_ref().filter(|known| *known != head_sha) {
+                let known = sanitize(known).replace(['\n', '\t'], " ");
+                let known: String = known.chars().take(12).collect();
+                write!(out, ", stale: PR head is now {known}")?;
+            }
+            writeln!(out)?;
             if !all.is_empty() || limitation.is_some() || !future_improvements.is_empty() {
                 writeln!(out)?;
             }
@@ -49,10 +56,21 @@ pub(crate) fn review(
         ReviewResult::JobFailed { reason } => {
             writeln!(err, "{label}: failed (cli_error): {}", sanitize(reason))
         }
-        ReviewResult::Cancelled { run_id: Some(_) } => {
+        ReviewResult::Cancelled {
+            job_end: JobEnd::Requeued { .. },
+            ..
+        } => {
+            writeln!(
+                err,
+                "{label}: Run cancelled; recorded as interrupted; the job is queued again"
+            )
+        }
+        ReviewResult::Cancelled {
+            run_id: Some(_), ..
+        } => {
             writeln!(err, "{label}: Run cancelled; recorded as interrupted")
         }
-        ReviewResult::Cancelled { run_id: None } => {
+        ReviewResult::Cancelled { run_id: None, .. } => {
             writeln!(
                 err,
                 "{label}: Cancelled before the run started; the job failed"

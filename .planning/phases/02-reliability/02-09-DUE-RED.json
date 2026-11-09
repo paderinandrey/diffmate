@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-09-nextest.toml -E test(an_attached_retry_waits_until_due_and_runs_only_its_job)",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"f3ccbceb-0c74-43ac-82dd-4efe8fad0309\" timestamp=\"2026-11-03T17:25:33.578+03:00\" time=\"4.520\">\n    <testsuite name=\"diffmate::rerun\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"delayed::an_attached_retry_waits_until_due_and_runs_only_its_job\" classname=\"diffmate::rerun\" timestamp=\"2026-11-03T17:25:33.579+03:00\" time=\"4.517\">\n            <failure message=\"thread &apos;delayed::an_attached_retry_waits_until_due_and_runs_only_its_job&apos; (40506701) panicked at tests/watch/helpers.rs:29:9\" type=\"test failure with exit code 101\">thread &apos;delayed::an_attached_retry_waits_until_due_and_runs_only_its_job&apos; (40506701) panicked at tests/watch/helpers.rs:29:9:\nassertion `left != right` failed: missing waiting: job 1 is not due: attached to job 1\n\n  left: 0\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest delayed::an_attached_retry_waits_until_due_and_runs_only_its_job ... FAILED\n\nfailures:\n\nfailures:\n    delayed::an_attached_retry_waits_until_due_and_runs_only_its_job\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 2 filtered out; finished in 4.41s\n\n</system-out>\n            <system-err>\nthread &apos;delayed::an_attached_retry_waits_until_due_and_runs_only_its_job&apos; (40506701) panicked at tests/watch/helpers.rs:29:9:\nassertion `left != right` failed: missing waiting: job 1 is not due: attached to job 1\n\n  left: 0\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "delayed::an_attached_retry_waits_until_due_and_runs_only_its_job",
+  "targetFile": "tests/rerun/delayed.rs",
+  "expected": "review waits for the automatic retry deadline before taking the lock or running the job",
+  "actual": "review attached then completed immediately without the required wait",
+  "semanticAssessment": "VALID_RED: the compiled black-box test observed EOF instead of the required not-due wait event",
+  "reportPath": "/private/tmp/diffmate-02-09-red.xml",
+  "runStartedAt": "2026-11-03T17:25:33.578+03:00",
+  "reportModifiedAt": "2026-11-03T14:25:38.099134+00:00"
+}

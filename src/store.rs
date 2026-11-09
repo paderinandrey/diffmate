@@ -1,15 +1,19 @@
 pub(crate) mod finish;
 pub(crate) mod jobs;
+mod migrate;
 pub(crate) mod previous;
 pub(crate) mod readonly;
 pub(crate) mod records;
 pub(crate) mod recovery;
+pub(crate) mod result;
+pub(crate) mod retry;
 pub(crate) mod runs;
 pub(crate) mod status;
+mod targets;
 
 use crate::error::Error;
 use crate::paths::{Paths, create_private_dir};
-use rusqlite::{Connection, TransactionBehavior};
+use rusqlite::Connection;
 use std::fs::OpenOptions;
 use std::os::unix::fs::OpenOptionsExt;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -29,20 +33,6 @@ pub(crate) struct Store {
     conn: Arc<Mutex<Connection>>,
 }
 
-fn migrate(conn: &mut Connection) -> Result<(), Error> {
-    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let version: i64 = tx.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    match version {
-        0 => {
-            tx.execute_batch(include_str!("store/schema.sql"))?;
-            tx.pragma_update(None, "user_version", 1)?;
-        }
-        1 => {}
-        newer => return Err(Error::SchemaVersion(newer)),
-    }
-    Ok(tx.commit()?)
-}
-
 impl Store {
     pub async fn open(paths: &Paths) -> Result<Store, Error> {
         let (dir, db) = (paths.state_dir().to_path_buf(), paths.db());
@@ -54,10 +44,10 @@ impl Store {
                 .open(&db)
                 .map_err(Error::io("create database file"))?;
             let mut conn = Connection::open(&db)?;
-            conn.pragma_update(None, "journal_mode", "WAL")?;
             conn.pragma_update(None, "foreign_keys", "ON")?;
             conn.busy_timeout(Duration::from_millis(5000))?;
-            migrate(&mut conn)?;
+            migrate::run(&mut conn, &db)?;
+            conn.pragma_update(None, "journal_mode", "WAL")?;
             Ok(Store {
                 conn: Arc::new(Mutex::new(conn)),
             })

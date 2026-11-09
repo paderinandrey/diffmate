@@ -22,8 +22,10 @@ for a in "$@"; do
   prev=$a
 done
 if [ -e "$S/spawn_child" ]; then
+  if [ -e "$S/ignore_child_term" ]; then trap '' TERM; fi
   sleep 300 </dev/null >/dev/null 2>&1 &
   echo $! > "$d/child.pid"
+  trap - TERM
 fi
 if [ -e "$S/hold_run" ] && [ "$(cat "$S/hold_run")" = "$r" ]; then
   echo started > "$S/started"

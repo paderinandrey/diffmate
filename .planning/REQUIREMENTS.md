@@ -39,18 +39,18 @@ Slice description: the first task is a spike, since the agent contract depends o
 Slice description: idempotent runs, crash recovery, freshness, timeouts, `--force`.
 
 - [ ] **REL-01**: Killing diffmate at any step and starting it again leaves no duplicate runs, no orphaned worktrees, and no stale worktree metadata, and interrupted runs show as `failed (interrupted: crash)`.
-- [ ] **REL-02**: Pushing to the PR during a run makes the draft stale.
-- [ ] **REL-03**: Advancing the base branch, without a push to the PR, does not make the draft stale.
-- [ ] **REL-04**: Running `review` twice on the same head reuses the run unless `--force` is given.
-- [ ] **REL-05**: An invalid `previous_finding_id` is nulled with a warning and the run still succeeds.
+- [x] **REL-02**: Pushing to the PR during a run makes the draft stale.
+- [x] **REL-03**: Advancing the base branch, without a push to the PR, does not make the draft stale.
+- [x] **REL-04**: Running `review` twice on the same head reuses the run unless `--force` is given.
+- [x] **REL-05**: An invalid `previous_finding_id` is nulled with a warning and the run still succeeds.
 - [ ] **REL-06**: A PR whose review crashes diffmate every time is retried only within the retry budget, across restarts, and then reported as failed.
 - [ ] **REL-07**: Recovery after a stop whose cause was stored but whose cleanup did not finish keeps the cause: `shutdown` re-queues an automatic job without using the budget, `user_cancel` ends the job without a retry.
-- [ ] **REL-08**: Stopping `watch` with SIGTERM during an automatic run records `failed (interrupted: shutdown)`, removes the worktree, and re-queues the job without using the retry budget.
-- [ ] **REL-09**: Ctrl-C on a `review` that acts as the runner stops and waits for the agent, records `failed (interrupted: user_cancel)` (never `agent_error`), leaves no agent or `rg` processes in its group, removes the worktree, and says so before exiting.
-- [ ] **REL-10**: Without `watch`, a `review` that attached to a `tui` re-run executes it, and does not start orphaned or automatic jobs.
-- [ ] **REL-11**: Two `review` commands for the same URL produce one run, a `review` started while a `tui` re-run is queued attaches to it, and `review --force` during a running non-forced job produces a second run.
-- [ ] **REL-12**: Run timeout (slice scope line "timeouts"; SPEC "Agent contract"): a run that exceeds the timeout, 15 minutes by default, is recorded as `failed (timeout)`, and its agent process group is stopped with SIGTERM then SIGKILL after a bounded wait.
-- [ ] **REL-13**: Configuration (SPEC "Configuration", needed from this slice on): `~/.config/diffmate/config.toml` is read with the SPEC defaults when absent or partial; this slice honors the run timeout and `max_retries` (default 2).
+- [x] **REL-08**: Stopping `watch` with SIGTERM during an automatic run records `failed (interrupted: shutdown)`, removes the worktree, and re-queues the job without using the retry budget.
+- [x] **REL-09**: Ctrl-C on a `review` that acts as the runner stops and waits for the agent, records `failed (interrupted: user_cancel)` (never `agent_error`), leaves no agent or `rg` processes in its group, removes the worktree, and says so before exiting.
+- [x] **REL-10**: Without `watch`, a `review` that attached to a `tui` re-run executes it, and does not start orphaned or automatic jobs.
+- [x] **REL-11**: Two `review` commands for the same URL produce one run, a `review` started while a `tui` re-run is queued attaches to it, and `review --force` during a running non-forced job produces a second run.
+- [x] **REL-12**: Run timeout (slice scope line "timeouts"; SPEC "Agent contract"): a run that exceeds the timeout, 15 minutes by default, is recorded as `failed (timeout)`, and its agent process group is stopped with SIGTERM then SIGKILL after a bounded wait.
+- [x] **REL-13**: Configuration (SPEC "Configuration", needed from this slice on): `~/.config/diffmate/config.toml` is read with the SPEC defaults when absent or partial; this slice honors the run timeout and `max_retries` (default 2).
 
 ### Queue (QUE) - Phase 3
 
@@ -155,18 +155,18 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REV-11 | Phase 1 | Complete |
 | REV-12 | Phase 1 | Complete |
 | REL-01 | Phase 2 | Pending |
-| REL-02 | Phase 2 | Pending |
-| REL-03 | Phase 2 | Pending |
-| REL-04 | Phase 2 | Pending |
-| REL-05 | Phase 2 | Pending |
+| REL-02 | Phase 2 | Complete |
+| REL-03 | Phase 2 | Complete |
+| REL-04 | Phase 2 | Complete |
+| REL-05 | Phase 2 | Complete |
 | REL-06 | Phase 2 | Pending |
 | REL-07 | Phase 2 | Pending |
-| REL-08 | Phase 2 | Pending |
-| REL-09 | Phase 2 | Pending |
-| REL-10 | Phase 2 | Pending |
-| REL-11 | Phase 2 | Pending |
-| REL-12 | Phase 2 | Pending |
-| REL-13 | Phase 2 | Pending |
+| REL-08 | Phase 2 | Complete |
+| REL-09 | Phase 2 | Complete |
+| REL-10 | Phase 2 | Complete |
+| REL-11 | Phase 2 | Complete |
+| REL-12 | Phase 2 | Complete |
+| REL-13 | Phase 2 | Complete |
 | QUE-01 | Phase 3 | Pending |
 | QUE-02 | Phase 3 | Pending |
 | QUE-03 | Phase 3 | Pending |

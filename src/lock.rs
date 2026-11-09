@@ -1,16 +1,19 @@
+mod role;
 #[cfg(test)]
 mod tests;
+pub(crate) use role::{Role, holder};
 
 use crate::error::Error;
 use std::fs::{File, OpenOptions, TryLockError};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 pub(crate) const LOCK_POLL: Duration = Duration::from_millis(500);
 
 pub(crate) struct RunnerLock {
-    _file: File,
+    file: Arc<File>,
 }
 
 pub(crate) async fn try_acquire(path: &Path) -> Result<Option<RunnerLock>, Error> {
@@ -22,7 +25,9 @@ pub(crate) async fn try_acquire(path: &Path) -> Result<Option<RunnerLock>, Error
             .open(&path)
             .map_err(Error::io("open the runner lock"))?;
         match file.try_lock() {
-            Ok(()) => Ok(Some(RunnerLock { _file: file })),
+            Ok(()) => Ok(Some(RunnerLock {
+                file: Arc::new(file),
+            })),
             Err(TryLockError::WouldBlock) => Ok(None),
             Err(TryLockError::Error(error)) => Err(Error::io("take the runner lock")(error)),
         }
@@ -30,6 +35,7 @@ pub(crate) async fn try_acquire(path: &Path) -> Result<Option<RunnerLock>, Error
     .await?
 }
 
+#[cfg(test)]
 pub(crate) async fn acquire(
     path: &Path,
     poll: Duration,

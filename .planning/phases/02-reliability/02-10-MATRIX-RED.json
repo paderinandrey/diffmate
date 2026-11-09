@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-10-nextest.toml -E 'binary(crash) & test(matrix::enqueued)'",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"b6ec2be9-46c8-4586-be1e-77e8624bf849\" timestamp=\"2026-11-03T17:46:34.456+03:00\" time=\"3.541\">\n    <testsuite name=\"diffmate::crash\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"matrix::enqueued\" classname=\"diffmate::crash\" timestamp=\"2026-11-03T17:46:34.458+03:00\" time=\"3.539\">\n            <failure message=\"thread &apos;matrix::enqueued&apos; (40704627) panicked at tests/crash/helpers.rs:27:13\" type=\"test failure with exit code 101\">thread &apos;matrix::enqueued&apos; (40704627) panicked at tests/crash/helpers.rs:27:13:\nmissing crash point reached: enqueued; exited exit status: 0: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest matrix::enqueued ... FAILED\n\nfailures:\n\nfailures:\n    matrix::enqueued\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 15 filtered out; finished in 3.43s\n\n</system-out>\n            <system-err>\nthread &apos;matrix::enqueued&apos; (40704627) panicked at tests/crash/helpers.rs:27:13:\nmissing crash point reached: enqueued; exited exit status: 0: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "matrix::enqueued",
+  "targetFile": "tests/crash/matrix.rs",
+  "expected": "The process announces enqueued before taking the runner lock",
+  "actual": "The command completed without the enqueued point",
+  "semanticAssessment": "VALID_RED: compiled matrix case reached its missing crash-point assertion after a successful review",
+  "reportPath": "/private/tmp/diffmate-02-10-red.xml",
+  "runStartedAt": "2026-11-03T17:46:34.456+03:00",
+  "reportModifiedAt": "2026-11-03T17:46:37+0300"
+}

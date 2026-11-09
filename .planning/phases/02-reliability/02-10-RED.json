@@ -1,0 +1,13 @@
+{
+  "command": "NEXTEST_TEST_THREADS=2 mise run --force test -- --config-file /private/tmp/diffmate-02-10-nextest.toml -E 'test(killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree)'",
+  "exitCode": 100,
+  "output": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<testsuites name=\"nextest-run\" tests=\"1\" skipped=\"0\" failures=\"1\" errors=\"0\" uuid=\"803770f2-5258-4827-84fb-a9a69761aa83\" timestamp=\"2026-11-03T17:38:42.690+03:00\" time=\"4.083\">\n    <testsuite name=\"diffmate::crash\" tests=\"1\" skipped=\"0\" errors=\"0\" failures=\"1\">\n        <testcase name=\"killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree\" classname=\"diffmate::crash\" timestamp=\"2026-11-03T17:38:42.692+03:00\" time=\"4.079\">\n            <failure message=\"thread &apos;killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree&apos; (40626685) panicked at tests/crash/helpers.rs:23:13\" type=\"test failure with exit code 101\">thread &apos;killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree&apos; (40626685) panicked at tests/crash/helpers.rs:23:13:\nmissing crash point reached: agent-running; exited exit status: 0: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace</failure>\n            <system-out>\nrunning 1 test\ntest killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree ... FAILED\n\nfailures:\n\nfailures:\n    killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.97s\n\n</system-out>\n            <system-err>\nthread &apos;killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree&apos; (40626685) panicked at tests/crash/helpers.rs:23:13:\nmissing crash point reached: agent-running; exited exit status: 0: \nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n</system-err>\n        </testcase>\n    </testsuite>\n</testsuites>\n",
+  "targetTest": "killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree",
+  "targetFile": "tests/crash.rs",
+  "expected": "The feature build announces agent-running and waits until SIGKILL",
+  "actual": "The process exited successfully without reaching the crash point",
+  "semanticAssessment": "VALID_RED: the compiled black-box tracer completes the review and fails the assertion because agent-running was never announced",
+  "reportPath": "/private/tmp/diffmate-02-10-red.xml",
+  "runStartedAt": "2026-11-03T17:38:42.690+03:00",
+  "reportModifiedAt": "2026-11-03T17:38:46+0300"
+}

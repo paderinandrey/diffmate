@@ -35,6 +35,35 @@ impl FakeGh {
         fs::write(stem.with_extension("exit"), exit.to_string()).unwrap();
     }
 
+    pub fn replace_route(&self, prefix: &str, stdout: &str) {
+        let stem = self.find_route(prefix);
+        fs::write(&stem, format!("{prefix}\n{stdout}")).unwrap();
+        for extension in ["stderr", "exit"] {
+            let path = stem.with_extension(extension);
+            if path.exists() {
+                fs::remove_file(path).unwrap();
+            }
+        }
+    }
+
+    pub fn replace_route_fail(&self, prefix: &str, stderr: &str, exit: i32) {
+        self.replace_route(prefix, "");
+        let stem = self.find_route(prefix);
+        fs::write(stem.with_extension("stderr"), stderr).unwrap();
+        fs::write(stem.with_extension("exit"), exit.to_string()).unwrap();
+    }
+
+    fn find_route(&self, prefix: &str) -> PathBuf {
+        fs::read_dir(self.dir.join("routes"))
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .find(|path| {
+                path.extension().is_some_and(|ext| ext == "route")
+                    && fs::read_to_string(path).unwrap().lines().next() == Some(prefix)
+            })
+            .unwrap_or_else(|| panic!("no route for {prefix}"))
+    }
+
     pub fn calls(&self) -> Vec<Vec<String>> {
         let calls = self.dir.join("calls");
         call_numbers(&calls)

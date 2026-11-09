@@ -1,4 +1,5 @@
 use super::Store;
+use super::migrate::SCHEMA_VERSION;
 use crate::error::Error;
 use crate::paths::Paths;
 use rusqlite::{Connection, OpenFlags};
@@ -18,9 +19,10 @@ impl Store {
             let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
             match version {
                 0 => Ok(None),
-                1 => Ok(Some(Store {
+                SCHEMA_VERSION => Ok(Some(Store {
                     conn: Arc::new(Mutex::new(conn)),
                 })),
+                1 => Err(Error::SchemaOutdated(1)),
                 newer => Err(Error::SchemaVersion(newer)),
             }
         })

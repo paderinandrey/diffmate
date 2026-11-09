@@ -1,6 +1,19 @@
-use super::raced;
+use super::{StopReason, raced};
 use std::future::pending;
 use tokio::sync::watch;
+
+#[test]
+fn stop_reasons_round_trip_and_unknown_causes_are_rejected() {
+    for reason in [
+        StopReason::Timeout,
+        StopReason::Shutdown,
+        StopReason::UserCancel,
+    ] {
+        assert_eq!(StopReason::parse(reason.as_str()), Some(reason));
+    }
+    assert_eq!(StopReason::parse("crash"), None);
+    assert_eq!(StopReason::parse(""), None);
+}
 
 #[tokio::test]
 async fn work_completes_while_nothing_is_cancelled() {

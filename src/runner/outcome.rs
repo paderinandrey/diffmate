@@ -1,28 +1,26 @@
 use super::{ReviewResult, job_failed};
-use crate::agent::{AgentOutcome, FailureDetail, FailureKind, ReviewOutput};
+use crate::agent::{AgentOutcome, FailureDetail, FailureKind};
+use crate::cancel::StopReason;
+use crate::config::Settings;
+use crate::error::Error;
 use crate::normalize::Normalized;
+use crate::recovery::rules::{Failure, JobNext, after_failure};
 use crate::store::jobs::EnqueuedJob;
-use crate::store::records::{DraftRecord, FindingRecord, Metrics, Revision};
+use crate::store::records::Revision;
 use crate::store::{RunId, Store};
+use failed::failed;
 
-fn draft_record(
-    output: ReviewOutput,
-    raw: serde_json::Value,
-    findings: Vec<FindingRecord>,
-) -> DraftRecord {
-    DraftRecord {
-        original_output: raw,
-        limitation: output.limitation,
-        future_improvements: output.future_improvements,
-        findings,
-    }
-}
+mod failed;
+mod succeeded;
+#[cfg(test)]
+mod tests;
 
 pub(super) async fn store(
     store: &Store,
-    (job, run, revision): (&EnqueuedJob, RunId, &Revision),
+    (job, run, _revision): (&EnqueuedJob, RunId, &Revision),
     (outcome, normalized): (AgentOutcome, Normalized),
     cleanup_warnings: Vec<String>,
+    settings: &Settings,
 ) -> ReviewResult {
     match outcome {
         AgentOutcome::Succeeded {
@@ -30,35 +28,38 @@ pub(super) async fn store(
             raw,
             metrics,
         } => {
-            let mut warnings = normalized.warnings;
-            warnings.extend(cleanup_warnings);
-            let draft = draft_record(output, raw, normalized.findings);
-            let result = ReviewResult::Succeeded {
-                run_id: run,
-                head_sha: revision.head_sha.clone(),
-                findings: draft.findings.clone(),
-                limitation: draft.limitation.clone(),
-                future_improvements: draft.future_improvements.clone(),
-                warnings: warnings.clone(),
-            };
-            match store
-                .finish_succeeded(run, job.job_id, draft, warnings, metrics)
-                .await
-            {
-                Ok(()) => result,
-                Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
-            }
+            succeeded::store(
+                store,
+                (job, run),
+                (output, raw, metrics),
+                normalized,
+                cleanup_warnings,
+            )
+            .await
         }
         AgentOutcome::Cancelled { metrics } => {
+            let stop = store.stop_reason(job.job_id).await.unwrap_or(None);
+            let (kind, message) = match stop {
+                Some(StopReason::Timeout) => {
+                    (FailureKind::Timeout, "stopped by the run timeout".into())
+                }
+                Some(cause) => (
+                    FailureKind::Interrupted,
+                    format!("stopped: interrupted ({})", cause.as_str()),
+                ),
+                None => (FailureKind::Interrupted, "interrupted by signal".into()),
+            };
             let detail = FailureDetail {
-                message: "interrupted by signal".into(),
+                message,
                 ..FailureDetail::default()
             };
             failed(
                 store,
                 (job, run),
-                (FailureKind::Interrupted, detail, metrics),
+                (kind, detail, metrics),
+                stop,
                 cleanup_warnings,
+                settings,
             )
             .await
         }
@@ -66,32 +67,32 @@ pub(super) async fn store(
             kind,
             detail,
             metrics,
-        } => failed(store, (job, run), (kind, detail, metrics), cleanup_warnings).await,
+        } => {
+            failed(
+                store,
+                (job, run),
+                (kind, detail, metrics),
+                None,
+                cleanup_warnings,
+                settings,
+            )
+            .await
+        }
     }
 }
 
-async fn failed(
+pub(super) async fn next(
     store: &Store,
-    (job, run): (&EnqueuedJob, RunId),
-    (kind, detail, metrics): (FailureKind, FailureDetail, Metrics),
-    cleanup_warnings: Vec<String>,
-) -> ReviewResult {
-    let mut message = detail.message.clone();
-    for warning in cleanup_warnings {
-        message = format!("{message}; {warning}");
-    }
-    match store
-        .finish_failed(run, job.job_id, kind, detail, metrics)
-        .await
-    {
-        Ok(()) if matches!(kind, FailureKind::Interrupted) => {
-            ReviewResult::Cancelled { run_id: Some(run) }
-        }
-        Ok(()) => ReviewResult::RunFailed {
-            run_id: run,
-            kind,
-            message,
-        },
-        Err(error) => job_failed(store, job, format!("storing run {run}: {error}")).await,
-    }
+    job: &EnqueuedJob,
+    failure: &Failure,
+    settings: &Settings,
+) -> Result<JobNext, Error> {
+    let (origin, state) = store.job_retry_state(job.job_id).await?;
+    Ok(after_failure(
+        origin,
+        failure,
+        state,
+        settings.max_retries(),
+        crate::store::now_ms(),
+    ))
 }

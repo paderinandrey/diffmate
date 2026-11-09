@@ -42,6 +42,8 @@ pub(super) fn live_config(root: &Path) -> AppConfig {
             pid: std::process::id(),
             started_at_ms: now_ms(),
         },
+        config_file: root.join("config.toml"),
+        settings: crate::config::Settings::default(),
     }
 }
 
@@ -54,7 +56,7 @@ pub(super) async fn review_url(url: &str) -> StoredRun {
     let guard = RealStateGuard::new();
     let dir = tempfile::tempdir().unwrap();
     let config = live_config(dir.path());
-    let code = crate::review::run(&config, url).await;
+    let code = crate::review::run(&config, url, true).await;
     let run = latest_run(&config.paths.db());
     println!("{url}: exit {code:?}\n{}", run.describe());
     guard.assert_untouched();

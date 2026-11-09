@@ -301,7 +301,7 @@ The steps below are the `publish` job. The publication, with its ID, was created
 
 ## Configuration
 
-`~/.config/diffmate/config.toml`: poll interval, debounce, run timeout, `max_retries`.
+`~/.config/diffmate/config.toml`: poll interval (default 60 seconds), debounce, run timeout, `max_retries`.
 
 ## Delivery slices
 

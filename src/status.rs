@@ -1,12 +1,28 @@
 use crate::app::AppConfig;
 use crate::error::Error;
+use crate::gh::{Gh, GhCli};
 use crate::render::sanitize;
-use crate::store::Store;
+use crate::store::status::TargetStatus;
+use crate::store::{Store, now_ms};
+use freshness::LiveHead;
 use std::process::ExitCode;
 
-fn line(parts: [&str; 3]) -> String {
+mod budget;
+mod freshness;
+#[cfg(test)]
+mod tests;
+mod when;
+
+fn line<const N: usize>(parts: [&str; N]) -> String {
     let clean = parts.map(|part| sanitize(part).replace(['\n', '\t'], " "));
     clean.join("  ")
+}
+
+fn latest(target: &TargetStatus, now_ms: i64) -> String {
+    match budget::describe(&target.retry, now_ms) {
+        Some(retry) => format!("{}; {retry}", target.latest),
+        None => target.latest.clone(),
+    }
 }
 
 async fn lines(config: &AppConfig) -> Result<Vec<String>, Error> {
@@ -17,10 +33,31 @@ async fn lines(config: &AppConfig) -> Result<Vec<String>, Error> {
     if targets.is_empty() {
         return Ok(vec!["No targets.".to_string()]);
     }
-    let rows = targets.iter();
-    Ok(rows
-        .map(|t| line([&t.label, &t.tracking, &t.latest]))
-        .collect())
+    let gh = GhCli::new(&config.env);
+    let mut rows = Vec::with_capacity(targets.len());
+    for target in targets {
+        let mut row = line([&target.label, &target.tracking, &latest(&target, now_ms())]);
+        if let Some(draft) = &target.draft_head {
+            let live = match gh.pr_view(&target.pr).await {
+                Ok(meta) => LiveHead::Fetched(meta.head_sha),
+                Err(error) => {
+                    let warning = format!(
+                        "warning: live head check for {} failed: {error}",
+                        target.label
+                    );
+                    eprintln!("{}", line([&warning]));
+                    LiveHead::Failed
+                }
+            };
+            let known = target
+                .known_head
+                .as_ref()
+                .map(|(head, time)| (head.as_str(), *time));
+            row = line([&row, &freshness::describe(draft, &live, known, now_ms())]);
+        }
+        rows.push(row);
+    }
+    Ok(rows)
 }
 
 pub(crate) async fn run(config: &AppConfig) -> ExitCode {
