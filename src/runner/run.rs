@@ -1,4 +1,4 @@
-use super::{Deps, ReviewResult, agent_run, cleanup, job_failed, outcome};
+use super::{Deps, Follow, ReviewResult, agent_run, cleanup, job_failed, outcome};
 use crate::agent::{Agent, AgentOutcome};
 use crate::cancel::{self, CancelRx};
 use crate::crash::crash_point;
@@ -7,7 +7,7 @@ use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
-use crate::store::{Store, jobs::EnqueuedJob, records::Revision};
+use crate::store::{Store, jobs::EnqueuedJob, now_ms, records::Revision};
 
 pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
     paths: &Paths,
@@ -29,11 +29,18 @@ pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
     let mut warnings = std::mem::take(&mut prepared.warnings);
     warnings.extend(cleanup::run(&deps.git, paths, &repo, run).await);
     crash_point!("cleaned");
+    let mut follow = Follow::Schedule;
     if matches!(outcome, AgentOutcome::Succeeded { .. }) {
         let mut stop = cancel.clone();
         match cancel::raced(&mut stop, deps.gh.pr_view(pr)).await {
             Some(Ok(latest)) => {
                 if let Err(error) = store.set_known_head(job.target_id, &latest.head_sha).await {
+                    return job_failed(store, job, error.to_string()).await;
+                }
+                follow = observed(&latest);
+                if follow == Follow::Stop
+                    && let Err(error) = store.close_tracked(job.target_id, now_ms()).await
+                {
                     return job_failed(store, job, error.to_string()).await;
                 }
             }
@@ -53,12 +60,30 @@ pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
         }
         AgentOutcome::Failed { .. } | AgentOutcome::Cancelled { .. } => Normalized::default(),
     };
-    outcome::store(
+    let mut result = outcome::store(
         store,
         (job, run, revision),
         (outcome, normalized),
         warnings,
         &deps.settings,
     )
-    .await
+    .await;
+    if let ReviewResult::Succeeded { follow: slot, .. } = &mut result {
+        *slot = follow;
+    }
+    result
+}
+
+fn observed(meta: &PrMeta) -> Follow {
+    if closed(&meta.state) {
+        Follow::Stop
+    } else if meta.is_draft {
+        Follow::Hold
+    } else {
+        Follow::Schedule
+    }
+}
+
+fn closed(state: &str) -> bool {
+    state.eq_ignore_ascii_case("closed") || state.eq_ignore_ascii_case("merged")
 }

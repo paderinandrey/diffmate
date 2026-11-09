@@ -5,16 +5,17 @@ use std::io;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
-pub(super) fn create(db: &Path) -> Result<(), Error> {
-    let backup = db.with_file_name("diffmate.db.v1-backup");
+pub(super) fn create(db: &Path, version: i64) -> Result<(), Error> {
+    let name = format!("diffmate.db.v{version}-backup");
+    let backup = db.with_file_name(&name);
     let exists = backup
         .try_exists()
         .map_err(Error::io("check database backup"))?;
     if exists {
-        validate(&backup)?;
+        validate(&backup, version)?;
         sync(&backup)?;
     }
-    let temporary = db.with_file_name("diffmate.db.v1-backup.tmp");
+    let temporary = db.with_file_name(format!("{name}.tmp"));
     match fs::remove_file(&temporary) {
         Ok(()) => {}
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -35,7 +36,7 @@ pub(super) fn create(db: &Path) -> Result<(), Error> {
     })?;
     let source = Connection::open_with_flags(db, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     source.execute("VACUUM INTO ?1", [destination])?;
-    validate(&temporary)?;
+    validate(&temporary, version)?;
     file.sync_all().map_err(Error::io("sync database backup"))?;
     fs::hard_link(&temporary, &backup).map_err(Error::io("publish database backup"))?;
     sync(&backup)?;
@@ -57,15 +58,15 @@ fn sync(path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-fn validate(path: &Path) -> Result<(), Error> {
+fn validate(path: &Path, expected: i64) -> Result<(), Error> {
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     let check: String = conn.pragma_query_value(None, "quick_check", |row| row.get(0))?;
-    if version != 1 || check != "ok" {
+    if version != expected || check != "ok" {
         return Err(Error::Backup {
             path: path.to_path_buf(),
             detail: format!(
-                "expected a valid version 1 database; version {version}, check {check}"
+                "expected a valid version {expected} database; version {version}, check {check}"
             ),
         });
     }

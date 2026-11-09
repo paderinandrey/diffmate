@@ -3,7 +3,7 @@ use crate::agent::{FailureDetail, FailureKind};
 use crate::cancel::StopReason;
 use crate::config::Settings;
 use crate::crash::crash_point;
-use crate::recovery::rules::Failure;
+use crate::recovery::rules::{Failure, is_transient};
 use crate::runner::JobEnd;
 use crate::store::jobs::EnqueuedJob;
 use crate::store::records::Metrics;
@@ -20,6 +20,7 @@ pub(super) async fn failed(
     let failure = match kind {
         FailureKind::Timeout => Failure::Timeout,
         FailureKind::Interrupted => Failure::from_stop(stop),
+        FailureKind::AgentError if is_transient(&detail) => Failure::TransientAgent,
         other => Failure::Terminal(other),
     };
     let next = match super::next(store, job, &failure, settings).await {

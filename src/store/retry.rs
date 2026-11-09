@@ -12,6 +12,7 @@ mod tests;
 pub(crate) struct QueuedJob {
     pub job: super::jobs::EnqueuedJob,
     pub pr: crate::pr_url::PrRef,
+    pub origin: JobOrigin,
 }
 
 pub(super) fn apply_job_next(

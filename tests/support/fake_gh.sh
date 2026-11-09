@@ -8,6 +8,7 @@ for r in "$S"/routes/*.route; do
   prefix=$(head -n 1 "$r")
   case "$*" in
     "$prefix"*)
+      if [ -f "${r%.route}.hold" ]; then echo started > "$S/started"; read -r _ < "$S/release"; fi
       tail -n +2 "$r"
       if [ -f "${r%.route}.stderr" ]; then cat "${r%.route}.stderr" >&2; fi
       if [ -f "${r%.route}.exit" ]; then exit "$(cat "${r%.route}.exit")"; fi

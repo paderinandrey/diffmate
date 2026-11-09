@@ -1,6 +1,7 @@
 pub(crate) mod finish;
 pub(crate) mod jobs;
 mod migrate;
+pub(crate) mod poll;
 pub(crate) mod previous;
 pub(crate) mod readonly;
 pub(crate) mod records;

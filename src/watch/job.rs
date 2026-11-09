@@ -1,0 +1,86 @@
+use super::events;
+use crate::agent::Agent;
+use crate::app::AppConfig;
+use crate::cancel::StopReason;
+use crate::error::Error;
+use crate::gh::Gh;
+use crate::git::Git;
+use crate::notify;
+use crate::review::signals::{self, Signals};
+use crate::runner::{self, Deps, Follow, ReviewResult};
+use crate::store::records::JobOrigin;
+use crate::store::{Store, now_ms, retry::QueuedJob};
+use tokio::sync::watch;
+
+pub(super) async fn run<G: Git, H: Gh, A: Agent>(
+    config: &AppConfig,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+    signals: &mut Signals,
+    queued: &QueuedJob,
+) -> Result<bool, Error> {
+    let prefix = format!("job {} review {}", queued.job.job_id, queued.pr.label());
+    events::print(&format!("{prefix} started"));
+    let (stop, cancel) = watch::channel(false);
+    let review =
+        runner::execute_review_job(&config.paths, store, deps, &queued.pr, &queued.job, &cancel);
+    let result = signals::until_done(
+        stop,
+        review,
+        store,
+        queued.job.job_id,
+        StopReason::Shutdown,
+        signals,
+    )
+    .await?;
+    follow(config, store, queued, &result).await?;
+    events::print(&format!("{prefix} {}", events::outcome(&result)));
+    announce(store, queued, &result).await?;
+    let halt = *cancel.borrow();
+    if halt {
+        super::run::stopped();
+    }
+    Ok(halt)
+}
+
+async fn announce(store: &Store, queued: &QueuedJob, result: &ReviewResult) -> Result<(), Error> {
+    let notice = notify::for_result(
+        store,
+        queued.job.job_id,
+        queued.origin,
+        result,
+        &queued.pr.label(),
+    )
+    .await?;
+    let Some(notice) = notice else {
+        return Ok(());
+    };
+    if let Err(error) = notify::deliver(&notice).await {
+        events::print(&format!("notification-failed: {error}"));
+    }
+    Ok(())
+}
+
+async fn follow(
+    config: &AppConfig,
+    store: &Store,
+    queued: &QueuedJob,
+    result: &ReviewResult,
+) -> Result<(), Error> {
+    let ReviewResult::Succeeded { follow, .. } = result else {
+        return Ok(());
+    };
+    if queued.origin != JobOrigin::Automatic || *follow == Follow::Stop {
+        return Ok(());
+    }
+    let debounce = i64::try_from(config.settings.debounce().as_millis()).unwrap_or(i64::MAX);
+    store
+        .schedule_after_run(
+            queued.job.target_id,
+            now_ms(),
+            debounce,
+            &config.process,
+            *follow == Follow::Hold,
+        )
+        .await
+}

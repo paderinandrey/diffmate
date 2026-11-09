@@ -63,6 +63,7 @@ fn successful_events_count_findings_without_printing_them_and_identify_reuse() {
         limitation: None,
         future_improvements: vec![],
         warnings: vec![],
+        follow: crate::runner::Follow::Schedule,
     };
     assert_eq!(outcome(&result), "succeeded (findings: 1)");
     if let ReviewResult::Succeeded { reused, .. } = &mut result {

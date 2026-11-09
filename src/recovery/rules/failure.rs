@@ -6,6 +6,7 @@ pub(crate) enum Failure {
     Shutdown,
     UserCancel,
     Crash,
+    TransientAgent,
     Terminal(FailureKind),
 }
 
@@ -25,6 +26,7 @@ impl Failure {
             Self::Shutdown => "interrupted: shutdown",
             Self::UserCancel => "interrupted: user_cancel",
             Self::Crash => "interrupted: crash",
+            Self::TransientAgent => "agent_error",
             Self::Terminal(kind) => kind.as_str(),
         }
     }

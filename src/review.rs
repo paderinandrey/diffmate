@@ -5,10 +5,11 @@ use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::GhCli;
 use crate::git::GitCli;
+use crate::notify;
 use crate::pr_url::{self, PrRef};
 use crate::render;
-use crate::runner::{self, Deps};
-use crate::store::Store;
+use crate::runner::{self, Deps, ReviewResult};
+use crate::store::{JobId, Store};
 use std::process::ExitCode;
 use tokio::sync::watch;
 
@@ -81,12 +82,32 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
             &mut signals,
         )
         .await?;
+        let code = print::result(pr, &result)?;
+        notify_result(&store, job.job_id, pr, &result).await?;
         if follow::again(&result, *cancel.borrow()) {
-            print::result(pr, &result)?;
             drop(lock);
             continue;
         }
         drop(lock);
-        return print::result(pr, &result);
+        return Ok(code);
     }
+}
+
+async fn notify_result(
+    store: &Store,
+    job: JobId,
+    pr: &PrRef,
+    result: &ReviewResult,
+) -> Result<(), Error> {
+    let (origin, _) = store.job_retry_state(job).await?;
+    let Some(notice) = notify::for_result(store, job, origin, result, &pr.label()).await? else {
+        return Ok(());
+    };
+    if let Err(error) = notify::deliver(&notice).await {
+        eprintln!(
+            "notification-failed: {}",
+            render::sanitize(&error.to_string())
+        );
+    }
+    Ok(())
 }

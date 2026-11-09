@@ -34,6 +34,14 @@ impl Settings {
     pub fn max_retries(&self) -> u32 {
         self.max_retries
     }
+
+    pub fn poll_interval(&self) -> Duration {
+        Duration::from_secs(self.poll_interval_seconds)
+    }
+
+    pub fn debounce(&self) -> Duration {
+        Duration::from_secs(self.debounce_seconds)
+    }
 }
 
 pub(crate) fn load(path: &Path) -> Result<Settings, ConfigError> {

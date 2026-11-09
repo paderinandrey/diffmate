@@ -140,7 +140,26 @@ Plans:
   - SPEC.md does not fix the macOS notification mechanism. Pick it in planning, with the latest stable version of whatever it uses. Candidate research item.
   - `config.toml` gains the poll interval and `debounce` (QUE-11).
 
-**Plans**: TBD
+**Plans:** 8 plans
+
+Plans:
+**Wave 1**
+- [x] 03-01-PLAN.md — Schema v3 and the version 2 backup
+- [x] 03-08-PLAN.md — Transient agent_error uses the existing retry budget (QUE-08)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 03-02-PLAN.md — Paged `gh search prs` for direct review requests, drafts included (QUE-04, QUE-05)
+- [x] 03-07-PLAN.md — request_seen, discard, and debounce jobs (QUE-03, QUE-06, QUE-07)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 03-03-PLAN.md — `watch` polls, debounces, and applies the tracking rules (QUE-02, QUE-03, QUE-04, QUE-06, QUE-11)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 03-04-PLAN.md — osascript notifications for a ready draft and a give-up (QUE-01, QUE-08)
+- [x] 03-05-PLAN.md — Hidden `debug discard` and the re-request rule (QUE-07)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 03-06-PLAN.md — Handoff and lock wait with the poll in the loop (QUE-09, QUE-10)
 
 ### Phase 4: Review and publish
 
@@ -195,6 +214,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 0/TBD | Not started | - |
+| 3. Queue | 8/8 implemented | Human verification needed | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |

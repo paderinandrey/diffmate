@@ -27,7 +27,7 @@ fn phase_one_database_is_upgraded_and_kept() {
         String::from_utf8_lossy(&output.stderr)
     );
     let conn = database(&sandbox);
-    assert_eq!(count(&conn, "PRAGMA user_version"), 2);
+    assert_eq!(count(&conn, "PRAGMA user_version"), 4);
     assert_preserved(&conn, &before);
     let defaults: Vec<Value> = conn
         .query_row(
@@ -52,7 +52,8 @@ fn phase_one_database_is_upgraded_and_kept() {
     assert_eq!(
         count(
             &conn,
-            "SELECT count(*) FROM targets WHERE id = 1 AND head_sha IS NULL"
+            "SELECT count(*) FROM targets WHERE id = 1 AND head_sha IS NULL
+             AND request_seen = 0"
         ),
         1
     );
@@ -80,6 +81,7 @@ fn phase_one_database_is_upgraded_and_kept() {
         rusqlite::Connection::open(sandbox.state_dir().join("diffmate.db.v1-backup")).unwrap();
     assert_eq!(count(&backup, "PRAGMA user_version"), 1);
     assert_preserved(&backup, &before);
+    assert!(!sandbox.state_dir().join("diffmate.db.v2-backup").exists());
 }
 
 #[test]

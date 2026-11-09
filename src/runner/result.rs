@@ -6,6 +6,13 @@ use crate::store::{RunId, Store};
 
 mod stored;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Follow {
+    Schedule,
+    Hold,
+    Stop,
+}
+
 #[expect(dead_code)]
 pub(crate) enum ReviewResult {
     Succeeded {
@@ -17,6 +24,7 @@ pub(crate) enum ReviewResult {
         limitation: Option<String>,
         future_improvements: Vec<String>,
         warnings: Vec<String>,
+        follow: Follow,
     },
     RunFailed {
         run_id: RunId,

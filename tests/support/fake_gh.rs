@@ -1,4 +1,5 @@
-use super::{call_numbers, write_executable};
+use super::fake_call::Hold;
+use super::{call_numbers, mkfifo, write_executable};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -27,6 +28,16 @@ impl FakeGh {
 
     pub fn route(&self, prefix: &str, stdout: &str) {
         self.add(prefix, stdout);
+    }
+
+    pub fn route_hold(&self, prefix: &str, stdout: &str) -> Hold {
+        let stem = self.add(prefix, stdout);
+        let started = self.dir.join("started");
+        let release = self.dir.join("release");
+        mkfifo(&started);
+        mkfifo(&release);
+        fs::write(stem.with_extension("hold"), "").unwrap();
+        Hold { started, release }
     }
 
     pub fn route_fail(&self, prefix: &str, stderr: &str, exit: i32) {

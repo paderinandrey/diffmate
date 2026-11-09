@@ -2,6 +2,7 @@ mod backups;
 mod concurrency;
 mod helpers;
 mod rollback;
+mod v3;
 
 use crate::error::Error;
 use crate::paths::Paths;
@@ -21,30 +22,32 @@ async fn fresh_and_upgraded_schemas_match() {
         schema(&Connection::open(upgraded.db()).unwrap())
     );
     assert!(!fresh.state_dir().join("diffmate.db.v1-backup").exists());
+    assert!(!fresh.state_dir().join("diffmate.db.v2-backup").exists());
 }
 
 #[tokio::test]
 async fn newer_version_is_refused_and_left_alone() {
-    let (_tmp, paths) = fixture(3);
+    let (_tmp, paths) = fixture(5);
     let before = fs::read(paths.db()).unwrap();
     assert!(matches!(
         Store::open(&paths).await,
-        Err(Error::SchemaVersion(3))
+        Err(Error::SchemaVersion(5))
     ));
     assert_eq!(fs::read(paths.db()).unwrap(), before);
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 3);
+    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 5);
     assert!(!paths.state_dir().join("diffmate.db.v1-backup").exists());
+    assert!(!paths.state_dir().join("diffmate.db.v2-backup").exists());
 }
 
 #[tokio::test]
-async fn reopening_version_two_changes_nothing() {
+async fn reopening_migrated_database_changes_nothing() {
     let (_tmp, paths) = fixture(1);
     drop(Store::open(&paths).await.unwrap());
     let conn = Connection::open(paths.db()).unwrap();
     let before = (schema(&conn), contents(&conn));
     drop(Store::open(&paths).await.unwrap());
     assert_eq!((schema(&conn), contents(&conn)), before);
-    assert_eq!(version(&conn), 2);
+    assert_eq!(version(&conn), 4);
 }
 
 #[tokio::test]
@@ -69,4 +72,11 @@ async fn check_constraints_hold() {
             Some(rusqlite::ErrorCode::ConstraintViolation)
         );
     }
+    let seen = conn
+        .execute("UPDATE targets SET request_seen = 2", [])
+        .unwrap_err();
+    assert_eq!(
+        seen.sqlite_error_code(),
+        Some(rusqlite::ErrorCode::ConstraintViolation)
+    );
 }

@@ -32,4 +32,7 @@ pub(crate) enum DebugCommand {
         #[arg(long)]
         force: bool,
     },
+    Discard {
+        url: String,
+    },
 }

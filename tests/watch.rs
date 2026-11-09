@@ -5,10 +5,14 @@ mod attach;
 mod concurrency;
 #[path = "watch/debug.rs"]
 mod debug;
+#[path = "watch/discard.rs"]
+mod discard;
 #[path = "watch/helpers.rs"]
 mod helpers;
 #[path = "watch/persistence.rs"]
 mod persistence;
+#[path = "watch/poll.rs"]
+mod poll;
 #[allow(dead_code)]
 #[path = "signals/process.rs"]
 mod process;

@@ -37,6 +37,7 @@ pub fn succeeded(
         limitation: limitation.map(Into::into),
         future_improvements: items.iter().map(|item| (*item).into()).collect(),
         warnings: Vec::new(),
+        follow: crate::runner::Follow::Schedule,
     }
 }
 
