@@ -4,5 +4,7 @@ mod give_up;
 mod ready;
 #[path = "notify/recovery.rs"]
 mod recovery;
+#[path = "notify/review.rs"]
+mod review;
 #[path = "notify/support.rs"]
 mod support;

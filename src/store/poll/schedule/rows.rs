@@ -18,10 +18,19 @@ pub(super) fn consider(
 ) -> rusqlite::Result<()> {
     if let Some(job) = live(tx, target)? {
         let blocked = job.running || job.next_at.is_none() || !job.automatic;
-        if blocked || waiting(tx, target)?.as_deref() == Some(head) {
+        if blocked {
             return Ok(());
         }
-        if has_runs(tx, job.id)? {
+        let started = has_runs(tx, job.id)?;
+        let pinned = if started {
+            attempt_head(tx, job.id)?
+        } else {
+            waiting(tx, target)?
+        };
+        if pinned.as_deref() == Some(head) {
+            return Ok(());
+        }
+        if started {
             cancel(tx, job.id, when)?;
         } else if run_exists(tx, target, head)? || failed_attempt(tx, target, head)? {
             cancel(tx, job.id, when)?;
@@ -74,6 +83,15 @@ fn waiting(tx: &Transaction, target: TargetId) -> rusqlite::Result<Option<String
     tx.query_row(
         "SELECT head_sha FROM runs WHERE target_id = ?1 ORDER BY id DESC LIMIT 1",
         [target],
+        |row| row.get(0),
+    )
+    .optional()
+}
+
+fn attempt_head(tx: &Transaction, job: JobId) -> rusqlite::Result<Option<String>> {
+    tx.query_row(
+        "SELECT head_sha FROM runs WHERE job_id = ?1 ORDER BY id LIMIT 1",
+        [job],
         |row| row.get(0),
     )
     .optional()

@@ -36,6 +36,14 @@ pub(super) async fn for_job<G: Git>(
         for line in report.lines() {
             eprintln!("{}", render::sanitize(&line));
         }
+        for notice in crate::notify::recovery::notices(store, &report.jobs).await? {
+            if let Err(error) = crate::notify::deliver(&notice).await {
+                eprintln!(
+                    "notification-failed: {}",
+                    render::sanitize(&error.to_string())
+                );
+            }
+        }
         if report.manual_crashes.contains(&job.job_id) {
             let request = EnqueueRequest {
                 origin: JobOrigin::Manual,

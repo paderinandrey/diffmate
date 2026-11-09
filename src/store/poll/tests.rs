@@ -1,6 +1,7 @@
 mod absent;
 mod attempt;
 mod block;
+mod closed;
 mod discard;
 mod draft;
 mod enqueue;

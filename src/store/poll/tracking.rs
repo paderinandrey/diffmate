@@ -28,7 +28,7 @@ pub(super) fn apply(
         see(tx, &row.pr, now)?;
     }
     for (pr, kind) in absent {
-        miss(tx, pr, kind)?;
+        miss(tx, pr, kind, now)?;
     }
     Ok(())
 }
@@ -53,18 +53,25 @@ fn see(tx: &Transaction, pr: &PrRef, now: i64) -> rusqlite::Result<()> {
     .map(drop)
 }
 
-fn miss(tx: &Transaction, pr: &PrRef, kind: &Absent) -> rusqlite::Result<()> {
+fn miss(tx: &Transaction, pr: &PrRef, kind: &Absent, now: i64) -> rusqlite::Result<()> {
     let Some(id) = target_id(tx, pr)? else {
         return Ok(());
     };
     match kind {
         Absent::Skip => Ok(()),
-        Absent::Closed => tx
-            .execute(
+        Absent::Closed => {
+            tx.execute(
                 "UPDATE targets SET tracking = 'untracked' WHERE id = ?1",
                 [id],
-            )
-            .map(drop),
+            )?;
+            tx.execute(
+                "UPDATE jobs SET state = 'cancelled', updated_at = ?1
+                 WHERE target_id = ?2 AND kind = 'review' AND origin = 'automatic'
+                 AND state = 'queued'",
+                params![now, id],
+            )?;
+            Ok(())
+        }
         Absent::Open { .. } => tx
             .execute("UPDATE targets SET request_seen = 0 WHERE id = ?1", [id])
             .map(drop),

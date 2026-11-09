@@ -9,7 +9,7 @@ pub(super) fn find(
 ) -> rusqlite::Result<Option<JobId>> {
     let job = tx
         .query_row(
-            "SELECT id FROM jobs WHERE target_id = ?1 AND kind = 'review'
+            "SELECT id FROM jobs WHERE target_id = ?1 AND kind = 'review' AND held = 0
          AND (state = 'queued' OR (state = 'running' AND (?2 = 0 OR force = 1)))
          ORDER BY (state = 'queued') DESC, id LIMIT 1",
             params![target, force],

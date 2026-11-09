@@ -45,6 +45,28 @@ async fn a_failed_attempt_without_a_run_is_not_queued_again() {
     assert!(fix.jobs(1).await.iter().all(|job| job.state != "queued"));
 }
 
+#[tokio::test]
+async fn a_retry_stays_when_the_run_head_differs_from_the_queued_head() {
+    let fix = Fix::open().await;
+    fix.seed(1, true, true).await;
+    fix.poll(vec![seen(1, false, Some("aaa"))], vec![], 1_000, DEBOUNCE)
+        .await;
+    let job = fix.jobs(1).await[0].id;
+    fix.add_run(job, "bbb", true).await;
+    fix.set_job(job, "queued", 1, Some(5_000)).await;
+    assert_eq!(
+        fix.target(1).await.unwrap().queued_head.as_deref(),
+        Some("aaa")
+    );
+    fix.poll(vec![seen(1, false, Some("bbb"))], vec![], 2_000, DEBOUNCE)
+        .await;
+    let jobs = fix.jobs(1).await;
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].id, job);
+    assert_eq!(jobs[0].state, "queued");
+    assert_eq!((jobs[0].retry, jobs[0].next), (1, Some(5_000)));
+}
+
 async fn head_sha(fix: &Fix, job: i64) -> Option<String> {
     fix.store
         .call(move |conn| {
