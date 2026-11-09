@@ -21,6 +21,7 @@ impl Gh for FakeGh {
             head_sha: "new-head".into(),
             is_cross_repository: false,
             state: "OPEN".into(),
+            is_draft: false,
         }))
     }
     fn discussion(&self, _: &PrRef) -> Done<Discussion> {

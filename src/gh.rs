@@ -1,6 +1,8 @@
 mod checks;
 mod discussion;
 mod meta;
+#[cfg(test)]
+mod search;
 
 use crate::error::Error;
 use crate::pr_url::PrRef;

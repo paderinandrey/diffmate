@@ -1,8 +1,7 @@
 use crate::error::Error;
 use serde::Deserialize;
 
-pub(super) const FIELDS: &str =
-    "number,url,title,body,author,baseRefName,headRefName,headRefOid,isCrossRepository,state";
+pub(super) const FIELDS: &str = "number,url,title,body,author,baseRefName,headRefName,headRefOid,isCrossRepository,state,isDraft";
 
 pub(crate) struct PrMeta {
     pub number: u64,
@@ -15,6 +14,8 @@ pub(crate) struct PrMeta {
     pub head_sha: String,
     pub is_cross_repository: bool,
     pub state: String,
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub is_draft: bool,
 }
 
 #[derive(Deserialize)]
@@ -35,6 +36,8 @@ struct Raw {
     head_ref_oid: String,
     is_cross_repository: bool,
     state: String,
+    #[serde(default)]
+    is_draft: bool,
 }
 
 impl From<Raw> for PrMeta {
@@ -50,6 +53,7 @@ impl From<Raw> for PrMeta {
             head_sha: raw.head_ref_oid,
             is_cross_repository: raw.is_cross_repository,
             state: raw.state,
+            is_draft: raw.is_draft,
         }
     }
 }

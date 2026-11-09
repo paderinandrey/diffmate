@@ -38,6 +38,7 @@ impl Gh for FakeGh {
             head_sha: "h".repeat(40),
             is_cross_repository: false,
             state: "OPEN".into(),
+            is_draft: false,
         }))
     }
     fn discussion(&self, _: &PrRef) -> Done<Discussion> {
