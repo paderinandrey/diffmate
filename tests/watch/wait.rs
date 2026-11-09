@@ -12,6 +12,14 @@ fn watch_waits_for_the_lock_and_stops_on_sigterm() {
         let mut reader = BufReader::new(watch.stderr.take().unwrap());
         read_until(&mut reader, "waiting for the runner lock (held by review)");
         assert!(watch.try_wait().unwrap().is_none());
+        let calls = sandbox.gh.calls();
+        assert!(
+            !calls.iter().any(|argv| {
+                argv.first().is_some_and(|arg| arg == "search")
+                    && argv.get(1).is_some_and(|arg| arg == "prs")
+            }),
+            "{calls:?}"
+        );
         kill_process(process::pid(watch.id()), signal).unwrap();
         assert!(watch.wait().unwrap().success());
         let mut remaining = String::new();
