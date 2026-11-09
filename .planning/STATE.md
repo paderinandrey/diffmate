@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Queue
-status: Phase 03 context gathered; Phase 02 UAT still open; live E2E blocked
-stopped_at: Phase 03 context gathered; Phase 02 acceptance still open; resume /gsd-plan-phase 3
-last_updated: "2026-11-09T08:40:00.000Z"
+status: Phase 03 plans checked; Phase 02 UAT still open; live E2E blocked
+stopped_at: Phase 03 plans checked; Phase 02 acceptance still open; resume /gsd-execute-phase 3
+last_updated: "2026-11-09T09:32:37.000Z"
 last_activity: 2026-11-09
-last_activity_desc: Phase 02 merged as PR 6; Phase 03 context captured without closing Phase 02 UAT
+last_activity_desc: Phase 03 plans checked; Phase 02 UAT left open
 state_head: 807168a3157cad2037f62fd1c31c0857b22ebada
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 22
+  total_plans: 30
   completed_plans: 22
   percent: 20
 ---
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 
 ## Current Position
 
-Phase: 03 (Queue) — context gathered, not planned
-Plan: 0
-Status: Phase 03 context gathered; Phase 02 UAT still open; live E2E blocked
-Last activity: 2026-11-09 — PR 6 merged to main (`807168a`). Phase 02 UAT remains 12 pending and 2 blocked. Phase 03 context is in `.planning/phases/03-queue/03-CONTEXT.md`.
+Phase: 03 (Queue) — 8 plans checked, none started
+Plan: 0 of 8
+Status: Phase 03 plans checked; Phase 02 UAT still open; live E2E blocked
+Last activity: 2026-11-09 — Phase 03 plans 03-01 through 03-08 checked. Phase 02 UAT remains 12 pending and 2 blocked.
 
 Progress: [██░░░░░░░░] 20%
 
@@ -104,6 +104,7 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-12: live tests run once each; the e2e gate run excluded them to avoid a second model call
 - [Phase 01]: 01-12: mise.toml keeps hk as a plain version string because scripts/deps.sh parses that form
 - [Phase 01]: UAT: substitute isolation controls kept (owner decision 2026-10-22, option a); D6 residual risk accepted; `MIT-0` allowed in deny.toml
+- [Phase 03]: A different head on the one queued automatic job resets retry_count to 0 and next_attempt_at to now plus debounce. The same head does not move that timer. A head change during a run is stored by the existing post-agent set_known_head, then scheduled. Phase 02 UAT stays open.
 
 Phase 02 checkpoint answers (2026-11-01): the owner selected `additive-backup`
 for 02-01 and replied `approved` for the `toml` dependency in 02-02.
@@ -118,9 +119,9 @@ None yet.
 - [Phase 1]: Tool-level confinement (an agent Read outside the worktree or through a symlink) has no direct control; accepted in Phase 1 UAT (01-11 coverage D6)
 - [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
 - [Phase 2]: Anthropic HTTP 403 requires account verification. The owner explicitly chose to preserve the live gate as blocked: do not repeat Claude API calls automatically or treat this as a waiver. Six non-model E2E checks passed; auth failed and four model-backed cases remain unrun.
-- [Phase 2]: Implementation is complete with no code-review findings or verification code gaps. `.planning/phases/02-reliability/02-UAT.md` preserves 12 pending acceptance/confirmation items and 2 blocked live items. Resume with `/gsd-verify-work 02`; do not advance to Phase 3 before acceptance.
-- [Phase 3]: The QUE-07 discard check needs a discard trigger; the `tui` key arrives in Phase 4
-- [Phase 3]: The macOS notification mechanism is not fixed by SPEC.md
+- [Phase 2]: Implementation is complete with no code-review findings or verification code gaps. `.planning/phases/02-reliability/02-UAT.md` preserves 12 pending acceptance/confirmation items and 2 blocked live items. The owner continued into Phase 3 on 2026-11-09 without marking those items. Do not mark any UAT item pass. Resume `/gsd-verify-work 02` when accepting Phase 2.
+- [Phase 3]: The QUE-07 discard key stays in Phase 4. This phase uses hidden `debug discard` (D-02).
+- [Phase 3]: macOS notifications use `osascript` with no new crate (D-01). A give-up names the failure reason.
 
 ### Quick Tasks Completed
 
@@ -138,6 +139,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T08:40:00.000Z
-Stopped at: Phase 03 context gathered; Phase 02 acceptance still open; resume /gsd-plan-phase 3
-Resume file: .planning/phases/03-queue/03-CONTEXT.md
+Last session: 2026-11-09T09:32:37.000Z
+Stopped at: Phase 03 plans checked; Phase 02 acceptance still open; resume /gsd-execute-phase 3
+Resume file: .planning/phases/03-queue/03-01-PLAN.md
