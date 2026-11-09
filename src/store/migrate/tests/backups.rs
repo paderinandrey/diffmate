@@ -51,7 +51,8 @@ async fn published_backup_before_interruption_is_kept_and_temporary_removed() {
     fs::hard_link(&backup, &temporary).unwrap();
     let before = fs::read(&backup).unwrap();
     drop(Store::open(&paths).await.unwrap());
-    assert_eq!(version(&conn), 2);
+    assert_eq!(version(&conn), 3);
+    assert!(!paths.state_dir().join("diffmate.db.v2-backup").exists());
     assert_eq!(fs::read(&backup).unwrap(), before);
     assert!(!temporary.exists());
 }

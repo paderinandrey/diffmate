@@ -22,7 +22,7 @@ impl Store {
                 SCHEMA_VERSION => Ok(Some(Store {
                     conn: Arc::new(Mutex::new(conn)),
                 })),
-                1 => Err(Error::SchemaOutdated(1)),
+                1..=2 => Err(Error::SchemaOutdated(version)),
                 newer => Err(Error::SchemaVersion(newer)),
             }
         })
