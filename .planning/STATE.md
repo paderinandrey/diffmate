@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Queue
-status: Phase 03 plan 01 complete; Phase 02 UAT still open; live E2E blocked
-stopped_at: Phase 03 plan 01 complete; Phase 02 acceptance still open; resume /gsd-execute-phase 3
-last_updated: "2026-11-09T09:50:00.000Z"
+status: Phase 03 wave 1 complete; Phase 02 UAT still open; live E2E blocked
+stopped_at: Phase 03 wave 1 complete; Phase 02 acceptance still open; resume /gsd-execute-phase 3
+last_updated: "2026-11-09T10:08:37.000Z"
 last_activity: 2026-11-09
-last_activity_desc: Phase 03 plan 01 schema version 3 landed; Phase 02 UAT left open
+last_activity_desc: Phase 03 plans 01 and 08 landed; Phase 02 UAT left open
 state_head: 807168a3157cad2037f62fd1c31c0857b22ebada
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 30
-  completed_plans: 23
+  completed_plans: 24
   percent: 20
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 
 ## Current Position
 
-Phase: 03 (Queue) — plan 01 of 8 complete
-Plan: 1 of 8
-Status: Phase 03 plan 01 complete; Phase 02 UAT still open; live E2E blocked
-Last activity: 2026-11-09 — schema version 3 landed in `ea9de3b`. Phase 02 UAT remains 12 pending and 2 blocked.
+Phase: 03 (Queue) — wave 1 complete, 2 of 8 plans
+Plan: 2 of 8
+Status: Phase 03 wave 1 complete; Phase 02 UAT still open; live E2E blocked
+Last activity: 2026-11-09 — schema v3 in `ea9de3b`; transient retries in `c4390e8`. Phase 02 UAT remains 12 pending and 2 blocked.
 
 Progress: [██░░░░░░░░] 20%
 
@@ -139,6 +139,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T09:50:00.000Z
-Stopped at: Phase 03 plan 01 complete; Phase 02 acceptance still open; resume /gsd-execute-phase 3
-Resume file: .planning/phases/03-queue/03-08-PLAN.md
+Last session: 2026-11-09T10:08:37.000Z
+Stopped at: Phase 03 wave 1 complete; Phase 02 acceptance still open; resume /gsd-execute-phase 3
+Resume file: .planning/phases/03-queue/03-02-PLAN.md

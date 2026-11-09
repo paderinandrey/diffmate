@@ -145,7 +145,7 @@ Plans:
 Plans:
 **Wave 1**
 - [x] 03-01-PLAN.md — Schema v3 and the version 2 backup
-- [ ] 03-08-PLAN.md — Transient agent_error uses the existing retry budget (QUE-08)
+- [x] 03-08-PLAN.md — Transient agent_error uses the existing retry budget (QUE-08)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 03-02-PLAN.md — Paged `gh search prs` for direct review requests, drafts included (QUE-04, QUE-05)
@@ -214,6 +214,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 1/8 | In progress | - |
+| 3. Queue | 2/8 | In progress | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
