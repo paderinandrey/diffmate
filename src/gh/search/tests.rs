@@ -1,4 +1,6 @@
+mod args;
 mod malformed;
+mod pages;
 mod view;
 
 use super::parse::parse_page;

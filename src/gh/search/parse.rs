@@ -1,12 +1,7 @@
+use super::super::DirectRequest;
 use crate::error::Error;
 use crate::pr_url::{self, PrRef};
 use serde::Deserialize;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct DirectRequest {
-    pub pr: PrRef,
-    pub is_draft: bool,
-}
 
 pub(super) struct Page {
     pub kept: Vec<DirectRequest>,

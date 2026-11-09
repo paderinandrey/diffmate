@@ -1,7 +1,7 @@
 mod checks;
 mod discussion;
 mod meta;
-#[cfg(test)]
+#[cfg_attr(not(test), allow(dead_code))]
 mod search;
 
 use crate::error::Error;
@@ -16,6 +16,13 @@ pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
 pub(crate) use meta::PrMeta;
 
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DirectRequest {
+    pub pr: PrRef,
+    pub is_draft: bool,
+}
+
 pub(crate) trait Gh {
     fn pr_view(&self, pr: &PrRef) -> impl Future<Output = Result<PrMeta, Error>> + Send;
     fn discussion(&self, pr: &PrRef) -> impl Future<Output = Result<Discussion, Error>> + Send;
@@ -29,6 +36,10 @@ pub(crate) trait Gh {
         pr: &PrRef,
         check_run_id: u64,
     ) -> impl Future<Output = Result<Vec<Annotation>, Error>> + Send;
+    #[allow(dead_code)]
+    fn search_review_requested(
+        &self,
+    ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send;
 }
 
 pub(crate) struct GhCli {
@@ -74,5 +85,14 @@ impl Gh for GhCli {
 
     async fn annotations(&self, pr: &PrRef, check_run_id: u64) -> Result<Vec<Annotation>, Error> {
         checks::annotations(self, pr, check_run_id).await
+    }
+
+    async fn search_review_requested(&self) -> Result<Vec<DirectRequest>, Error> {
+        let mut gh = self;
+        search::search_review_requested(&mut gh, |gh, limit| {
+            let command = gh.command(search::search_args(limit));
+            async move { run_tool("gh", command).await }
+        })
+        .await
     }
 }

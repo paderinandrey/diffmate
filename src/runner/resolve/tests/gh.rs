@@ -2,7 +2,7 @@ use std::future::{Ready, ready};
 type Done<T> = Ready<Result<T, Error>>;
 
 use crate::error::Error;
-use crate::gh::{Annotation, CheckRuns, Discussion, Gh, PrMeta};
+use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta};
 use crate::pr_url::PrRef;
 
 pub(super) struct FakeGh;
@@ -32,5 +32,8 @@ impl Gh for FakeGh {
     }
     fn annotations(&self, _: &PrRef, _: u64) -> Done<Vec<Annotation>> {
         unreachable!()
+    }
+    fn search_review_requested(&self) -> Done<Vec<DirectRequest>> {
+        ready(Ok(Vec::new()))
     }
 }

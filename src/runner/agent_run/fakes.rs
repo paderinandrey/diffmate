@@ -3,7 +3,7 @@ pub(super) use git::FakeGit;
 
 use crate::agent::{Agent, AgentOutcome, AgentRequest};
 use crate::error::Error;
-use crate::gh::{Annotation, CheckRuns, Discussion, Gh, PrMeta};
+use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta};
 use crate::pr_url::PrRef;
 use crate::store::records::Metrics;
 use std::future::{Ready, ready};
@@ -49,6 +49,9 @@ impl Gh for FakeGh {
     }
     fn annotations(&self, _: &PrRef, _: u64) -> Done<Vec<Annotation>> {
         unavailable()
+    }
+    fn search_review_requested(&self) -> Done<Vec<DirectRequest>> {
+        ready(Ok(Vec::new()))
     }
 }
 

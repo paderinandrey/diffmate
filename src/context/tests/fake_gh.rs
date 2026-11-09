@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::gh::{Annotation, CheckRuns, Discussion, Gh, PrMeta};
+use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta};
 use crate::pr_url::PrRef;
 use std::future::ready;
 use std::sync::Mutex;
@@ -42,6 +42,10 @@ impl Gh for FakeGh {
             .unwrap()
             .take()
             .map_or_else(broken, |found| ready(Ok(found)))
+    }
+
+    fn search_review_requested(&self) -> Done<Vec<DirectRequest>> {
+        ready(Ok(Vec::new()))
     }
 
     fn annotations(&self, _: &PrRef, id: u64) -> Done<Vec<Annotation>> {
