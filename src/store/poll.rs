@@ -38,7 +38,6 @@ impl Store {
         self.call(known::known).await
     }
 
-    #[cfg_attr(not(test), allow(dead_code))]
     pub async fn discard(&self, pr: &PrRef) -> Result<(), Error> {
         let pr = pr.clone();
         self.call(move |conn| {

@@ -5,6 +5,8 @@ mod attach;
 mod concurrency;
 #[path = "watch/debug.rs"]
 mod debug;
+#[path = "watch/discard.rs"]
+mod discard;
 #[path = "watch/helpers.rs"]
 mod helpers;
 #[path = "watch/persistence.rs"]

@@ -44,3 +44,28 @@ pub(crate) async fn enqueue(
         }
     }
 }
+
+pub(crate) async fn discard(config: &AppConfig, url: &str) -> ExitCode {
+    let Ok(pr) = pr_url::parse(url) else {
+        eprintln!(
+            "error: not a github.com pull request URL: {}",
+            render::sanitize(url)
+        );
+        return ExitCode::from(2);
+    };
+    let result = async {
+        let store = Store::open(&config.paths).await?;
+        store.discard(&pr).await
+    }
+    .await;
+    match result {
+        Ok(()) => {
+            println!("discarded {}", pr.label());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {}", render::sanitize(&error.to_string()));
+            ExitCode::FAILURE
+        }
+    }
+}

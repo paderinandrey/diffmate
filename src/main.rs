@@ -66,13 +66,13 @@ fn main() -> ExitCode {
         cli::Command::Review { url, force } => runtime.block_on(review::run(&config, &url, force)),
         cli::Command::Status => runtime.block_on(status::run(&config)),
         cli::Command::Watch => runtime.block_on(watch::run(&config)),
-        cli::Command::Debug {
-            command:
-                cli::DebugCommand::Enqueue {
-                    url,
-                    automatic,
-                    force,
-                },
-        } => runtime.block_on(debug::enqueue(&config, &url, automatic, force)),
+        cli::Command::Debug { command } => match command {
+            cli::DebugCommand::Enqueue {
+                url,
+                automatic,
+                force,
+            } => runtime.block_on(debug::enqueue(&config, &url, automatic, force)),
+            cli::DebugCommand::Discard { url } => runtime.block_on(debug::discard(&config, &url)),
+        },
     }
 }
