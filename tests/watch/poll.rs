@@ -1,5 +1,13 @@
+#[path = "poll/absent.rs"]
+mod absent;
+#[path = "poll/draft.rs"]
+mod draft;
+#[path = "poll/manual.rs"]
+mod manual;
 #[path = "poll/ready.rs"]
 mod ready;
+#[path = "poll/sync.rs"]
+pub mod sync;
 
 use super::{URL, debug_enqueue};
 use crate::support::sandbox::Sandbox;
