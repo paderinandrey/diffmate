@@ -50,7 +50,7 @@ impl Store {
     pub async fn set_stop_reason(&self, job: JobId, reason: StopReason) -> Result<bool, Error> {
         self.call(move |conn| {
             let sql = "UPDATE jobs SET stop_reason = ?1, updated_at = ?2
-                       WHERE id = ?3 AND stop_reason IS NULL";
+                       WHERE id = ?3 AND stop_reason IS NULL AND state = 'running'";
             conn.execute(sql, params![reason.as_str(), now_ms(), job])
                 .map(|changed| changed == 1)
         })

@@ -29,6 +29,7 @@ async fn fixture() -> (tempfile::TempDir, Store, JobId) {
 #[tokio::test(start_paused = true)]
 async fn a_failed_signal_write_does_not_cancel_until_persisted() {
     let (_temp, store, job) = fixture().await;
+    store.start_job(job).await.unwrap();
     store.call(|conn| conn.execute_batch("CREATE TRIGGER reject_signal BEFORE UPDATE OF stop_reason ON jobs BEGIN SELECT RAISE(ABORT, 'injected signal write failure'); END;")).await.unwrap();
     let (stop, cancel) = watch::channel(false);
     let repair = async {
@@ -57,15 +58,39 @@ async fn a_failed_signal_write_does_not_cancel_until_persisted() {
 #[tokio::test(start_paused = true)]
 async fn an_existing_timeout_remains_the_first_cause() {
     let (_temp, store, job) = fixture().await;
-    store
-        .set_stop_reason(job, StopReason::Timeout)
-        .await
-        .unwrap();
+    store.start_job(job).await.unwrap();
+    assert!(
+        store
+            .set_stop_reason(job, StopReason::Timeout)
+            .await
+            .unwrap()
+    );
     let (stop, cancel) = watch::channel(false);
     request_stop(&stop, &store, job, StopReason::Shutdown).await;
     assert!(*cancel.borrow());
     assert_eq!(
         store.stop_reason(job).await.unwrap(),
         Some(StopReason::Timeout)
+    );
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_signal_before_start_waits_until_the_attempt_is_running() {
+    let (_temp, store, job) = fixture().await;
+    let (stop, cancel) = watch::channel(false);
+    let start = async {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        assert!(!*cancel.borrow());
+        assert_eq!(store.stop_reason(job).await.unwrap(), None);
+        store.start_job(job).await.unwrap();
+    };
+    tokio::join!(
+        request_stop(&stop, &store, job, StopReason::Shutdown),
+        start
+    );
+    assert!(*cancel.borrow());
+    assert_eq!(
+        store.stop_reason(job).await.unwrap(),
+        Some(StopReason::Shutdown)
     );
 }

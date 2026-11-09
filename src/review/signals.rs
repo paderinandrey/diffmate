@@ -58,19 +58,44 @@ async fn request_stop(
     let mut warned = false;
     loop {
         match store.set_stop_reason(job_id, reason).await {
-            Ok(_) => break,
-            Err(error) => {
-                if !warned {
-                    eprintln!(
-                        "warning: storing stop reason failed: {}",
-                        render::sanitize(&error.to_string())
-                    );
-                    warned = true;
-                }
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            }
+            Ok(true) => break,
+            Ok(false) => match still_waiting(store, job_id).await {
+                Ok(true) => {}
+                Ok(false) => break,
+                Err(error) => note(&mut warned, &error),
+            },
+            Err(error) => note(&mut warned, &error),
         }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
     crash_point!("stop-stored");
     stop.send_replace(true);
+}
+
+fn note(warned: &mut bool, error: &Error) {
+    if *warned {
+        return;
+    }
+    eprintln!(
+        "warning: storing stop reason failed: {}",
+        render::sanitize(&error.to_string())
+    );
+    *warned = true;
+}
+
+async fn still_waiting(store: &Store, job_id: JobId) -> Result<bool, Error> {
+    store
+        .call(move |conn| {
+            let (state, reason, finished): (String, Option<String>, i64) = conn.query_row(
+                "SELECT state, stop_reason,
+                 (SELECT count(*) FROM runs WHERE job_id = ?1 AND finished_at IS NOT NULL)
+                 FROM jobs WHERE id = ?1",
+                [job_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )?;
+            let open =
+                reason.is_none() && (state == "running" || (state == "queued" && finished == 0));
+            Ok(open)
+        })
+        .await
 }
