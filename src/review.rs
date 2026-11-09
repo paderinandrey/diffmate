@@ -13,6 +13,7 @@ use std::process::ExitCode;
 use tokio::sync::watch;
 
 mod acquire;
+mod follow;
 mod print;
 pub(crate) mod signals;
 mod wait;
@@ -53,30 +54,39 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
         eprintln!("attached to job {}", job.job_id);
     }
     let mut signals = signals::Signals::new()?;
-    let waited = acquire::for_job(
-        config,
-        &store,
-        &deps.git,
-        (pr, force),
-        &mut job,
-        &mut signals,
-    );
-    let _lock = match waited.await? {
-        wait::Waited::Locked(lock) => lock,
-        wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
-        wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
-    };
-    let (stop, cancel) = watch::channel(false);
     let paths = &config.paths;
-    let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
-    let result = signals::until_done(
-        stop,
-        job_run,
-        &store,
-        job.job_id,
-        StopReason::UserCancel,
-        &mut signals,
-    )
-    .await?;
-    print::result(pr, &result)
+    loop {
+        let waited = acquire::for_job(
+            config,
+            &store,
+            &deps.git,
+            (pr, force),
+            &mut job,
+            &mut signals,
+        )
+        .await?;
+        let lock = match waited {
+            wait::Waited::Locked(lock) => lock,
+            wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
+            wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
+        };
+        let (stop, cancel) = watch::channel(false);
+        let job_run = runner::execute_review_job(paths, &store, &deps, pr, &job, &cancel);
+        let result = signals::until_done(
+            stop,
+            job_run,
+            &store,
+            job.job_id,
+            StopReason::UserCancel,
+            &mut signals,
+        )
+        .await?;
+        if follow::again(&result) {
+            print::result(pr, &result)?;
+            drop(lock);
+            continue;
+        }
+        drop(lock);
+        return print::result(pr, &result);
+    }
 }
