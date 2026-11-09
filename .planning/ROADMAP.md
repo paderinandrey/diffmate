@@ -149,7 +149,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 03-02-PLAN.md — Paged `gh search prs` for direct review requests, drafts included (QUE-04, QUE-05)
-- [ ] 03-07-PLAN.md — request_seen, discard, and debounce jobs (QUE-03, QUE-06, QUE-07)
+- [x] 03-07-PLAN.md — request_seen, discard, and debounce jobs (QUE-03, QUE-06, QUE-07)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 03-03-PLAN.md — `watch` polls, debounces, and applies the tracking rules (QUE-02, QUE-03, QUE-04, QUE-06, QUE-11)
@@ -214,6 +214,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 3/8 | In progress | - |
+| 3. Queue | 4/8 | In progress | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
