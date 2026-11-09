@@ -14,7 +14,6 @@ pub(crate) struct PrMeta {
     pub head_sha: String,
     pub is_cross_repository: bool,
     pub state: String,
-    #[cfg_attr(not(test), allow(dead_code))]
     pub is_draft: bool,
 }
 

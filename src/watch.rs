@@ -1,5 +1,8 @@
 mod events;
+mod job;
+mod poll;
 mod run;
+mod timing;
 mod wait;
 
 use crate::agent::claude::ClaudeCli;

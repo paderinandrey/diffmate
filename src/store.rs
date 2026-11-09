@@ -1,7 +1,6 @@
 pub(crate) mod finish;
 pub(crate) mod jobs;
 mod migrate;
-#[cfg_attr(not(test), allow(dead_code))]
 pub(crate) mod poll;
 pub(crate) mod previous;
 pub(crate) mod readonly;

@@ -9,6 +9,8 @@ mod debug;
 mod helpers;
 #[path = "watch/persistence.rs"]
 mod persistence;
+#[path = "watch/poll.rs"]
+mod poll;
 #[allow(dead_code)]
 #[path = "signals/process.rs"]
 mod process;

@@ -1,7 +1,6 @@
 mod checks;
 mod discussion;
 mod meta;
-#[cfg_attr(not(test), allow(dead_code))]
 mod search;
 
 use crate::error::Error;
@@ -16,7 +15,6 @@ pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
 pub(crate) use meta::PrMeta;
 
-#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DirectRequest {
     pub pr: PrRef,
@@ -36,7 +34,6 @@ pub(crate) trait Gh {
         pr: &PrRef,
         check_run_id: u64,
     ) -> impl Future<Output = Result<Vec<Annotation>, Error>> + Send;
-    #[allow(dead_code)]
     fn search_review_requested(
         &self,
     ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send;
