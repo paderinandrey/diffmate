@@ -159,7 +159,7 @@ Plans:
 - [x] 03-05-PLAN.md — Hidden `debug discard` and the re-request rule (QUE-07)
 
 **Wave 5** *(blocked on Wave 4 completion)*
-- [ ] 03-06-PLAN.md — Handoff and lock wait with the poll in the loop (QUE-09, QUE-10)
+- [x] 03-06-PLAN.md — Handoff and lock wait with the poll in the loop (QUE-09, QUE-10)
 
 ### Phase 4: Review and publish
 
@@ -214,6 +214,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 7/8 | In progress | - |
+| 3. Queue | 8/8 implemented | Human verification needed | - |
 | 4. Review and publish | 0/TBD | Not started | - |
 | 5. Daily use | 0/TBD | Not started | - |
