@@ -12,6 +12,7 @@ mod gh;
 mod git;
 mod lock;
 mod normalize;
+mod notify;
 mod paths;
 mod pr_url;
 mod proc;

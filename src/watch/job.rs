@@ -5,6 +5,7 @@ use crate::cancel::StopReason;
 use crate::error::Error;
 use crate::gh::Gh;
 use crate::git::Git;
+use crate::notify;
 use crate::review::signals::{self, Signals};
 use crate::runner::{self, Deps, ReviewResult};
 use crate::store::records::JobOrigin;
@@ -34,11 +35,30 @@ pub(super) async fn run<G: Git, H: Gh, A: Agent>(
     .await?;
     follow(config, store, queued, &result).await?;
     events::print(&format!("{prefix} {}", events::outcome(&result)));
+    announce(store, queued, &result).await?;
     let halt = *cancel.borrow();
     if halt {
         super::run::stopped();
     }
     Ok(halt)
+}
+
+async fn announce(store: &Store, queued: &QueuedJob, result: &ReviewResult) -> Result<(), Error> {
+    let notice = notify::for_result(
+        store,
+        queued.job.job_id,
+        queued.origin,
+        result,
+        &queued.pr.label(),
+    )
+    .await?;
+    let Some(notice) = notice else {
+        return Ok(());
+    };
+    if let Err(error) = notify::deliver(&notice).await {
+        events::print(&format!("notification-failed: {error}"));
+    }
+    Ok(())
 }
 
 async fn follow(

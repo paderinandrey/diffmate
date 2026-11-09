@@ -77,6 +77,14 @@ impl Store {
         .await
     }
 
+    pub async fn job_failure_reason(&self, job: JobId) -> Result<Option<String>, Error> {
+        self.call(move |conn| {
+            let sql = "SELECT failure_reason FROM jobs WHERE id = ?1";
+            conn.query_row(sql, [job], |row| row.get(0))
+        })
+        .await
+    }
+
     pub async fn fail_job(&self, job: JobId, reason: String) -> Result<(), Error> {
         self.call(move |conn| {
             let sql = "UPDATE jobs SET state = 'failed', failure_reason = ?1, updated_at = ?2

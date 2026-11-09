@@ -10,6 +10,8 @@ mod follow;
 mod head;
 #[path = "poll/manual.rs"]
 mod manual;
+#[path = "notify.rs"]
+mod notify;
 #[path = "poll/ready.rs"]
 mod ready;
 #[path = "poll/sync.rs"]
