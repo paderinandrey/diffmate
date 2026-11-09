@@ -1,3 +1,5 @@
+use super::poll::sync::{self, Running};
+use super::poll::{config, search_hit};
 use super::*;
 use std::process::Output;
 
@@ -60,4 +62,55 @@ fn debug_stays_hidden_when_discard_exists() {
         assert!(help.contains(command), "{help}");
     }
     assert!(!help.contains("debug"));
+}
+
+#[test]
+fn a_still_visible_request_stays_untracked_until_it_returns() {
+    let sandbox = Sandbox::new();
+    config(
+        &sandbox,
+        "poll_interval_seconds = 1\ndebounce_seconds = 60\n",
+    );
+    with_pr(&sandbox);
+    let hit = search_hit(false);
+    sandbox.gh.route("search prs", &hit);
+    let mut watch = Running::spawn(&sandbox);
+    watch.wait_until(|_| {
+        sync::query(
+            &sandbox,
+            "SELECT count(*) FROM targets WHERE tracking = 'tracked' AND request_seen = 1",
+        ) == 1
+    });
+    let discarded = debug_discard(&sandbox, URL);
+    assert!(discarded.status.success(), "{discarded:?}");
+    let searches = sync::calls(&sandbox, "search");
+    watch.wait_until(|_| sync::calls(&sandbox, "search") > searches);
+    assert_eq!(untracked_seen(&sandbox), 1);
+    assert_eq!(
+        sync::query(
+            &sandbox,
+            "SELECT count(*) FROM jobs WHERE origin = 'automatic' AND state = 'queued'",
+        ),
+        0
+    );
+    sandbox.gh.replace_route("search prs", "[]");
+    watch.wait_until(|_| {
+        sync::query(&sandbox, "SELECT request_seen FROM targets") == 0
+            && sync::query(
+                &sandbox,
+                "SELECT count(*) FROM targets WHERE tracking = 'untracked'",
+            ) == 1
+    });
+    sandbox.gh.replace_route("search prs", &hit);
+    watch.wait_until(|_| {
+        sync::query(
+            &sandbox,
+            "SELECT count(*) FROM targets WHERE tracking = 'tracked' AND request_seen = 1",
+        ) == 1
+            && sync::query(
+                &sandbox,
+                "SELECT count(*) FROM jobs WHERE origin = 'automatic' AND state = 'queued' AND next_attempt_at IS NOT NULL",
+            ) == 1
+    });
+    watch.stop();
 }
