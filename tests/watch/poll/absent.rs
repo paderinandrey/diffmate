@@ -50,6 +50,13 @@ fn an_open_absence_keeps_one_delayed_job_for_the_new_head() {
         ),
         1
     );
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM targets WHERE head_sha = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' AND head_checked_at IS NOT NULL"
+        ),
+        1
+    );
 }
 
 #[test]
@@ -75,4 +82,11 @@ fn a_closed_absence_untracks_and_inserts_no_job() {
     let db = database(&sandbox);
     assert_eq!(count(&db, "SELECT request_seen FROM targets"), 0);
     assert_eq!(count(&db, "SELECT count(*) FROM jobs"), 0);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM targets WHERE head_sha = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' AND head_checked_at IS NOT NULL"
+        ),
+        1
+    );
 }

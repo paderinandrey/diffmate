@@ -9,6 +9,7 @@ async fn discard_hides_a_request_until_it_leaves_and_returns() {
     fix.poll(vec![seen(1, false, Some("aaa"))], vec![], 1_000, 60_000)
         .await;
     expect(&fix, 1, "untracked", true).await;
+    assert_eq!(fix.target(1).await.unwrap().head.as_deref(), Some("aaa"));
     fix.poll(
         vec![],
         vec![(pr(1), absent_open(false, Some("bbb")))],
@@ -17,12 +18,22 @@ async fn discard_hides_a_request_until_it_leaves_and_returns() {
     )
     .await;
     expect(&fix, 1, "untracked", false).await;
+    assert_eq!(
+        (
+            fix.target(1).await.unwrap().head.as_deref(),
+            fix.target(1).await.unwrap().checked
+        ),
+        (Some("bbb"), Some(2_000))
+    );
     fix.poll(vec![seen(1, false, Some("ccc"))], vec![], 3_000, 60_000)
         .await;
     let row = fix.target(1).await.unwrap();
     assert_eq!((row.tracking.as_str(), row.seen), ("tracked", true));
     assert_eq!(row.queued_head.as_deref(), Some("ccc"));
-    assert_eq!((row.head.as_deref(), row.checked), (None, None));
+    assert_eq!(
+        (row.head.as_deref(), row.checked),
+        (Some("ccc"), Some(3_000))
+    );
     assert_eq!(fix.store.known_targets().await.unwrap().len(), 1);
 }
 
@@ -61,5 +72,5 @@ fn states(jobs: &[Job]) -> Vec<(&str, i64)> {
 async fn expect(fix: &Fix, number: u64, tracking: &str, seen: bool) {
     let row = fix.target(number).await.unwrap();
     assert_eq!((row.tracking.as_str(), row.seen), (tracking, seen));
-    assert_eq!((row.head, row.queued_head, row.checked), (None, None, None));
+    assert_eq!(row.queued_head, None);
 }

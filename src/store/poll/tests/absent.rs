@@ -29,7 +29,7 @@ async fn absent_open_arms_only_a_target_that_stays_tracked() {
     assert_eq!(tracked.queued_head.as_deref(), Some("bbb"));
     assert_eq!(
         (tracked.head.as_deref(), tracked.checked),
-        (Some("old"), Some(5))
+        (Some("bbb"), Some(1_000))
     );
     assert!(fix.jobs(2).await.is_empty());
     assert!(fix.jobs(3).await.is_empty());

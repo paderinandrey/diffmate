@@ -18,7 +18,9 @@ pub(crate) struct SeenRequest {
 
 pub(crate) enum Absent {
     Skip,
-    Closed,
+    Closed {
+        head_sha: Option<String>,
+    },
     Open {
         is_draft: bool,
         head_sha: Option<String>,

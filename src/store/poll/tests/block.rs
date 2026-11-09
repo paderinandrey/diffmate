@@ -32,7 +32,7 @@ async fn an_immediate_or_running_job_blocks_another() {
     assert_eq!(row.queued_head.as_deref(), Some("old"));
     assert_eq!(
         (row.head.as_deref(), row.checked),
-        (Some("stored"), Some(9))
+        (Some("ccc"), Some(2_000))
     );
 }
 
@@ -70,5 +70,9 @@ async fn draft_untracked_missing_and_reviewed_heads_do_not_queue() {
     assert_eq!(jobs.len(), 2);
     assert_eq!(jobs[1].state, "queued");
     assert_eq!((jobs[1].retry, jobs[1].next), (0, Some(62_000)));
-    assert_eq!(fix.target(4).await.unwrap().head, None);
+    let moved = fix.target(4).await.unwrap();
+    assert_eq!(
+        (moved.head.as_deref(), moved.checked),
+        (Some("ccc"), Some(2_000))
+    );
 }

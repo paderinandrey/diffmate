@@ -2,6 +2,22 @@ use super::When;
 use crate::store::{JobId, TargetId};
 use rusqlite::{Transaction, params};
 
+pub(super) fn note(
+    tx: &Transaction,
+    target: TargetId,
+    head: Option<&str>,
+    now: i64,
+) -> rusqlite::Result<()> {
+    let Some(head) = head else {
+        return Ok(());
+    };
+    tx.execute(
+        "UPDATE targets SET head_sha = ?1, head_checked_at = ?2 WHERE id = ?3",
+        params![head, now, target],
+    )
+    .map(drop)
+}
+
 pub(super) fn reset(
     tx: &Transaction,
     job: JobId,

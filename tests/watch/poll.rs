@@ -16,6 +16,8 @@ mod notify;
 mod ready;
 #[path = "poll/sync.rs"]
 pub mod sync;
+#[path = "poll/view.rs"]
+mod view;
 
 use super::{URL, debug_enqueue};
 use crate::support::sandbox::Sandbox;

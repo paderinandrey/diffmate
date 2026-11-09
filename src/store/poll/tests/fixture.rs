@@ -49,6 +49,12 @@ pub(super) fn absent_open(draft: bool, head: Option<&str>) -> Absent {
     }
 }
 
+pub(super) fn closed(head: Option<&str>) -> Absent {
+    Absent::Closed {
+        head_sha: head.map(str::to_string),
+    }
+}
+
 impl Fix {
     pub(super) async fn open() -> Self {
         let tmp = TempDir::new().unwrap();

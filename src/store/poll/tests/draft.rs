@@ -21,6 +21,11 @@ async fn a_draft_holds_a_queued_job_until_the_pr_is_ready() {
     )
     .await;
     assert!(fix.store.next_runnable_job(70_000).await.unwrap().is_none());
+    let held = fix.target(1).await.unwrap();
+    assert_eq!(
+        (held.head.as_deref(), held.checked),
+        (Some("aaa"), Some(1_000))
+    );
     fix.poll(
         vec![seen(1, false, Some("aaa")), seen(2, false, Some("aaa"))],
         vec![],

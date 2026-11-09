@@ -17,7 +17,10 @@ async fn a_new_head_is_armed_once_and_the_same_head_waits() {
     assert_eq!((jobs[0].retry, jobs[0].next), (0, Some(61_000)));
     let row = fix.target(1).await.unwrap();
     assert_eq!(row.queued_head.as_deref(), Some("aaa"));
-    assert_eq!((row.head.as_deref(), row.checked), (Some("old"), Some(4)));
+    assert_eq!(
+        (row.head.as_deref(), row.checked),
+        (Some("aaa"), Some(1_000))
+    );
     let id = jobs[0].id;
     fix.poll(vec![seen(1, false, Some("aaa"))], vec![], 9_000, DEBOUNCE)
         .await;
@@ -25,7 +28,13 @@ async fn a_new_head_is_armed_once_and_the_same_head_waits() {
     assert_eq!(again.len(), 1);
     assert_eq!(again[0].id, id);
     assert_eq!((again[0].retry, again[0].next), (0, Some(61_000)));
-    assert_eq!(fix.target(1).await.unwrap().head.as_deref(), Some("old"));
+    assert_eq!(
+        (
+            fix.target(1).await.unwrap().head.as_deref(),
+            fix.target(1).await.unwrap().checked
+        ),
+        (Some("aaa"), Some(9_000))
+    );
 }
 
 #[tokio::test]
@@ -55,7 +64,7 @@ async fn a_different_head_on_a_started_job_gets_its_own_attempt() {
     assert_eq!(row.queued_head.as_deref(), Some("bbb"));
     assert_eq!(
         (row.head.as_deref(), row.checked),
-        (Some("stored"), Some(8))
+        (Some("bbb"), Some(2_000))
     );
     fix.poll(vec![seen(1, false, Some("bbb"))], vec![], 3_000, DEBOUNCE)
         .await;
@@ -94,5 +103,11 @@ async fn the_same_head_keeps_a_retry_deadline() {
         (second.id, second.retry, second.next),
         (armed, 3, Some(7_000))
     );
-    assert_eq!(fix.target(2).await.unwrap().head.as_deref(), Some("kept"));
+    assert_eq!(
+        (
+            fix.target(2).await.unwrap().head.as_deref(),
+            fix.target(2).await.unwrap().checked
+        ),
+        (Some("aaa"), Some(2_000))
+    );
 }

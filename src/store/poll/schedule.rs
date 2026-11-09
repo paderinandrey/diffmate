@@ -33,17 +33,27 @@ pub(super) fn apply(
     };
     for row in seen {
         if let Some(id) = tracking::target_id(tx, &row.pr)? {
+            write::note(tx, id, row.head_sha.as_deref(), when.now)?;
             arm(tx, id, row.is_draft, row.head_sha.as_deref(), &when)?;
         }
     }
     for (pr, kind) in absent {
-        if let Absent::Open { is_draft, head_sha } = kind
-            && let Some(id) = tracking::target_id(tx, pr)?
-        {
+        let Some(id) = tracking::target_id(tx, pr)? else {
+            continue;
+        };
+        write::note(tx, id, observed(kind), when.now)?;
+        if let Absent::Open { is_draft, head_sha } = kind {
             arm(tx, id, *is_draft, head_sha.as_deref(), &when)?;
         }
     }
     Ok(())
+}
+
+fn observed(kind: &Absent) -> Option<&str> {
+    match kind {
+        Absent::Skip => None,
+        Absent::Closed { head_sha } | Absent::Open { head_sha, .. } => head_sha.as_deref(),
+    }
 }
 
 pub(super) fn after_run(

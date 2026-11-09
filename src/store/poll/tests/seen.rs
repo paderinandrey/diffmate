@@ -1,5 +1,5 @@
 use super::super::Absent;
-use super::fixture::{Fix, absent_open, pr, seen};
+use super::fixture::{Fix, absent_open, closed, pr, seen};
 
 #[tokio::test]
 async fn a_new_request_tracks_and_a_repeat_does_not_change_tracking() {
@@ -10,7 +10,10 @@ async fn a_new_request_tracks_and_a_repeat_does_not_change_tracking() {
     let fresh = fix.target(1).await.unwrap();
     assert_eq!(fresh.tracking, "tracked");
     assert!(fresh.seen);
-    assert_eq!(fresh.head, None);
+    assert_eq!(
+        (fresh.head.as_deref(), fresh.checked),
+        (Some("aaa"), Some(1_000))
+    );
     let kept = fix.target(2).await.unwrap();
     assert_eq!((kept.tracking.as_str(), kept.seen), ("tracked", true));
     let discarded = fix.target(3).await.unwrap();
@@ -58,17 +61,21 @@ async fn absence_writes_only_the_column_for_that_variant() {
         vec![],
         vec![
             (pr(1), absent_open(false, Some("new"))),
-            (pr(2), Absent::Closed),
-            (pr(3), Absent::Closed),
+            (pr(2), closed(None)),
+            (pr(3), closed(None)),
             (pr(4), Absent::Skip),
-            (pr(8), Absent::Closed),
+            (pr(8), closed(None)),
         ],
         1_000,
         60_000,
     )
     .await;
     expect(&fix, 1, "tracked", false).await;
-    assert_eq!(fix.target(1).await.unwrap().head, None);
+    let open = fix.target(1).await.unwrap();
+    assert_eq!(
+        (open.head.as_deref(), open.checked),
+        (Some("new"), Some(1_000))
+    );
     expect(&fix, 2, "untracked", false).await;
     expect(&fix, 3, "untracked", false).await;
     expect(&fix, 4, "untracked", true).await;

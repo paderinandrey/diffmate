@@ -1,5 +1,4 @@
-use super::super::Absent;
-use super::fixture::{Fix, absent_open, pr, seen};
+use super::fixture::{Fix, absent_open, closed, pr, seen};
 
 const DEBOUNCE: i64 = 60_000;
 
@@ -27,9 +26,9 @@ async fn a_closed_pr_cancels_queued_automatic_work() {
     fix.poll(
         vec![],
         vec![
-            (pr(1), Absent::Closed),
-            (pr(2), Absent::Closed),
-            (pr(3), Absent::Closed),
+            (pr(1), closed(None)),
+            (pr(2), closed(None)),
+            (pr(3), closed(None)),
             (pr(4), absent_open(false, Some("bbb"))),
         ],
         9_000,
@@ -64,7 +63,7 @@ async fn a_closed_target_tracks_again_and_a_discard_stays_latched() {
     fix.seed(2, false, true).await;
     fix.poll(
         vec![],
-        vec![(pr(1), Absent::Closed), (pr(2), Absent::Closed)],
+        vec![(pr(1), closed(Some("zzz"))), (pr(2), closed(None))],
         1_000,
         DEBOUNCE,
     )
@@ -73,6 +72,10 @@ async fn a_closed_target_tracks_again_and_a_discard_stays_latched() {
     assert_eq!(
         (closed.tracking.as_str(), closed.seen),
         ("untracked", false)
+    );
+    assert_eq!(
+        (closed.head.as_deref(), closed.checked),
+        (Some("zzz"), Some(1_000))
     );
     let discarded = fix.target(2).await.unwrap();
     assert_eq!(
@@ -88,6 +91,10 @@ async fn a_closed_target_tracks_again_and_a_discard_stays_latched() {
     .await;
     let again = fix.target(1).await.unwrap();
     assert_eq!((again.tracking.as_str(), again.seen), ("tracked", true));
+    assert_eq!(
+        (again.head.as_deref(), again.checked),
+        (Some("aaa"), Some(2_000))
+    );
     assert_eq!(fix.jobs(1).await.len(), 1);
     let still = fix.target(2).await.unwrap();
     assert_eq!((still.tracking.as_str(), still.seen), ("untracked", true));
