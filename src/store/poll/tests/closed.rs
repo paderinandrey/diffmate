@@ -101,6 +101,29 @@ async fn a_closed_target_tracks_again_and_a_discard_stays_latched() {
     assert!(fix.jobs(2).await.is_empty());
 }
 
+#[tokio::test]
+async fn a_closed_view_stops_tracking_and_a_discard_stays_latched() {
+    let fix = Fix::open().await;
+    fix.seed(1, true, true).await;
+    fix.seed(2, false, true).await;
+    let tracked = fix.id(1).await;
+    fix.store.set_known_head(tracked, "bbb").await.unwrap();
+    fix.store.close_tracked(tracked, 1_000).await.unwrap();
+    fix.store
+        .close_tracked(fix.id(2).await, 1_000)
+        .await
+        .unwrap();
+    fix.after(1, 2_000, DEBOUNCE).await;
+    let row = fix.target(1).await.unwrap();
+    assert_eq!((row.tracking.as_str(), row.seen), ("untracked", false));
+    assert!(fix.jobs(1).await.is_empty());
+    let discarded = fix.target(2).await.unwrap();
+    assert_eq!(
+        (discarded.tracking.as_str(), discarded.seen),
+        ("untracked", true)
+    );
+}
+
 async fn runs(fix: &Fix, job: i64) -> i64 {
     fix.store
         .call(move |conn| {

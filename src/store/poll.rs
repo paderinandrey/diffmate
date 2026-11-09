@@ -68,17 +68,27 @@ impl Store {
         .await
     }
 
+    pub async fn close_tracked(&self, target: super::TargetId, now_ms: i64) -> Result<(), Error> {
+        self.call(move |conn| {
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            tracking::close(&tx, target, now_ms)?;
+            tx.commit()
+        })
+        .await
+    }
+
     pub async fn schedule_after_run(
         &self,
         target: super::TargetId,
         now_ms: i64,
         debounce_ms: i64,
         process: &ProcessInfo,
+        hold: bool,
     ) -> Result<(), Error> {
         let (pid, started) = (process.pid, process.started_at_ms);
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            schedule::after_run(&tx, target, now_ms, debounce_ms, pid, started)?;
+            schedule::after_run(&tx, target, now_ms, debounce_ms, pid, started, hold)?;
             tx.commit()
         })
         .await

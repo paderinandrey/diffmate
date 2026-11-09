@@ -8,6 +8,8 @@ mod draft;
 mod follow;
 #[path = "poll/head.rs"]
 mod head;
+#[path = "poll/life.rs"]
+mod life;
 #[path = "poll/manual.rs"]
 mod manual;
 #[path = "notify.rs"]

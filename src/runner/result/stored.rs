@@ -1,4 +1,4 @@
-use super::{JobEnd, ReviewResult};
+use super::{Follow, JobEnd, ReviewResult};
 use crate::store::result::{StoredJob, StoredRun};
 
 impl ReviewResult {
@@ -23,6 +23,7 @@ impl ReviewResult {
                 future_improvements,
                 warnings,
                 reused: reused || stored.reused,
+                follow: Follow::Schedule,
             },
             (
                 _,

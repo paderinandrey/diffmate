@@ -23,7 +23,7 @@ use crate::store::jobs::EnqueuedJob;
 use cancelled::cancelled_before_run;
 use result::job_failed;
 
-pub(crate) use result::{JobEnd, ReviewResult};
+pub(crate) use result::{Follow, JobEnd, ReviewResult};
 
 pub(crate) struct Deps<G, H, A> {
     pub git: G,

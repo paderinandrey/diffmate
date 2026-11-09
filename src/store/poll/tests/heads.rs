@@ -40,7 +40,7 @@ impl Fix {
     pub(super) async fn after(&self, number: u64, now: i64, debounce: i64) {
         let id = self.id(number).await;
         self.store
-            .schedule_after_run(id, now, debounce, &fixture::process())
+            .schedule_after_run(id, now, debounce, &fixture::process(), false)
             .await
             .unwrap();
     }

@@ -7,7 +7,7 @@ use crate::gh::Gh;
 use crate::git::Git;
 use crate::notify;
 use crate::review::signals::{self, Signals};
-use crate::runner::{self, Deps, ReviewResult};
+use crate::runner::{self, Deps, Follow, ReviewResult};
 use crate::store::records::JobOrigin;
 use crate::store::{Store, now_ms, retry::QueuedJob};
 use tokio::sync::watch;
@@ -67,11 +67,20 @@ async fn follow(
     queued: &QueuedJob,
     result: &ReviewResult,
 ) -> Result<(), Error> {
-    if queued.origin != JobOrigin::Automatic || !matches!(result, ReviewResult::Succeeded { .. }) {
+    let ReviewResult::Succeeded { follow, .. } = result else {
+        return Ok(());
+    };
+    if queued.origin != JobOrigin::Automatic || *follow == Follow::Stop {
         return Ok(());
     }
     let debounce = i64::try_from(config.settings.debounce().as_millis()).unwrap_or(i64::MAX);
     store
-        .schedule_after_run(queued.job.target_id, now_ms(), debounce, &config.process)
+        .schedule_after_run(
+            queued.job.target_id,
+            now_ms(),
+            debounce,
+            &config.process,
+            *follow == Follow::Hold,
+        )
         .await
 }

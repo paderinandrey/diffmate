@@ -36,6 +36,37 @@ async fn a_head_stored_after_success_gets_one_follow_up_job() {
 }
 
 #[tokio::test]
+async fn a_draft_follow_up_is_held_and_not_runnable() {
+    let fix = Fix::open().await;
+    fix.seed(1, true, true).await;
+    let job = fix.enqueue(1, true).await;
+    fix.add_run(job, "aaa", false).await;
+    fix.set_job(job, "succeeded", 0, None).await;
+    let id = fix.id(1).await;
+    fix.store.set_known_head(id, "bbb").await.unwrap();
+    fix.store
+        .schedule_after_run(id, 1_000, DEBOUNCE, &super::fixture::process(), true)
+        .await
+        .unwrap();
+    let jobs = fix.jobs(1).await;
+    let queued = &jobs[1];
+    assert_eq!(queued.state, "queued");
+    assert_eq!((queued.retry, queued.next), (0, Some(61_000)));
+    let queued_id = queued.id;
+    let held: i64 = fix
+        .store
+        .call(move |conn| {
+            conn.query_row("SELECT held FROM jobs WHERE id = ?1", [queued_id], |row| {
+                row.get(0)
+            })
+        })
+        .await
+        .unwrap();
+    assert_eq!(held, 1);
+    assert!(fix.store.next_runnable_job(61_000).await.unwrap().is_none());
+}
+
+#[tokio::test]
 async fn schedule_after_run_holds_resets_or_blocks() {
     let fix = Fix::open().await;
     fix.seed(1, true, true).await;

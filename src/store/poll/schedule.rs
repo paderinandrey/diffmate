@@ -63,6 +63,7 @@ pub(super) fn after_run(
     debounce: i64,
     pid: u32,
     started: i64,
+    hold_follow: bool,
 ) -> rusqlite::Result<()> {
     if !tracked(tx, target)? {
         return Ok(());
@@ -75,17 +76,17 @@ pub(super) fn after_run(
     let Some(head) = head else {
         return Ok(());
     };
-    consider(
-        tx,
-        target,
-        &head,
-        &When {
-            now,
-            debounce,
-            pid,
-            started,
-        },
-    )
+    let when = When {
+        now,
+        debounce,
+        pid,
+        started,
+    };
+    consider(tx, target, &head, &when)?;
+    if hold_follow {
+        hold(tx, target, &when)?;
+    }
+    Ok(())
 }
 
 fn arm(

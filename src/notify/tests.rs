@@ -26,6 +26,7 @@ fn succeeded() -> ReviewResult {
         limitation: None,
         future_improvements: Vec::new(),
         warnings: Vec::new(),
+        follow: crate::runner::Follow::Schedule,
     }
 }
 

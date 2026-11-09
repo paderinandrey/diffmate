@@ -59,24 +59,26 @@ fn miss(tx: &Transaction, pr: &PrRef, kind: &Absent, now: i64) -> rusqlite::Resu
     };
     match kind {
         Absent::Skip => Ok(()),
-        Absent::Closed { .. } => {
-            tx.execute(
-                "UPDATE targets SET tracking = 'untracked', request_seen = 0
-                 WHERE id = ?1 AND tracking = 'tracked'",
-                [id],
-            )?;
-            tx.execute(
-                "UPDATE jobs SET state = 'cancelled', updated_at = ?1
-                 WHERE target_id = ?2 AND kind = 'review' AND origin = 'automatic'
-                 AND state = 'queued'",
-                params![now, id],
-            )?;
-            Ok(())
-        }
+        Absent::Closed { .. } => close(tx, id, now),
         Absent::Open { .. } => tx
             .execute("UPDATE targets SET request_seen = 0 WHERE id = ?1", [id])
             .map(drop),
     }
+}
+
+pub(super) fn close(tx: &Transaction, id: TargetId, now: i64) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE targets SET tracking = 'untracked', request_seen = 0
+         WHERE id = ?1 AND tracking = 'tracked'",
+        [id],
+    )?;
+    tx.execute(
+        "UPDATE jobs SET state = 'cancelled', updated_at = ?1
+         WHERE target_id = ?2 AND kind = 'review' AND origin = 'automatic'
+         AND state = 'queued'",
+        params![now, id],
+    )?;
+    Ok(())
 }
 
 fn upsert(tx: &Transaction, pr: &PrRef, now: i64) -> rusqlite::Result<TargetId> {
