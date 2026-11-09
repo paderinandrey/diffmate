@@ -3,6 +3,7 @@ mod later;
 mod preservation;
 mod retry;
 mod terminal;
+mod transient;
 
 use super::*;
 use crate::agent::ReviewOutput;

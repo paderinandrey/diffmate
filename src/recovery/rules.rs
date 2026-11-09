@@ -1,9 +1,11 @@
 mod failure;
 #[cfg(test)]
 mod tests;
+mod transient;
 use crate::store::records::JobOrigin;
 pub(crate) use failure::Failure;
 use std::time::Duration;
+pub(crate) use transient::is_transient;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RetryState {
@@ -49,7 +51,10 @@ pub(crate) fn after_failure(
                 next_attempt_at: None,
             };
         }
-        if matches!(failure, Failure::Crash | Failure::Timeout) {
+        if matches!(
+            failure,
+            Failure::Crash | Failure::Timeout | Failure::TransientAgent
+        ) {
             let max = max_retries.unwrap_or(config_max);
             budget = Some(max);
             if retry_count < max {
