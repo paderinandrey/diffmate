@@ -83,6 +83,19 @@ pub(super) fn job(
     publication_id: &str,
 ) -> rusqlite::Result<Outcome> {
     let sql = "INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) VALUES ('publish', ?1, 'queued', ?2, ?3, ?4, ?4, 'manual', ?5)";
-    tx.execute(sql, params![target_id, pid, started, now, publication_id])?;
-    Ok(Outcome::Job(tx.last_insert_rowid()))
+    match tx.execute(sql, params![target_id, pid, started, now, publication_id]) {
+        Ok(_) => Ok(Outcome::Job(tx.last_insert_rowid())),
+        Err(error) if same_publication(&error) => Ok(Outcome::Blocked),
+        Err(error) => Err(error),
+    }
+}
+
+fn same_publication(error: &rusqlite::Error) -> bool {
+    match error {
+        rusqlite::Error::SqliteFailure(code, Some(detail)) => {
+            code.extended_code == rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE
+                && detail.contains("jobs.publication_id")
+        }
+        _ => false,
+    }
 }

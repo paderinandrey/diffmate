@@ -1,22 +1,27 @@
-use super::checks::{Notes, Unanchored};
-use super::load::comments;
+use super::checks::{Anchored, Notes, Unanchored};
 use crate::error::Error;
 use crate::gh::InlineComment;
-use crate::store::Store;
 
-pub(super) async fn parts(
-    store: &Store,
-    draft_id: i64,
+pub(super) fn from_snapshot(
+    snapshot: &str,
     publication_id: &str,
 ) -> Result<(String, Vec<InlineComment>), Error> {
-    let notes = super::checks::notes(store, draft_id).await?;
-    let loose = super::checks::unanchored(store, draft_id).await?;
-    let inline = comments(store, draft_id).await?;
-    Ok((text(&loose, &notes, publication_id), inline))
+    let (loose, anchored, notes) = super::checks::payload(snapshot)?;
+    let comments = anchored.into_iter().map(comment).collect();
+    Ok((text(&loose, &notes, publication_id), comments))
 }
 
 pub(super) fn inline(id: &str, title: &str, body: &str) -> String {
     format!("{title}\n\n{body}\n\n<!-- diffmate:finding={id} -->")
+}
+
+fn comment(finding: Anchored) -> InlineComment {
+    InlineComment {
+        path: finding.path,
+        line: finding.line,
+        side: finding.side,
+        body: inline(&finding.id, &finding.title, &finding.body),
+    }
 }
 
 fn text(findings: &[Unanchored], notes: &Notes, publication_id: &str) -> String {

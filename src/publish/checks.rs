@@ -1,6 +1,5 @@
 use crate::error::Error;
-use crate::store::Store;
-use rusqlite::Connection;
+use serde::Deserialize;
 
 pub(super) struct Notes {
     pub limitation: Option<String>,
@@ -13,43 +12,63 @@ pub(super) struct Unanchored {
     pub body: String,
 }
 
-pub(super) async fn notes(store: &Store, draft_id: i64) -> Result<Notes, Error> {
-    store.call(move |conn| read_notes(conn, draft_id)).await
+pub(super) struct Anchored {
+    pub id: String,
+    pub path: String,
+    pub line: u32,
+    pub side: String,
+    pub title: String,
+    pub body: String,
 }
 
-pub(super) async fn unanchored(store: &Store, draft_id: i64) -> Result<Vec<Unanchored>, Error> {
-    store
-        .call(move |conn| read_unanchored(conn, draft_id))
-        .await
+#[derive(Deserialize)]
+struct Shot {
+    findings: Vec<ShotFinding>,
+    limitation: Option<String>,
+    future_improvements: Vec<String>,
 }
 
-fn read_notes(conn: &Connection, draft_id: i64) -> rusqlite::Result<Notes> {
-    let sql =
-        "SELECT limitation, limitation_included, future_improvements FROM drafts WHERE id = ?1";
-    conn.query_row(sql, [draft_id], |row| {
-        let text: Option<String> = row.get(0)?;
-        let included: i64 = row.get(1)?;
-        let future: String = row.get(2)?;
-        Ok(Notes {
-            limitation: (included == 1).then_some(text).flatten(),
-            future: serde_json::from_str(&future).map_err(json_err)?,
-        })
-    })
+#[derive(Deserialize)]
+struct ShotFinding {
+    id: String,
+    path: Option<String>,
+    line: Option<i64>,
+    side: Option<String>,
+    title: String,
+    body: String,
 }
 
-fn read_unanchored(conn: &Connection, draft_id: i64) -> rusqlite::Result<Vec<Unanchored>> {
-    let sql = "SELECT path, title, body FROM findings WHERE draft_id = ?1 AND decision IN ('kept', 'edited') AND (path IS NULL OR line IS NULL) ORDER BY ordinal";
-    let mut stmt = conn.prepare(sql)?;
-    let rows = stmt.query_map([draft_id], |row| {
-        Ok(Unanchored {
-            path: row.get(0)?,
-            title: row.get(1)?,
-            body: row.get(2)?,
-        })
-    })?;
-    rows.collect()
+pub(super) fn payload(snapshot: &str) -> Result<(Vec<Unanchored>, Vec<Anchored>, Notes), Error> {
+    let shot: Shot = serde_json::from_str(snapshot)?;
+    let mut loose = Vec::new();
+    let mut anchored = Vec::new();
+    for finding in shot.findings {
+        match (finding.path, finding.line, finding.side) {
+            (Some(path), Some(line), Some(side)) => anchored.push(Anchored {
+                id: finding.id,
+                path,
+                line: u32::try_from(line).map_err(line_err)?,
+                side,
+                title: finding.title,
+                body: finding.body,
+            }),
+            (path, _, _) => loose.push(Unanchored {
+                path,
+                title: finding.title,
+                body: finding.body,
+            }),
+        }
+    }
+    let notes = Notes {
+        limitation: shot.limitation,
+        future: shot.future_improvements,
+    };
+    Ok((loose, anchored, notes))
 }
 
-fn json_err(error: serde_json::Error) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error))
+fn line_err(_: std::num::TryFromIntError) -> Error {
+    Error::Io {
+        what: "publication snapshot".into(),
+        source: std::io::Error::other("finding line does not fit"),
+    }
 }
