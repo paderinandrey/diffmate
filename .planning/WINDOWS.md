@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 14
+open_count: 15
 waived_count: 0
 fixed_count: 1
-total_count: 15
-last_updated: 2026-11-10T17:10:19.312Z
+total_count: 16
+last_updated: 2026-11-10T18:38:59.087Z
 ---
 
 # Broken Windows Ledger
@@ -30,6 +30,7 @@ last_updated: 2026-11-10T17:10:19.312Z
 | 13 | 04 | deviation | src/tui/tests/edit.rs |  | Editor tests live in src/tui/tests/edit.rs because decisions.rs exceeded the 100-insertion hook. | open |  | 2026-11-10T15:46:56.770Z |  |
 | 14 | 04 | deviation | src/tui/model.rs |  | Accepting Discard reloads queue rows after Store::discard so the latched target leaves the list. | open |  | 2026-11-10T17:10:18.894Z |  |
 | 15 | 04 | deviation | src/tui/tests/actions.rs |  | Task 2 has no separate test(04-04) RED commit. hk runs the full suite, so the failing tests and the implementation landed together in 9f1a62a. | open |  | 2026-11-10T17:10:19.312Z |  |
+| 16 | 04 | deviation | src/publish/tests/script.rs |  | Script answers pr_view, current_login, and list_my_reviews so the publish gate does not treat the trait default as a transient gh error | open |  | 2026-11-10T18:38:59.087Z |  |
 
 ````json
 [
@@ -225,6 +226,19 @@ last_updated: 2026-11-10T17:10:19.312Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-10T17:10:19.312Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 16,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/publish/tests/script.rs",
+    "line": null,
+    "description": "Script answers pr_view, current_login, and list_my_reviews so the publish gate does not treat the trait default as a transient gh error",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-10T18:38:59.087Z",
     "resolved_at": null,
     "milestone": null
   }

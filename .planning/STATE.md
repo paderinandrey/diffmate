@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-11-10T17:52:41.107Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-11-10T18:38:58.123Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 72c2e7a37c99150fccf00b2e09f5c3d533cd2a1f
+state_head: 359493f0afcab15cce75ac21c7944923517b4651
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 35
+  completed_plans: 36
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -74,6 +74,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P03 | 36min | 3 tasks | 24 files |
 | Phase 04 P04 | 30min | 2 tasks | 9 files |
 | Phase 04 P05 | 38min | 3 tasks | 18 files |
+| Phase 04 P06 | 41 min | 2 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,9 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: tui serves publish jobs only. The next reconcile or sync job ends the loop. A queued review job stays queued. The queue shows runner: tui while this process holds the lock.
 - [Phase 04]: A second publish key while a publication is pending is Blocked. A submitted draft draws this draft is already submitted and posts nothing further.
 - [Phase 04]: u asks first. Keep queued is highlighted. The other choice abandons the publication with reason cancelled by me and cancels the queued job. A started publication stays as it is. q leaves it pending.
+- [Phase 04]: 04-06: Don't send is highlighted for a stale draft and for a head that moved. Send anyway stores the fetched head as confirmed_sha. commit_id stays the run head.
+- [Phase 04]: 04-06: Decline sets the job cancelled and the publication abandoned with reason declined in one transaction. Redelivery fails that job and does not insert a publication.
+- [Phase 04]: 04-06: A pending review matches the exact login and the exact state PENDING. 408, 429, and 500-599 retry. Any other 4xx, including 401 and 403, abandons immediately. create_review is not retried.
 
 ### Pending Todos
 
@@ -158,6 +162,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T17:52:40.763Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-11-10T18:38:57.789Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

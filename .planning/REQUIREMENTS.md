@@ -78,12 +78,12 @@ Slice description: `diffmate tui` shows targets and drafts. I can set decisions,
 - [x] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
 - [x] **PUB-05**: Publishing with undecided findings is refused until every finding has a decision.
 - [x] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
-- [ ] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
-- [ ] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
+- [x] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
+- [x] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
 - [ ] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
 - [ ] **PUB-10**: A crash before `sending` is committed resumes safely after restart and publishes exactly once.
 - [ ] **PUB-11**: A crash after `sending` is committed leaves the publication `unknown`, with no automatic second POST.
-- [ ] **PUB-12**: Declining a `needs_confirmation` publication cancels the job and abandons the publication; redelivering the old job does not revive it.
+- [x] **PUB-12**: Declining a `needs_confirmation` publication cancels the job and abandons the publication; redelivering the old job does not revive it.
 - [ ] **PUB-13**: While `tui` holds the lock it shows that it acts as the runner and does not run `review` jobs.
 - [ ] **PUB-14**: A simulated timeout on the GitHub call leaves the publication `unknown`, and a new attempt stays blocked until reconciliation finds the marker or I abandon it.
 - [ ] **PUB-15**: A failed comment sync leaves the publication `submitted`, inline thread statuses `unknown`, and is retried without a new POST.
@@ -184,12 +184,12 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | PUB-04 | Phase 4 | Complete |
 | PUB-05 | Phase 4 | Complete |
 | PUB-06 | Phase 4 | Complete |
-| PUB-07 | Phase 4 | Pending |
-| PUB-08 | Phase 4 | Pending |
+| PUB-07 | Phase 4 | Complete |
+| PUB-08 | Phase 4 | Complete |
 | PUB-09 | Phase 4 | Pending |
 | PUB-10 | Phase 4 | Pending |
 | PUB-11 | Phase 4 | Pending |
-| PUB-12 | Phase 4 | Pending |
+| PUB-12 | Phase 4 | Complete |
 | PUB-13 | Phase 4 | Pending |
 | PUB-14 | Phase 4 | Pending |
 | PUB-15 | Phase 4 | Pending |
