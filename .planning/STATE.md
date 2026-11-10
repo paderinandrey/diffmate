@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-11-10T18:38:58.123Z"
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-11-10T19:26:08.685Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 359493f0afcab15cce75ac21c7944923517b4651
+state_head: d62d024fc2c30e9a62bce0ad8ee4d288a1f5b1e1
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 36
+  completed_plans: 37
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -75,6 +75,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P04 | 30min | 2 tasks | 9 files |
 | Phase 04 P05 | 38min | 3 tasks | 18 files |
 | Phase 04 P06 | 41 min | 2 tasks | 28 files |
+| Phase 04 P07 | 43 min | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,12 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: 04-06: Don't send is highlighted for a stale draft and for a head that moved. Send anyway stores the fetched head as confirmed_sha. commit_id stays the run head.
 - [Phase 04]: 04-06: Decline sets the job cancelled and the publication abandoned with reason declined in one transaction. Redelivery fails that job and does not insert a publication.
 - [Phase 04]: 04-06: A pending review matches the exact login and the exact state PENDING. 408, 429, and 500-599 retry. Any other 4xx, including 401 and 403, abandons immediately. create_review is not retried.
+- [Phase 04]: In-process crash points are an AtomicU8 and Hold. set_var is unsafe in edition 2024. DIFFMATE_CRASH_POINT still hangs a child process.
+- [Phase 04]: A running publish that is still pending is requeued. sending and unknown fail with outcome unknown. submitted succeeds the job. rejected and abandoned fail without another POST.
+- [Phase 04]: Recovery inserts one reconcile job per unknown publication and does not call gh. A second recovery does not duplicate a queued or running reconcile.
+- [Phase 04]: create_review is bounded at 30 seconds. A timeout, a network error, or HTTP 500-599 leaves unknown. Other HTTP statuses, including 401, 403, and 422, reject. The POST is not retried.
+- [Phase 04]: Reconcile submits only from unknown when a review by the current login contains the publication marker. A missing marker or a failed list leaves unknown.
+- [Phase 04]: The tui runner starts publish and reconcile. A sync job ends the loop without start_job. y enqueues one reconcile and runs it. b highlights Leave unknown. Abandon writes confirmed by me.
 
 ### Pending Todos
 
@@ -162,6 +169,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T18:38:57.789Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-11-10T19:26:08.381Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
