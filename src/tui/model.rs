@@ -83,4 +83,42 @@ impl Session {
         };
         *cursor = cursor.saturating_sub(1);
     }
+
+    pub async fn decide(&mut self, store: &Store, decision: &str) -> Result<(), Error> {
+        let Some(id) = self.finding_id() else {
+            return Ok(());
+        };
+        store.set_decision(&id, decision).await?;
+        self.reload(store).await
+    }
+
+    pub async fn keep_rest(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(draft_id) = self.draft_id().filter(|_| self.finding_id().is_some()) else {
+            return Ok(());
+        };
+        store.keep_undecided(draft_id).await?;
+        self.reload(store).await
+    }
+
+    async fn reload(&mut self, store: &Store) -> Result<(), Error> {
+        let Screen::Draft(_) = &self.screen else {
+            return Ok(());
+        };
+        let Some(target) = self.rows.get(self.selected).map(|row| row.target_id) else {
+            return Ok(());
+        };
+        if let Some(draft) = store.latest_draft(target).await? {
+            self.screen = Screen::Draft(draft);
+        }
+        Ok(())
+    }
+
+    fn finding_id(&self) -> Option<String> {
+        let (draft, focus) = self.draft()?;
+        Some(draft.findings.get(focus)?.id.clone())
+    }
+
+    fn draft_id(&self) -> Option<i64> {
+        self.draft().map(|(draft, _)| draft.id)
+    }
 }

@@ -1,3 +1,4 @@
+pub(crate) mod decisions;
 pub(crate) mod finish;
 pub(crate) mod jobs;
 mod migrate;

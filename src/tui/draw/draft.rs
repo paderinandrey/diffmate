@@ -7,8 +7,12 @@ use ratatui::widgets::Paragraph;
 pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize) {
     let mut lines = Vec::new();
     for (index, finding) in draft.findings.iter().enumerate() {
+        let hint = finding
+            .hint
+            .as_deref()
+            .map_or(String::new(), |hint| format!("  hint: {hint}"));
         lines.push(Line::from(format!(
-            "{} {}  {}  {}  {}",
+            "{} {}  {}  {}  {}{hint}",
             mark(focus == index),
             sanitize(&finding.anchor),
             sanitize(&finding.severity),

@@ -7,6 +7,9 @@ pub(super) enum Command {
     Back,
     Down,
     Up,
+    Keep,
+    Drop,
+    KeepRest,
     Ignored,
 }
 
@@ -17,6 +20,9 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
         KeyCode::Esc if session.on_draft() => Command::Back,
         KeyCode::Down => Command::Down,
         KeyCode::Up => Command::Up,
+        KeyCode::Char('k') if session.on_draft() => Command::Keep,
+        KeyCode::Char('d') if session.on_draft() => Command::Drop,
+        KeyCode::Char('K') if session.on_draft() => Command::KeepRest,
         _ => Command::Ignored,
     }
 }

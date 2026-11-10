@@ -64,6 +64,18 @@ async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bo
             session.move_up();
             Ok(false)
         }
+        keys::Command::Keep => {
+            session.decide(store, "kept").await?;
+            Ok(false)
+        }
+        keys::Command::Drop => {
+            session.decide(store, "dropped").await?;
+            Ok(false)
+        }
+        keys::Command::KeepRest => {
+            session.keep_rest(store).await?;
+            Ok(false)
+        }
         keys::Command::Ignored => Ok(false),
     }
 }

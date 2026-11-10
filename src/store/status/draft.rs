@@ -4,14 +4,17 @@ use crate::store::TargetId;
 use rusqlite::{OptionalExtension, params};
 
 pub(crate) struct DraftFinding {
+    pub id: String,
     pub anchor: String,
     pub severity: String,
     pub title: String,
     pub body: String,
     pub decision: String,
+    pub hint: Option<String>,
 }
 
 pub(crate) struct DraftView {
+    pub id: i64,
     pub findings: Vec<DraftFinding>,
     pub limitation: Option<String>,
     pub future: Vec<String>,
@@ -32,11 +35,13 @@ fn read_finding(row: &rusqlite::Row<'_>) -> rusqlite::Result<(bool, DraftFinding
     Ok((
         anchored,
         DraftFinding {
+            id: row.get(7)?,
             anchor: anchor(path, line),
             severity: row.get(1)?,
             title: row.get(4)?,
             body: row.get(5)?,
             decision: row.get(6)?,
+            hint: row.get(8)?,
         },
     ))
 }
@@ -64,7 +69,8 @@ impl Store {
             };
             let (draft_id, limitation, future): (i64, Option<String>, String) = row;
             let mut statement = conn.prepare(
-                "SELECT ordinal, severity, path, line, title, body, decision
+                "SELECT ordinal, severity, path, line, title, body, decision, id,
+                        (SELECT p.decision FROM findings p WHERE p.id = findings.previous_finding_id)
                  FROM findings WHERE draft_id = ?1 ORDER BY ordinal",
             )?;
             let loaded: Vec<_> = statement
@@ -78,6 +84,7 @@ impl Store {
                 .map(|(_, finding)| finding)
                 .collect();
             Ok(Some(DraftView {
+                id: draft_id,
                 findings,
                 limitation,
                 future: improvements(&future)?,
