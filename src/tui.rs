@@ -1,4 +1,5 @@
 mod draw;
+mod edit;
 mod keys;
 mod model;
 
@@ -35,6 +36,12 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
     let mut terminal = ratatui::try_init().map_err(Error::io("open the terminal"))?;
     let _restore = Restore;
     let mut session = Session::load(&store).await?;
+    let editor = config
+        .env
+        .get("EDITOR")
+        .and_then(|value| value.to_str())
+        .map(str::to_owned);
+    session.prepare(editor, config.paths.cache_dir().to_path_buf(), true);
     loop {
         terminal
             .draw(|frame| draw::screen(frame, &session))
@@ -46,6 +53,7 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
 }
 
 async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bool, Error> {
+    session.clear_notice();
     match keys::on_key(session, key) {
         keys::Command::Quit => Ok(true),
         keys::Command::Open => {
@@ -74,6 +82,14 @@ async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bo
         }
         keys::Command::KeepRest => {
             session.keep_rest(store).await?;
+            Ok(false)
+        }
+        keys::Command::Edit => {
+            session.edit_selected(store).await?;
+            Ok(false)
+        }
+        keys::Command::Include => {
+            session.include_limitation(store).await?;
             Ok(false)
         }
         keys::Command::Ignored => Ok(false),
@@ -108,8 +124,22 @@ pub(crate) async fn run_scripted(
     keys: &[KeyEvent],
     backend: TestBackend,
 ) -> Result<TestBackend, Error> {
+    run_scripted_with(store, keys, backend, None, None).await
+}
+
+#[cfg(test)]
+pub(crate) async fn run_scripted_with(
+    store: &Store,
+    keys: &[KeyEvent],
+    backend: TestBackend,
+    editor: Option<&str>,
+    cache: Option<&std::path::Path>,
+) -> Result<TestBackend, Error> {
     let mut terminal = Terminal::new(backend).unwrap_or_else(|error| match error {});
     let mut session = Session::load(store).await?;
+    if let Some(dir) = cache {
+        session.prepare(editor.map(str::to_owned), dir.to_path_buf(), false);
+    }
     draw_scripted(&mut terminal, &session);
     for key in keys {
         if apply(&mut session, store, *key).await? {

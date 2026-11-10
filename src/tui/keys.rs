@@ -10,6 +10,8 @@ pub(super) enum Command {
     Keep,
     Drop,
     KeepRest,
+    Edit,
+    Include,
     Ignored,
 }
 
@@ -23,6 +25,8 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
         KeyCode::Char('k') if session.on_draft() => Command::Keep,
         KeyCode::Char('d') if session.on_draft() => Command::Drop,
         KeyCode::Char('K') if session.on_draft() => Command::KeepRest,
+        KeyCode::Char('e') if session.on_draft() => Command::Edit,
+        KeyCode::Char('i') if session.on_draft() => Command::Include,
         _ => Command::Ignored,
     }
 }

@@ -9,7 +9,7 @@ use ratatui::widgets::Paragraph;
 
 pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
     if let Some((draft, focus)) = session.draft() {
-        draft::screen(frame, draft, focus);
+        draft::screen(frame, draft, focus, session.notice());
         return;
     }
     let lines = if session.rows.is_empty() {

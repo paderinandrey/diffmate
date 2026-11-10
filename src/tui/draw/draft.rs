@@ -4,7 +4,7 @@ use ratatui::Frame;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
-pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize) {
+pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize, notice: Option<&str>) {
     let mut lines = Vec::new();
     for (index, finding) in draft.findings.iter().enumerate() {
         let hint = finding
@@ -32,7 +32,9 @@ pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize) {
         }
     }
     if let Some(limitation) = &draft.limitation {
-        lines.push(Line::from(format!("Limitation: {}", sanitize(limitation))));
+        let suffix = if draft.included { " included" } else { "" };
+        let text = format!("Limitation: {}{suffix}", sanitize(limitation));
+        lines.push(Line::from(text));
     }
     let findings = draft.findings.len();
     for (index, note) in draft.future.iter().enumerate() {
@@ -41,6 +43,9 @@ pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize) {
             mark(focus == findings + index),
             sanitize(note)
         )));
+    }
+    if let Some(notice) = notice {
+        lines.push(Line::from(sanitize(notice)));
     }
     frame.render_widget(Paragraph::new(lines), frame.area());
 }

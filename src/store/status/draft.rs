@@ -18,6 +18,7 @@ pub(crate) struct DraftView {
     pub findings: Vec<DraftFinding>,
     pub limitation: Option<String>,
     pub future: Vec<String>,
+    pub included: bool,
 }
 
 fn anchor(path: Option<String>, line: Option<i64>) -> String {
@@ -55,19 +56,24 @@ fn improvements(value: &str) -> rusqlite::Result<Vec<String>> {
 impl Store {
     pub async fn latest_draft(&self, target: TargetId) -> Result<Option<DraftView>, Error> {
         self.call(move |conn| {
-            let sql = "SELECT d.id, d.limitation, d.future_improvements
+            let sql = "SELECT d.id, d.limitation, d.future_improvements, d.limitation_included
                        FROM drafts d JOIN runs r ON r.id = d.run_id
                        WHERE r.target_id = ?1 AND r.state = 'succeeded'
                        ORDER BY r.id DESC LIMIT 1";
             let Some(row) = conn
                 .query_row(sql, params![target], |row| {
-                    Ok((row.get(0)?, row.get(1)?, row.get::<_, String>(2)?))
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, i64>(3)?,
+                    ))
                 })
                 .optional()?
             else {
                 return Ok(None);
             };
-            let (draft_id, limitation, future): (i64, Option<String>, String) = row;
+            let (draft_id, limitation, future, included): (i64, Option<String>, String, i64) = row;
             let mut statement = conn.prepare(
                 "SELECT ordinal, severity, path, line, title, body, decision, id,
                         (SELECT p.decision FROM findings p WHERE p.id = findings.previous_finding_id)
@@ -88,6 +94,7 @@ impl Store {
                 findings,
                 limitation,
                 future: improvements(&future)?,
+                included: included == 1,
             }))
         })
         .await
