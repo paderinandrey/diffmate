@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 12
+open_count: 14
 waived_count: 0
 fixed_count: 1
-total_count: 13
-last_updated: 2026-11-10T15:46:56.770Z
+total_count: 15
+last_updated: 2026-11-10T17:10:19.312Z
 ---
 
 # Broken Windows Ledger
@@ -28,6 +28,8 @@ last_updated: 2026-11-10T15:46:56.770Z
 | 11 | 02 | unmet-truth | src/tests/isolation/auth.rs |  | The full test:e2e gate is blocked: isolation_flags_keep_authentication receives Anthropic HTTP 403 api_error requiring account verification on Claude 2.1.314. Local CLI probes and isolation controls pass. On 2026-11-03 the owner chose to keep the live gate blocked; do not automatically retry Claude API. | open |  | 2026-11-03T15:07:44.575Z |  |
 | 12 | 02 | unrun-verify | src/tests/live |  | The four model-backed checks live_max_turns_one_is_failed_not_no_findings, live_clean_pr_has_no_findings, live_obvious_bug_is_anchored_to_line_7 and live_fork_pr_is_reviewed_the_same_way did not run after the Anthropic 403 fail-fast; they remain required after account recovery. | open |  | 2026-11-03T15:07:45.151Z |  |
 | 13 | 04 | deviation | src/tui/tests/edit.rs |  | Editor tests live in src/tui/tests/edit.rs because decisions.rs exceeded the 100-insertion hook. | open |  | 2026-11-10T15:46:56.770Z |  |
+| 14 | 04 | deviation | src/tui/model.rs |  | Accepting Discard reloads queue rows after Store::discard so the latched target leaves the list. | open |  | 2026-11-10T17:10:18.894Z |  |
+| 15 | 04 | deviation | src/tui/tests/actions.rs |  | Task 2 has no separate test(04-04) RED commit. hk runs the full suite, so the failing tests and the implementation landed together in 9f1a62a. | open |  | 2026-11-10T17:10:19.312Z |  |
 
 ````json
 [
@@ -197,6 +199,32 @@ last_updated: 2026-11-10T15:46:56.770Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-10T15:46:56.770Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 14,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/tui/model.rs",
+    "line": null,
+    "description": "Accepting Discard reloads queue rows after Store::discard so the latched target leaves the list.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-10T17:10:18.894Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 15,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/tui/tests/actions.rs",
+    "line": null,
+    "description": "Task 2 has no separate test(04-04) RED commit. hk runs the full suite, so the failing tests and the implementation landed together in 9f1a62a.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-10T17:10:19.312Z",
     "resolved_at": null,
     "milestone": null
   }

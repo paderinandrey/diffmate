@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-11-10T16:37:22.957Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-11-10T17:10:17.727Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 32de3c8f87406b2375041d50cd97a754b2da18f7
+state_head: 9f1a62a51e360b756739e72c0709f269ae386fb4
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 33
+  completed_plans: 34
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -72,6 +72,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P01 | 44min | 2 tasks | 35 files |
 | Phase 04 P02 | 57min | 2 tasks | 13 files |
 | Phase 04 P03 | 36min | 3 tasks | 24 files |
+| Phase 04 P04 | 30min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,10 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: One confirm writes the snapshot, the pending publication, and the queued publish job in one Immediate transaction.
 - [Phase 04]: execute_publish commits sending before create_review and builds the review from that snapshot.
 - [Phase 04]: A second confirm returns Blocked while a publication is pending, sending, or unknown. A submitted draft returns DraftSubmitted. A unique jobs.publication_id conflict returns Blocked and rolls back.
+- [Phase 04]: Keep is the highlighted confirm choice. Enter on Keep closes the modal and does not call Store::discard.
+- [Phase 04]: Enter on Discard calls Store::discard and reloads queue rows so the target leaves the list.
+- [Phase 04]: Opening a PR spawns the platform open program with one argument, PrRef::web_url. A spawn error is drawn.
+- [Phase 04]: n calls Store::enqueue_review with JobOrigin::Manual and force false. The explanation is shown when the lock holder is not Role::Watch.
 
 ### Pending Todos
 
@@ -148,6 +153,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T16:37:22.634Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-11-10T17:10:17.355Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
