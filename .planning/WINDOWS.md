@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 11
+open_count: 12
 waived_count: 0
 fixed_count: 1
-total_count: 12
-last_updated: 2026-11-03T15:07:45.151Z
+total_count: 13
+last_updated: 2026-11-10T15:46:56.770Z
 ---
 
 # Broken Windows Ledger
@@ -27,6 +27,7 @@ last_updated: 2026-11-03T15:07:45.151Z
 | 10 | 02 | unrun-verify | .planning/phases/02-reliability/02-10-PLAN.md |  | Release-binary live SIGKILL during preparation and agent execution is deferred to end-of-phase UAT; all named crash points pass isolated restart, database, directory and worktree-metadata checks. | open |  | 2026-11-03T15:01:08.489Z |  |
 | 11 | 02 | unmet-truth | src/tests/isolation/auth.rs |  | The full test:e2e gate is blocked: isolation_flags_keep_authentication receives Anthropic HTTP 403 api_error requiring account verification on Claude 2.1.314. Local CLI probes and isolation controls pass. On 2026-11-03 the owner chose to keep the live gate blocked; do not automatically retry Claude API. | open |  | 2026-11-03T15:07:44.575Z |  |
 | 12 | 02 | unrun-verify | src/tests/live |  | The four model-backed checks live_max_turns_one_is_failed_not_no_findings, live_clean_pr_has_no_findings, live_obvious_bug_is_anchored_to_line_7 and live_fork_pr_is_reviewed_the_same_way did not run after the Anthropic 403 fail-fast; they remain required after account recovery. | open |  | 2026-11-03T15:07:45.151Z |  |
+| 13 | 04 | deviation | src/tui/tests/edit.rs |  | Editor tests live in src/tui/tests/edit.rs because decisions.rs exceeded the 100-insertion hook. | open |  | 2026-11-10T15:46:56.770Z |  |
 
 ````json
 [
@@ -183,6 +184,19 @@ last_updated: 2026-11-03T15:07:45.151Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-03T15:07:45.151Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 13,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/tui/tests/edit.rs",
+    "line": null,
+    "description": "Editor tests live in src/tui/tests/edit.rs because decisions.rs exceeded the 100-insertion hook.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-10T15:46:56.770Z",
     "resolved_at": null,
     "milestone": null
   }

@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-11-10T14:40:39.698Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-11-10T15:46:55.919Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 6c58f32c2ca739c425e3060dd36e41eb3135e5f4
+state_head: 194dbe25fd635ae314fb920cab6eda26799898f2
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 31
+  completed_plans: 32
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -70,6 +70,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 01 P02 | 15 min | 2 tasks | 1 files |
 | Phase 01 P12 | 70 min | 2 tasks | 10 files |
 | Phase 04 P01 | 44min | 2 tasks | 35 files |
+| Phase 04 P02 | 57min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -111,6 +112,8 @@ Phase 02 checkpoint answers (2026-11-01): the owner selected `additive-backup`
 for 02-01 and replied `approved` for the `toml` dependency in 02-02.
 Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: ratatui 0.30.2 with default features off and only the crossterm feature; crossterm is not a direct dependency
+- [Phase 04]: EDITOR is an argv split on ASCII whitespace and spawned with tokio::process, with no shell and no fallback.
+- [Phase 04]: The editor temp file is mode 0700 under the cache directory and is deleted after the read. Scripted tests do not suspend the terminal.
 
 ### Pending Todos
 
@@ -141,6 +144,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T14:40:39.408Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-11-10T15:46:55.621Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
