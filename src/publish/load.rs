@@ -60,16 +60,12 @@ fn read_comment(row: &rusqlite::Row<'_>) -> rusqlite::Result<InlineComment> {
         path: row.get(3)?,
         line: u32::try_from(line).map_err(sql_err)?,
         side: row.get(5)?,
-        body: comment_body(
+        body: super::body::inline(
             &row.get::<_, String>(0)?,
             &row.get::<_, String>(1)?,
             &row.get::<_, String>(2)?,
         ),
     })
-}
-
-pub(super) fn comment_body(id: &str, title: &str, body: &str) -> String {
-    format!("{title}\n\n{body}\n\n<!-- diffmate:finding={id} -->")
 }
 
 fn json_err(error: serde_json::Error) -> rusqlite::Error {

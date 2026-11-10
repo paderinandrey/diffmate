@@ -1,4 +1,5 @@
-use super::load::{comments, load_job};
+use super::body::parts;
+use super::load::load_job;
 use crate::error::Error;
 use crate::gh::{Gh, ReviewRequest};
 use crate::pr_url::PrRef;
@@ -8,11 +9,12 @@ use rusqlite::{TransactionBehavior, params};
 pub(crate) async fn execute_publish(store: &Store, gh: &impl Gh, job_id: i64) -> Result<(), Error> {
     let job = load_job(store, job_id).await?;
     mark_sending(store, &job.publication_id).await?;
+    let (body, comments) = parts(store, job.draft_id, &job.publication_id).await?;
     let request = ReviewRequest {
         commit_id: job.head_sha,
-        body: format!("<!-- diffmate:publication={} -->", job.publication_id),
+        body,
         event: job.event,
-        comments: comments(store, job.draft_id).await?,
+        comments,
     };
     let pr = PrRef {
         owner: job.owner,
