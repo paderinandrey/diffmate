@@ -29,6 +29,9 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
             })
             .collect()
     };
+    if session.running() {
+        lines.push(Line::from("runner: tui"));
+    }
     if let Some(notice) = session.notice() {
         lines.push(Line::from(sanitize(notice)));
     }

@@ -58,7 +58,6 @@ pub(crate) trait Gh {
         let _ = pr;
         unsupported(self)
     }
-    #[cfg_attr(not(test), expect(dead_code))]
     fn create_review(
         &self,
         pr: &PrRef,
@@ -72,7 +71,6 @@ pub(crate) trait Gh {
     }
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 fn publication_unavailable(source: &impl Sized) -> Error {
     let _ = source;
     Error::Command {
@@ -82,7 +80,6 @@ fn publication_unavailable(source: &impl Sized) -> Error {
     }
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 fn unsupported<T>(source: &impl Sized) -> impl Future<Output = Result<T, Error>> + Send {
     let error = publication_unavailable(source);
     async move { Err(error) }

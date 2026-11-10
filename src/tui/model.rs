@@ -25,6 +25,17 @@ pub(super) struct Session {
     lock_path: PathBuf,
     opener: Option<String>,
     process: ProcessInfo,
+    runner: Option<crate::lock::RunnerLock>,
+}
+
+pub(super) struct Intent {
+    pub draft: i64,
+    pub target: i64,
+    pub pr: PrRef,
+    pub undecided: Vec<String>,
+    pub pid: u32,
+    pub started: i64,
+    pub lock: PathBuf,
 }
 
 impl Session {
@@ -45,7 +56,45 @@ impl Session {
                 pid: std::process::id(),
                 started_at_ms: 0,
             },
+            runner: None,
         })
+    }
+
+    pub(super) fn intent(&self) -> Option<Intent> {
+        let (draft, _) = self.draft()?;
+        let row = self.rows.get(self.selected)?;
+        let undecided = draft
+            .findings
+            .iter()
+            .filter(|finding| finding.decision == "undecided")
+            .map(|finding| finding.id.clone())
+            .collect();
+        Some(Intent {
+            draft: draft.id,
+            target: row.target_id,
+            pr: row.pr.clone(),
+            undecided,
+            pid: self.process.pid,
+            started: self.process.started_at_ms,
+            lock: self.lock_path.clone(),
+        })
+    }
+
+    pub(super) fn set_notice(&mut self, text: String) {
+        self.notice = Some(text);
+    }
+
+    pub(super) fn running(&self) -> bool {
+        self.runner.is_some()
+    }
+
+    pub(super) fn hold(&mut self, lock: crate::lock::RunnerLock) {
+        self.runner = Some(lock);
+    }
+
+    pub(super) async fn reload_rows(&mut self, store: &Store) -> Result<(), Error> {
+        self.rows = store.queue_rows().await?;
+        Ok(())
     }
 
     pub(super) fn bind_runner(&mut self, process: ProcessInfo, lock: PathBuf) {

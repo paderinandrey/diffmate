@@ -70,7 +70,6 @@ pub(crate) async fn run_tool(program: &'static str, command: Command) -> Result<
     run_captured(program, command, None).await
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) async fn run_tool_with_stdin(
     program: &'static str,
     command: Command,

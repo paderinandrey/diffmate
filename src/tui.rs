@@ -4,6 +4,8 @@ mod edit;
 mod keys;
 mod model;
 mod open;
+mod post;
+mod runner;
 
 #[cfg(test)]
 mod tests;
@@ -51,17 +53,30 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         },
         config.paths.lock(),
     );
+    let gh = crate::gh::GhCli::new(&config.env);
+    let git = crate::git::GitCli::new(&config.env);
+    let mode = post::Mode::On {
+        gh: &gh,
+        git: &git,
+        paths: &config.paths,
+        settings: &config.settings,
+    };
     loop {
         terminal
             .draw(|frame| draw::screen(frame, &session))
             .map_err(Error::io("draw the terminal"))?;
-        if apply(&mut session, &store, read_key().await?).await? {
+        if apply(&mut session, &store, &mode, read_key().await?).await? {
             return Ok(());
         }
     }
 }
 
-async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bool, Error> {
+async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &post::Mode<'_, H, G>,
+    key: KeyEvent,
+) -> Result<bool, Error> {
     session.clear_notice();
     match keys::on_key(session, key) {
         keys::Command::Quit => Ok(true),
@@ -111,6 +126,18 @@ async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bo
         }
         keys::Command::Rerun => {
             session.rerun(store).await?;
+            Ok(false)
+        }
+        keys::Command::Approve => {
+            post::send(session, store, mode, "APPROVE").await?;
+            Ok(false)
+        }
+        keys::Command::Request => {
+            post::send(session, store, mode, "REQUEST_CHANGES").await?;
+            Ok(false)
+        }
+        keys::Command::Comment => {
+            post::send(session, store, mode, "COMMENT").await?;
             Ok(false)
         }
         keys::Command::Cancel => {
@@ -179,7 +206,7 @@ pub(crate) async fn run_scripted_with(
     }
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if apply(&mut session, store, *key).await? {
+        if apply(&mut session, store, &idle(), *key).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);
@@ -203,12 +230,52 @@ pub(crate) async fn run_scripted_actions(
     );
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if apply(&mut session, store, *key).await? {
+        if apply(&mut session, store, &idle(), *key).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);
     }
     Ok(terminal.backend().clone())
+}
+
+#[cfg(test)]
+pub(crate) async fn run_scripted_publish<H: crate::gh::Gh, G: crate::git::Git>(
+    store: &Store,
+    keys: &[KeyEvent],
+    backend: TestBackend,
+    paths: &crate::paths::Paths,
+    gh: &H,
+    git: &G,
+    settings: &crate::config::Settings,
+) -> Result<TestBackend, Error> {
+    let mut terminal = Terminal::new(backend).unwrap_or_else(|error| match error {});
+    let mut session = Session::load(store).await?;
+    session.bind_runner(
+        crate::app::ProcessInfo {
+            pid: 7,
+            started_at_ms: 8,
+        },
+        paths.lock(),
+    );
+    let mode = post::Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+    };
+    draw_scripted(&mut terminal, &session);
+    for key in keys {
+        if apply(&mut session, store, &mode, *key).await? {
+            break;
+        }
+        draw_scripted(&mut terminal, &session);
+    }
+    Ok(terminal.backend().clone())
+}
+
+#[cfg(test)]
+fn idle() -> post::Mode<'static, crate::gh::GhCli, crate::git::GitCli> {
+    post::Mode::Off
 }
 
 #[cfg(test)]
