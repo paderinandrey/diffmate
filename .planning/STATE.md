@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-11-10T15:46:55.919Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-11-10T16:37:22.957Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 194dbe25fd635ae314fb920cab6eda26799898f2
+state_head: 32de3c8f87406b2375041d50cd97a754b2da18f7
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 32
+  completed_plans: 33
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -71,6 +71,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 01 P12 | 70 min | 2 tasks | 10 files |
 | Phase 04 P01 | 44min | 2 tasks | 35 files |
 | Phase 04 P02 | 57min | 2 tasks | 13 files |
+| Phase 04 P03 | 36min | 3 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: ratatui 0.30.2 with default features off and only the crossterm feature; crossterm is not a direct dependency
 - [Phase 04]: EDITOR is an argv split on ASCII whitespace and spawned with tokio::process, with no shell and no fallback.
 - [Phase 04]: The editor temp file is mode 0700 under the cache directory and is deleted after the read. Scripted tests do not suspend the terminal.
+- [Phase 04]: One confirm writes the snapshot, the pending publication, and the queued publish job in one Immediate transaction.
+- [Phase 04]: execute_publish commits sending before create_review and builds the review from that snapshot.
+- [Phase 04]: A second confirm returns Blocked while a publication is pending, sending, or unknown. A submitted draft returns DraftSubmitted. A unique jobs.publication_id conflict returns Blocked and rolls back.
 
 ### Pending Todos
 
@@ -144,6 +148,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T15:46:55.621Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-11-10T16:37:22.634Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

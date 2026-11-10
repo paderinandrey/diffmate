@@ -75,9 +75,9 @@ Slice description: `diffmate tui` shows targets and drafts. I can set decisions,
 - [x] **PUB-01**: `diffmate tui` shows the queue view (targets with tracking, latest run, draft freshness with the time of the last head check, and publication state) and the draft view (findings, limitation, future improvements). (Slice description.)
 - [x] **PUB-02**: In `tui` I can set a decision on each finding (`undecided`, `kept`, `edited`, `dropped`), edit findings and future improvements in `$EDITOR`, and include the limitation; a shortcut marks all remaining undecided findings `kept`. (Slice description and SPEC "Publication" step 2.)
 - [ ] **PUB-03**: In `tui` I can open the PR in the browser, re-run a review, discard a target, reconcile an `unknown` publication, and abandon an `unknown` publication after checking. A re-run requested with no `watch` running is enqueued, and `tui` explains that `diffmate review` or `diffmate watch` must run it. (Slice description and SPEC "Commands".)
-- [ ] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
-- [ ] **PUB-05**: Publishing with undecided findings is refused until every finding has a decision.
-- [ ] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
+- [x] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
+- [x] **PUB-05**: Publishing with undecided findings is refused until every finding has a decision.
+- [x] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
 - [ ] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
 - [ ] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
 - [ ] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
@@ -181,9 +181,9 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | PUB-01 | Phase 4 | Complete |
 | PUB-02 | Phase 4 | Complete |
 | PUB-03 | Phase 4 | Pending |
-| PUB-04 | Phase 4 | Pending |
-| PUB-05 | Phase 4 | Pending |
-| PUB-06 | Phase 4 | Pending |
+| PUB-04 | Phase 4 | Complete |
+| PUB-05 | Phase 4 | Complete |
+| PUB-06 | Phase 4 | Complete |
 | PUB-07 | Phase 4 | Pending |
 | PUB-08 | Phase 4 | Pending |
 | PUB-09 | Phase 4 | Pending |

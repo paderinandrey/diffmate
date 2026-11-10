@@ -186,7 +186,7 @@ Plans:
   - Failure injection on the GitHub call (timeouts, client and server errors) needs a test seam on the `gh` boundary.
   - Thread statuses are read from GitHub GraphQL and feed `previous.json` for later re-reviews; comment links come from comment sync.
 
-**Plans**: 2/8 plans executed
+**Plans**: 3/8 plans executed
 **Wave 1**
 - [x] 04-01-PLAN.md
 
@@ -194,7 +194,7 @@ Plans:
 - [x] 04-02-PLAN.md
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 04-03-PLAN.md
+- [x] 04-03-PLAN.md
 - [ ] 04-04-PLAN.md
 
 **Wave 4** *(blocked on Wave 3 completion)*
@@ -236,5 +236,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
 | 3. Queue | 8/8 implemented | Human verification needed | - |
-| 4. Review and publish | 2/8 | In Progress | - |
+| 4. Review and publish | 3/8 | In Progress | - |
 | 5. Daily use | 0/TBD | Not started | - |
