@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-11-10T17:10:17.727Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-11-10T17:52:41.107Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: 9f1a62a51e360b756739e72c0709f269ae386fb4
+state_head: 72c2e7a37c99150fccf00b2e09f5c3d533cd2a1f
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 34
+  completed_plans: 35
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 ## Current Position
 
 Phase: 04 (Review and publish) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 04 execution started
 
@@ -73,6 +73,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P02 | 57min | 2 tasks | 13 files |
 | Phase 04 P03 | 36min | 3 tasks | 24 files |
 | Phase 04 P04 | 30min | 2 tasks | 9 files |
+| Phase 04 P05 | 38min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,10 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: Enter on Discard calls Store::discard and reloads queue rows so the target leaves the list.
 - [Phase 04]: Opening a PR spawns the platform open program with one argument, PrRef::web_url. A spawn error is drawn.
 - [Phase 04]: n calls Store::enqueue_review with JobOrigin::Manual and force false. The explanation is shown when the lock holder is not Role::Watch.
+- [Phase 04]: a sends APPROVE, r sends REQUEST_CHANGES, and c sends COMMENT. A head that differs from the run head returns without a stale question. Stale confirmation stays in 04-06.
+- [Phase 04]: tui serves publish jobs only. The next reconcile or sync job ends the loop. A queued review job stays queued. The queue shows runner: tui while this process holds the lock.
+- [Phase 04]: A second publish key while a publication is pending is Blocked. A submitted draft draws this draft is already submitted and posts nothing further.
+- [Phase 04]: u asks first. Keep queued is highlighted. The other choice abandons the publication with reason cancelled by me and cancels the queued job. A started publication stays as it is. q leaves it pending.
 
 ### Pending Todos
 
@@ -153,6 +158,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T17:10:17.355Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-11-10T17:52:40.763Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
