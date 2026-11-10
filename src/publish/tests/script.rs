@@ -7,6 +7,7 @@ use crate::pr_url::PrRef;
 use crate::store::Store;
 use std::future::{Future, ready};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn miss<T>() -> std::future::Ready<Result<T, Error>> {
     ready(Err(Error::Command {
@@ -19,6 +20,7 @@ fn miss<T>() -> std::future::Ready<Result<T, Error>> {
 pub(super) struct Script {
     store: Store,
     seen: Mutex<Vec<ReviewRequest>>,
+    posts: AtomicUsize,
 }
 
 impl Script {
@@ -26,11 +28,16 @@ impl Script {
         Self {
             store,
             seen: Mutex::new(Vec::new()),
+            posts: AtomicUsize::new(0),
         }
     }
 
     pub(super) fn seen(&self) -> Vec<ReviewRequest> {
         self.seen.lock().unwrap().clone()
+    }
+
+    pub(super) fn posts(&self) -> usize {
+        self.posts.load(Ordering::SeqCst)
     }
 }
 
@@ -93,6 +100,7 @@ impl Gh for Script {
     ) -> impl Future<Output = Result<CreatedReview, Error>> + Send {
         let review = review.clone();
         async move {
+            self.posts.fetch_add(1, Ordering::SeqCst);
             let state = cell::<String>(&self.store, "SELECT state FROM publications").await;
             assert_eq!(state, "sending", "{state}");
             self.seen.lock().unwrap().push(review);

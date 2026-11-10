@@ -10,6 +10,8 @@ mod runner;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+pub(crate) use runner::serve;
+#[cfg(test)]
 pub(crate) use tests::fake::Fake;
 
 use crate::app::AppConfig;

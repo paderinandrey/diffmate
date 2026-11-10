@@ -8,7 +8,7 @@ use crate::paths::Paths;
 use crate::store::Store;
 use rusqlite::OptionalExtension;
 
-pub(super) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Result<(), Error> {
+pub(crate) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Result<(), Error> {
     loop {
         let Some((id, kind)) = next_service(store).await? else {
             return Ok(());
