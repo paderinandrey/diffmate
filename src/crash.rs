@@ -15,6 +15,8 @@ mod points {
 
     static CODE: AtomicU8 = AtomicU8::new(0);
     #[cfg(test)]
+    static PARKED: AtomicU8 = AtomicU8::new(0);
+    #[cfg(test)]
     static TURN: Mutex<()> = Mutex::new(());
 
     pub(super) fn matches(point: &str) -> bool {
@@ -30,6 +32,18 @@ mod points {
     #[cfg(test)]
     pub(super) fn disarm() {
         CODE.store(0, Ordering::SeqCst);
+        PARKED.store(0, Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(super) fn park(point: &str) {
+        PARKED.store(code_of(point), Ordering::SeqCst);
+    }
+
+    #[cfg(test)]
+    pub(super) fn parked(point: &str) -> bool {
+        let code = code_of(point);
+        code != 0 && PARKED.load(Ordering::SeqCst) == code
     }
 
     #[cfg(test)]
@@ -58,8 +72,15 @@ pub(crate) async fn reached(point: &'static str) {
             let _ = writeln!(stderr, "crash point reached: {point}");
             let _ = stderr.flush();
         }
+        #[cfg(test)]
+        points::park(point);
         std::future::pending::<()>().await;
     }
+}
+
+#[cfg(all(feature = "crash-points", test))]
+pub(crate) fn parked(point: &str) -> bool {
+    points::parked(point)
 }
 
 #[cfg(all(feature = "crash-points", test))]

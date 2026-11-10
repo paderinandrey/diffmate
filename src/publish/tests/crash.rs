@@ -1,3 +1,9 @@
+mod before;
+mod gh;
+mod harness;
+mod marker;
+mod outcome;
+
 use std::sync::Arc;
 
 use super::Script;

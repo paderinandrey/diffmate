@@ -11,6 +11,7 @@ pub(crate) use cancel::{CancelQueued, Gate};
 use super::Store;
 use crate::app::ProcessInfo;
 use crate::error::Error;
+use rusqlite::{TransactionBehavior, params};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -80,6 +81,24 @@ impl Store {
         let publication_id = publication_id.to_string();
         self.call(move |conn| confirm::decline(conn, &publication_id))
             .await
+    }
+
+    pub async fn abandon_unknown(&self, publication_id: &str) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        self.call(move |conn| {
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            let now = crate::store::now_ms();
+            let sql = "UPDATE publications SET state = 'abandoned', reason = 'confirmed by me', updated_at = ?2 WHERE id = ?1 AND state = 'unknown'";
+            if tx.execute(sql, params![publication_id, now])? != 1 {
+                return Err(rusqlite::Error::SqliteFailure(
+                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
+                    Some("publication is not unknown".into()),
+                ));
+            }
+            tx.commit()?;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn abandon_pending(

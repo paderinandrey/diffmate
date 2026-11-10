@@ -5,7 +5,7 @@ use crate::error::Error;
 use crate::gh::{Gh, ReviewRequest};
 use crate::pr_url::PrRef;
 use crate::store::Store;
-use rusqlite::{TransactionBehavior, params};
+use rusqlite::params;
 
 pub(crate) async fn execute_publish(
     store: &Store,
@@ -32,8 +32,7 @@ pub(crate) async fn execute_publish(
         repo: job.repo,
         number: job.number,
     };
-    let created = gh.create_review(&pr, &request).await?;
-    mark_submitted(store, job_id, &job.publication_id, &created.id).await
+    super::outcome::finish(store, gh, &pr, &request, job_id, &job.publication_id).await
 }
 
 async fn mark_sending(store: &Store, publication_id: &str) -> Result<(), Error> {
@@ -51,43 +50,10 @@ async fn mark_sending(store: &Store, publication_id: &str) -> Result<(), Error> 
     Ok(())
 }
 
-async fn mark_submitted(
-    store: &Store,
-    job_id: i64,
-    publication_id: &str,
-    review_id: &str,
-) -> Result<(), Error> {
-    let publication_id = publication_id.to_string();
-    let review_id = review_id.to_string();
-    let now = crate::store::now_ms();
-    store
-        .call(move |conn| {
-            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let sql = "UPDATE publications SET state = 'submitted', github_review_id = ?2, updated_at = ?3 WHERE id = ?1 AND state = 'sending'";
-            if tx.execute(sql, params![publication_id, review_id, now])? != 1 {
-                return Err(constraint("publication is not sending"));
-            }
-            let sql = "UPDATE jobs SET state = 'succeeded', updated_at = ?2 WHERE id = ?1 AND kind = 'publish'";
-            if tx.execute(sql, params![job_id, now])? != 1 {
-                return Err(constraint("publish job is missing"));
-            }
-            tx.commit()?;
-            Ok(())
-        })
-        .await
-}
-
 fn stuck(detail: &str) -> Error {
     Error::Command {
         program: "gh",
         args: "publish".into(),
         detail: detail.into(),
     }
-}
-
-fn constraint(detail: &str) -> rusqlite::Error {
-    rusqlite::Error::SqliteFailure(
-        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
-        Some(detail.into()),
-    )
 }
