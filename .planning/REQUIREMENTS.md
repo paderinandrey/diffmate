@@ -72,7 +72,7 @@ Slice description: `diffmate watch` with the queue rules, jobs handed over from 
 
 Slice description: `diffmate tui` shows targets and drafts. I can set decisions, edit findings and future improvements, include the limitation, open the PR in the browser, re-run, reconcile, abandon an `unknown` publication, and publish with `a` (approve), `r` (request changes), `c` (comment).
 
-- [ ] **PUB-01**: `diffmate tui` shows the queue view (targets with tracking, latest run, draft freshness with the time of the last head check, and publication state) and the draft view (findings, limitation, future improvements). (Slice description.)
+- [x] **PUB-01**: `diffmate tui` shows the queue view (targets with tracking, latest run, draft freshness with the time of the last head check, and publication state) and the draft view (findings, limitation, future improvements). (Slice description.)
 - [ ] **PUB-02**: In `tui` I can set a decision on each finding (`undecided`, `kept`, `edited`, `dropped`), edit findings and future improvements in `$EDITOR`, and include the limitation; a shortcut marks all remaining undecided findings `kept`. (Slice description and SPEC "Publication" step 2.)
 - [ ] **PUB-03**: In `tui` I can open the PR in the browser, re-run a review, discard a target, reconcile an `unknown` publication, and abandon an `unknown` publication after checking. A re-run requested with no `watch` running is enqueued, and `tui` explains that `diffmate review` or `diffmate watch` must run it. (Slice description and SPEC "Commands".)
 - [ ] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
@@ -178,7 +178,7 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | QUE-09 | Phase 3 | Pending |
 | QUE-10 | Phase 3 | Pending |
 | QUE-11 | Phase 3 | Pending |
-| PUB-01 | Phase 4 | Pending |
+| PUB-01 | Phase 4 | Complete |
 | PUB-02 | Phase 4 | Pending |
 | PUB-03 | Phase 4 | Pending |
 | PUB-04 | Phase 4 | Pending |
