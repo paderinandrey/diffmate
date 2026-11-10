@@ -1,0 +1,53 @@
+#![cfg_attr(not(test), expect(dead_code))]
+
+mod insert;
+mod rows;
+mod save;
+
+use super::Store;
+use crate::app::ProcessInfo;
+use crate::error::Error;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub(crate) enum ConfirmError {
+    #[error("undecided findings")]
+    Undecided(Vec<String>),
+    #[error("this draft is already submitted")]
+    DraftSubmitted,
+    #[error("a publication is already pending, sending, or unknown")]
+    Blocked,
+    #[error(transparent)]
+    Database(#[from] Error),
+}
+
+pub(super) enum Outcome {
+    Job(i64),
+    Undecided(Vec<String>),
+    DraftSubmitted,
+    Blocked,
+}
+
+impl Store {
+    pub async fn confirm_publication(
+        &self,
+        draft_id: i64,
+        event: &str,
+        confirmed_sha: &str,
+        process: &ProcessInfo,
+    ) -> Result<i64, ConfirmError> {
+        let event = event.to_string();
+        let confirmed_sha = confirmed_sha.to_string();
+        let (pid, started) = (i64::from(process.pid), process.started_at_ms);
+        let outcome = self
+            .call(move |conn| insert::write(conn, draft_id, &event, &confirmed_sha, pid, started))
+            .await;
+        match outcome {
+            Ok(Outcome::Job(id)) => Ok(id),
+            Ok(Outcome::Undecided(ids)) => Err(ConfirmError::Undecided(ids)),
+            Ok(Outcome::DraftSubmitted) => Err(ConfirmError::DraftSubmitted),
+            Ok(Outcome::Blocked) => Err(ConfirmError::Blocked),
+            Err(error) => Err(error.into()),
+        }
+    }
+}

@@ -1,6 +1,7 @@
 mod checks;
 mod discussion;
 mod meta;
+mod reviews;
 mod search;
 
 use crate::error::Error;
@@ -10,6 +11,8 @@ use crate::procenv::{InheritedEnv, Pairs};
 use std::ffi::OsStr;
 use std::future::Future;
 use tokio::process::Command;
+
+pub(crate) use reviews::{CreatedReview, InlineComment, ListedReview, ReviewRequest};
 
 pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
@@ -37,6 +40,52 @@ pub(crate) trait Gh {
     fn search_review_requested(
         &self,
     ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send;
+    #[cfg_attr(not(test), expect(dead_code))]
+    fn current_login(&self) -> impl Future<Output = Result<String, Error>> + Send
+    where
+        Self: Sized,
+    {
+        unsupported(self)
+    }
+    #[cfg_attr(not(test), expect(dead_code))]
+    fn list_my_reviews(
+        &self,
+        pr: &PrRef,
+    ) -> impl Future<Output = Result<Vec<ListedReview>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = pr;
+        unsupported(self)
+    }
+    #[cfg_attr(not(test), expect(dead_code))]
+    fn create_review(
+        &self,
+        pr: &PrRef,
+        review: &ReviewRequest,
+    ) -> impl Future<Output = Result<CreatedReview, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = (pr, review);
+        unsupported(self)
+    }
+}
+
+#[cfg_attr(not(test), expect(dead_code))]
+fn publication_unavailable(source: &impl Sized) -> Error {
+    let _ = source;
+    Error::Command {
+        program: "gh",
+        args: String::new(),
+        detail: "publication is not available on this gh".into(),
+    }
+}
+
+#[cfg_attr(not(test), expect(dead_code))]
+fn unsupported<T>(source: &impl Sized) -> impl Future<Output = Result<T, Error>> + Send {
+    let error = publication_unavailable(source);
+    async move { Err(error) }
 }
 
 pub(crate) struct GhCli {
@@ -91,5 +140,21 @@ impl Gh for GhCli {
             async move { run_tool("gh", command).await }
         })
         .await
+    }
+
+    async fn current_login(&self) -> Result<String, Error> {
+        reviews::current_login(self).await
+    }
+
+    async fn list_my_reviews(&self, pr: &PrRef) -> Result<Vec<ListedReview>, Error> {
+        reviews::list_my_reviews(self, pr).await
+    }
+
+    async fn create_review(
+        &self,
+        pr: &PrRef,
+        review: &ReviewRequest,
+    ) -> Result<CreatedReview, Error> {
+        reviews::create_review(self, pr, review).await
     }
 }
