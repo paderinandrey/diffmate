@@ -1,0 +1,93 @@
+mod draw;
+mod keys;
+mod model;
+
+#[cfg(test)]
+mod tests;
+
+use crate::app::AppConfig;
+use crate::error::Error;
+use crate::render::sanitize;
+use crate::store::Store;
+use model::Session;
+use ratatui::crossterm::event::{Event, KeyEvent, KeyEventKind};
+#[cfg(test)]
+use ratatui::{Terminal, backend::TestBackend};
+use std::io::{self, IsTerminal as _, stdout};
+use std::process::ExitCode;
+
+pub(crate) async fn run(config: &AppConfig) -> ExitCode {
+    if !stdout().is_terminal() {
+        eprintln!("error: diffmate tui needs a terminal");
+        return ExitCode::FAILURE;
+    }
+    match show(config).await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("error: {}", sanitize(&error.to_string()));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn show(config: &AppConfig) -> Result<(), Error> {
+    let store = Store::open(&config.paths).await?;
+    let mut terminal = ratatui::try_init().map_err(Error::io("open the terminal"))?;
+    let _restore = Restore;
+    let mut session = Session::load(&store).await?;
+    loop {
+        terminal
+            .draw(|frame| draw::screen(frame, &session))
+            .map_err(Error::io("draw the terminal"))?;
+        if keys::on_key(&mut session, read_key().await?) {
+            return Ok(());
+        }
+    }
+}
+
+struct Restore;
+
+impl Drop for Restore {
+    fn drop(&mut self) {
+        ratatui::restore();
+    }
+}
+
+async fn read_key() -> Result<KeyEvent, Error> {
+    tokio::task::spawn_blocking(|| -> io::Result<KeyEvent> {
+        loop {
+            if let Event::Key(key) = ratatui::crossterm::event::read()?
+                && key.kind == KeyEventKind::Press
+            {
+                return Ok(key);
+            }
+        }
+    })
+    .await?
+    .map_err(Error::io("read a key"))
+}
+
+#[cfg(test)]
+pub(crate) async fn run_scripted(
+    store: &Store,
+    keys: &[KeyEvent],
+    backend: TestBackend,
+) -> Result<TestBackend, Error> {
+    let mut terminal = Terminal::new(backend).unwrap_or_else(|error| match error {});
+    let mut session = Session::load(store).await?;
+    draw_scripted(&mut terminal, &session);
+    for key in keys {
+        if keys::on_key(&mut session, *key) {
+            break;
+        }
+        draw_scripted(&mut terminal, &session);
+    }
+    Ok(terminal.backend().clone())
+}
+
+#[cfg(test)]
+fn draw_scripted(terminal: &mut Terminal<TestBackend>, session: &Session) {
+    if let Err(error) = terminal.draw(|frame| draw::screen(frame, session)) {
+        match error {}
+    }
+}

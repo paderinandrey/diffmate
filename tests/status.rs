@@ -39,7 +39,7 @@ fn status_lists_latest_run_per_target() {
     assert_eq!(
         lines[0],
         format!(
-            "o/r#1  untracked  succeeded (findings: 1)  current: head {}, checked just now",
+            "o/r#1  untracked  succeeded (findings: 1)  current: head {}, checked just now  none",
             &head[..12]
         )
     );
@@ -78,7 +78,7 @@ fn two_reviews_of_one_url_create_two_runs() {
     assert_eq!(
         lines,
         [format!(
-            "o/r#1  untracked  succeeded (no_findings)  current: head {}, checked just now",
+            "o/r#1  untracked  succeeded (no_findings)  current: head {}, checked just now  none",
             &head[..12]
         )]
     );

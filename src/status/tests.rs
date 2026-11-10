@@ -92,6 +92,23 @@ fn successful_checks_override_the_stored_head() {
 }
 
 #[test]
+fn stored_freshness_uses_the_saved_head_without_a_live_suffix() {
+    let head = "0123456789abcdef";
+    assert_eq!(
+        freshness::stored(head, Some((head, 1_000)), 2_000),
+        "current: head 0123456789ab, checked just now"
+    );
+    assert_eq!(
+        freshness::stored("older", Some((head, 1_000)), 200_000),
+        "stale: head 0123456789ab, checked 3m ago"
+    );
+    assert_eq!(
+        freshness::stored(head, None, 2_000),
+        "freshness unknown: head never checked"
+    );
+}
+
+#[test]
 fn row_output_removes_terminal_controls_and_line_breaks() {
     assert_eq!(
         super::line(["o/\u{202e}r#1", "a\n\tb\u{1b}"]),

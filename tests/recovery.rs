@@ -53,7 +53,7 @@ fn killed_runner_is_recovered_by_next_runner() {
     assert_eq!(listed.matches("worktree ").count(), 1, "{listed}");
     let status = String::from_utf8(sandbox.run(&["status"]).stdout).unwrap();
     assert!(
-        status.starts_with("o/r#1  untracked  failed (interrupted: crash)\n"),
+        status.starts_with("o/r#1  untracked  failed (interrupted: crash)  none\n"),
         "{status}"
     );
 }

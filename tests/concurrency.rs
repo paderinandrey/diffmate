@@ -29,7 +29,10 @@ fn second_review_waits_for_the_lock_and_status_works() {
     let rows: Vec<&str> = text.lines().collect();
     assert_eq!(
         rows,
-        ["o/r#1  untracked  running", "o/r#2  untracked  queued"]
+        [
+            "o/r#1  untracked  running  none",
+            "o/r#2  untracked  queued  none",
+        ]
     );
     assert!(second.try_wait().unwrap().is_none());
     let db = database(&sandbox);

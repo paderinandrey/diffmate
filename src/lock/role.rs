@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub(crate) enum Role {
     Review,
     Watch,
+    Tui,
 }
 
 impl Role {
@@ -15,6 +16,7 @@ impl Role {
         match self {
             Self::Review => "review",
             Self::Watch => "watch",
+            Self::Tui => "tui",
         }
     }
 }
@@ -51,6 +53,7 @@ pub(crate) async fn holder(path: &Path) -> Option<Role> {
         match text.lines().next()? {
             "review" => Some(Role::Review),
             "watch" => Some(Role::Watch),
+            "tui" => Some(Role::Tui),
             _ => None,
         }
     })

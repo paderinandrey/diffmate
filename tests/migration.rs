@@ -27,7 +27,7 @@ fn phase_one_database_is_upgraded_and_kept() {
         String::from_utf8_lossy(&output.stderr)
     );
     let conn = database(&sandbox);
-    assert_eq!(count(&conn, "PRAGMA user_version"), 4);
+    assert_eq!(count(&conn, "PRAGMA user_version"), 5);
     assert_preserved(&conn, &before);
     let defaults: Vec<Value> = conn
         .query_row(

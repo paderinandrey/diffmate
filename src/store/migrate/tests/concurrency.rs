@@ -14,7 +14,7 @@ async fn concurrent_first_opens_share_one_backup_and_migration() {
     drop(first.unwrap());
     drop(second.unwrap());
     drop(third.unwrap());
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 4);
+    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 5);
     assert!(!paths.state_dir().join("diffmate.db.v2-backup").exists());
     let backup = Connection::open(paths.state_dir().join("diffmate.db.v1-backup")).unwrap();
     assert_eq!(version(&backup), 1);
