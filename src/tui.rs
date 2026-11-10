@@ -128,6 +128,10 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
             session.rerun(store).await?;
             Ok(false)
         }
+        keys::Command::Unpublish => {
+            session.ask_cancel(store).await?;
+            Ok(false)
+        }
         keys::Command::Approve => {
             post::send(session, store, mode, "APPROVE").await?;
             Ok(false)

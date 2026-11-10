@@ -173,12 +173,48 @@ impl Session {
         if confirm.highlighted_safe {
             return Ok(());
         }
+        if confirm.cancels() {
+            return self.cancel_publication(store).await;
+        }
         let Some(pr) = self.selected_pr() else {
             return Ok(());
         };
         store.discard(&pr).await?;
         self.rows = store.queue_rows().await?;
         Ok(())
+    }
+
+    pub(super) async fn ask_cancel(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(target) = self.selected_target() else {
+            return Ok(());
+        };
+        match store.publish_gate(target).await? {
+            crate::store::publish::Gate::Queued => {
+                self.confirm = Some(super::confirm::Confirm::cancel_queued());
+            }
+            crate::store::publish::Gate::Started => {
+                self.set_notice("it already started".to_string());
+            }
+            crate::store::publish::Gate::Other => {}
+        }
+        Ok(())
+    }
+
+    async fn cancel_publication(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(target) = self.selected_target() else {
+            return Ok(());
+        };
+        if matches!(
+            store.cancel_queued(target).await?,
+            crate::store::publish::CancelQueued::Started
+        ) {
+            self.set_notice("it already started".to_string());
+        }
+        self.reload_rows(store).await
+    }
+
+    fn selected_target(&self) -> Option<i64> {
+        self.rows.get(self.selected).map(|row| row.target_id)
     }
 
     fn selected_pr(&self) -> Option<PrRef> {

@@ -1,8 +1,11 @@
 #![cfg_attr(not(test), expect(dead_code))]
 
+mod cancel;
 mod insert;
 mod rows;
 mod save;
+
+pub(crate) use cancel::{CancelQueued, Gate};
 
 use super::Store;
 use crate::app::ProcessInfo;
@@ -49,5 +52,13 @@ impl Store {
             Ok(Outcome::Blocked) => Err(ConfirmError::Blocked),
             Err(error) => Err(error.into()),
         }
+    }
+
+    pub async fn publish_gate(&self, target: i64) -> Result<Gate, Error> {
+        self.call(move |conn| cancel::gate(conn, target)).await
+    }
+
+    pub async fn cancel_queued(&self, target: i64) -> Result<CancelQueued, Error> {
+        self.call(move |conn| cancel::write(conn, target)).await
     }
 }

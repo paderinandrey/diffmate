@@ -3,11 +3,17 @@ use ratatui::Frame;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
+enum Purpose {
+    Discard,
+    Cancel,
+}
+
 pub(crate) struct Confirm {
     pub prompt: String,
     pub safe: String,
     pub danger: String,
     pub highlighted_safe: bool,
+    purpose: Purpose,
 }
 
 impl Confirm {
@@ -17,7 +23,22 @@ impl Confirm {
             safe: "Keep".to_string(),
             danger: "Discard".to_string(),
             highlighted_safe: true,
+            purpose: Purpose::Discard,
         }
+    }
+
+    pub(crate) fn cancel_queued() -> Self {
+        Self {
+            prompt: "Cancel the queued publication?".to_string(),
+            safe: "Keep queued".to_string(),
+            danger: "Cancel publication".to_string(),
+            highlighted_safe: true,
+            purpose: Purpose::Cancel,
+        }
+    }
+
+    pub(super) fn cancels(&self) -> bool {
+        matches!(self.purpose, Purpose::Cancel)
     }
 }
 
