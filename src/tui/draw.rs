@@ -16,7 +16,7 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
         draft::screen(frame, draft, focus, session.notice());
         return;
     }
-    let lines = if session.rows.is_empty() {
+    let mut lines = if session.rows.is_empty() {
         vec![Line::from("No targets.")]
     } else {
         session
@@ -29,6 +29,9 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
             })
             .collect()
     };
+    if let Some(notice) = session.notice() {
+        lines.push(Line::from(sanitize(notice)));
+    }
     frame.render_widget(Paragraph::new(lines), frame.area());
 }
 

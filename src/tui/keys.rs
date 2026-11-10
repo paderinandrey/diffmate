@@ -13,6 +13,8 @@ pub(super) enum Command {
     Edit,
     Include,
     Discard,
+    OpenPr,
+    Rerun,
     Accept,
     Cancel,
     Safer,
@@ -43,6 +45,8 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
         KeyCode::Char('e') if session.on_draft() => Command::Edit,
         KeyCode::Char('i') if session.on_draft() => Command::Include,
         KeyCode::Char('x') => Command::Discard,
+        KeyCode::Char('o') => Command::OpenPr,
+        KeyCode::Char('n') => Command::Rerun,
         _ => Command::Ignored,
     }
 }

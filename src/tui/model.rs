@@ -1,6 +1,9 @@
+use crate::app::ProcessInfo;
 use crate::error::Error;
 use crate::pr_url::PrRef;
 use crate::store::Store;
+use crate::store::jobs::EnqueueRequest;
+use crate::store::records::JobOrigin;
 use crate::store::status::{DraftView, QueueRow};
 use std::path::PathBuf;
 
@@ -19,6 +22,9 @@ pub(super) struct Session {
     cache: PathBuf,
     live: bool,
     confirm: Option<super::confirm::Confirm>,
+    lock_path: PathBuf,
+    opener: Option<String>,
+    process: ProcessInfo,
 }
 
 impl Session {
@@ -33,7 +39,57 @@ impl Session {
             cache: PathBuf::new(),
             live: false,
             confirm: None,
+            lock_path: PathBuf::new(),
+            opener: None,
+            process: ProcessInfo {
+                pid: std::process::id(),
+                started_at_ms: 0,
+            },
         })
+    }
+
+    pub(super) fn bind_runner(&mut self, process: ProcessInfo, lock: PathBuf) {
+        self.process = process;
+        self.lock_path = lock;
+    }
+
+    #[cfg(test)]
+    pub(super) fn arm_actions(&mut self, lock: Option<PathBuf>, opener: Option<String>) {
+        if let Some(lock) = lock {
+            self.lock_path = lock;
+        }
+        self.opener = opener;
+    }
+
+    pub(super) async fn open_pull(&mut self) -> Result<(), Error> {
+        let Some(pr) = self.selected_pr() else {
+            return Ok(());
+        };
+        let url = pr.web_url();
+        if let Err(error) = super::open::open_pr(self.browser(), &url).await {
+            self.notice = Some(format!("could not open the pull request: {error}"));
+        }
+        Ok(())
+    }
+
+    pub(super) async fn rerun(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(pr) = self.selected_pr() else {
+            return Ok(());
+        };
+        let watching = crate::lock::holder(&self.lock_path).await == Some(crate::lock::Role::Watch);
+        let request = EnqueueRequest {
+            origin: JobOrigin::Manual,
+            force: false,
+        };
+        store.enqueue_review(&pr, &self.process, request).await?;
+        if !watching {
+            self.notice = Some("diffmate review or diffmate watch must run it".to_string());
+        }
+        Ok(())
+    }
+
+    fn browser(&self) -> &str {
+        self.opener.as_deref().unwrap_or(super::open::PROGRAM)
     }
 
     pub(super) fn confirming(&self) -> bool {

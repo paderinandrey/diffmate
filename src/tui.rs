@@ -3,6 +3,7 @@ mod draw;
 mod edit;
 mod keys;
 mod model;
+mod open;
 
 #[cfg(test)]
 mod tests;
@@ -43,6 +44,13 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         .and_then(|value| value.to_str())
         .map(str::to_owned);
     session.prepare(editor, config.paths.cache_dir().to_path_buf(), true);
+    session.bind_runner(
+        crate::app::ProcessInfo {
+            pid: config.process.pid,
+            started_at_ms: config.process.started_at_ms,
+        },
+        config.paths.lock(),
+    );
     loop {
         terminal
             .draw(|frame| draw::screen(frame, &session))
@@ -95,6 +103,14 @@ async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bo
         }
         keys::Command::Discard => {
             session.ask_discard();
+            Ok(false)
+        }
+        keys::Command::OpenPr => {
+            session.open_pull().await?;
+            Ok(false)
+        }
+        keys::Command::Rerun => {
+            session.rerun(store).await?;
             Ok(false)
         }
         keys::Command::Cancel => {
@@ -161,6 +177,30 @@ pub(crate) async fn run_scripted_with(
     if let Some(dir) = cache {
         session.prepare(editor.map(str::to_owned), dir.to_path_buf(), false);
     }
+    draw_scripted(&mut terminal, &session);
+    for key in keys {
+        if apply(&mut session, store, *key).await? {
+            break;
+        }
+        draw_scripted(&mut terminal, &session);
+    }
+    Ok(terminal.backend().clone())
+}
+
+#[cfg(test)]
+pub(crate) async fn run_scripted_actions(
+    store: &Store,
+    keys: &[KeyEvent],
+    backend: TestBackend,
+    lock: Option<&std::path::Path>,
+    opener: Option<&str>,
+) -> Result<TestBackend, Error> {
+    let mut terminal = Terminal::new(backend).unwrap_or_else(|error| match error {});
+    let mut session = Session::load(store).await?;
+    session.arm_actions(
+        lock.map(std::path::Path::to_path_buf),
+        opener.map(str::to_owned),
+    );
     draw_scripted(&mut terminal, &session);
     for key in keys {
         if apply(&mut session, store, *key).await? {
