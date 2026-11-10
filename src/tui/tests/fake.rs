@@ -5,20 +5,20 @@ use crate::gh::{
 use crate::pr_url::PrRef;
 use std::sync::Mutex;
 
-pub(super) struct Fake {
+pub(crate) struct Fake {
     head: String,
     seen: Mutex<Vec<ReviewRequest>>,
 }
 
 impl Fake {
-    pub(super) fn new(head: &str) -> Self {
+    pub(crate) fn new(head: &str) -> Self {
         Self {
             head: head.to_string(),
             seen: Mutex::new(Vec::new()),
         }
     }
 
-    pub(super) fn seen(&self) -> Vec<ReviewRequest> {
+    pub(crate) fn seen(&self) -> Vec<ReviewRequest> {
         self.seen.lock().unwrap().clone()
     }
 }

@@ -4,7 +4,7 @@ mod decisions;
 mod draft;
 mod edit;
 mod events;
-mod fake;
+pub(super) mod fake;
 mod focus;
 mod publish;
 mod queue;

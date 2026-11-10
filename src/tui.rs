@@ -9,6 +9,8 @@ mod runner;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) use tests::fake::Fake;
 
 use crate::app::AppConfig;
 use crate::error::Error;
@@ -149,7 +151,9 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
             Ok(false)
         }
         keys::Command::Accept => {
-            session.accept_confirm(store).await?;
+            if let Some(offer) = session.accept_confirm(store).await? {
+                post::commit(session, store, mode, &offer).await?;
+            }
             Ok(false)
         }
         keys::Command::Safer => {

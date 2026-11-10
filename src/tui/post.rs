@@ -27,13 +27,7 @@ pub(super) async fn send<H: Gh, G: Git>(
     mode: &Mode<'_, H, G>,
     event: &str,
 ) -> Result<(), Error> {
-    let Mode::On {
-        gh,
-        git,
-        paths,
-        settings,
-    } = *mode
-    else {
+    let Mode::On { gh, .. } = *mode else {
         return Ok(());
     };
     let Some(intent) = session.intent() else {
@@ -52,15 +46,50 @@ pub(super) async fn send<H: Gh, G: Git>(
         }
     };
     store.set_known_head(intent.target, &head).await?;
-    if head != run_head(store, intent.draft).await? {
+    let run = run_head(store, intent.draft).await?;
+    if head != run {
+        let now = crate::store::now_ms();
+        let line = crate::status::freshness::stored(&run, Some((head.as_str(), now)), now);
+        session.ask_stale(event, &head, line);
         return Ok(());
     }
+    publish_now(session, store, mode, event, &head).await
+}
+
+pub(super) async fn commit<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &Mode<'_, H, G>,
+    offer: &super::confirm::Offer,
+) -> Result<(), Error> {
+    publish_now(session, store, mode, &offer.event, &offer.sha).await
+}
+
+async fn publish_now<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &Mode<'_, H, G>,
+    event: &str,
+    sha: &str,
+) -> Result<(), Error> {
+    let Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+    } = *mode
+    else {
+        return Ok(());
+    };
+    let Some(intent) = session.intent() else {
+        return Ok(());
+    };
     let process = ProcessInfo {
         pid: intent.pid,
         started_at_ms: intent.started,
     };
     match store
-        .confirm_publication(intent.draft, event, &head, &process)
+        .confirm_publication(intent.draft, event, sha, &process)
         .await
     {
         Ok(_) => {

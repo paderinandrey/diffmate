@@ -6,6 +6,12 @@ use ratatui::widgets::Paragraph;
 enum Purpose {
     Discard,
     Cancel,
+    Stale,
+}
+
+pub(super) struct Offer {
+    pub event: String,
+    pub sha: String,
 }
 
 pub(crate) struct Confirm {
@@ -37,8 +43,22 @@ impl Confirm {
         }
     }
 
+    pub(crate) fn stale(prompt: String) -> Self {
+        Self {
+            prompt,
+            safe: "Don't send".to_string(),
+            danger: "Send anyway".to_string(),
+            highlighted_safe: true,
+            purpose: Purpose::Stale,
+        }
+    }
+
     pub(super) fn cancels(&self) -> bool {
         matches!(self.purpose, Purpose::Cancel)
+    }
+
+    pub(super) fn sends(&self) -> bool {
+        matches!(self.purpose, Purpose::Stale)
     }
 }
 

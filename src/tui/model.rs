@@ -22,6 +22,7 @@ pub(super) struct Session {
     cache: PathBuf,
     live: bool,
     confirm: Option<super::confirm::Confirm>,
+    offer: Option<super::confirm::Offer>,
     lock_path: PathBuf,
     opener: Option<String>,
     process: ProcessInfo,
@@ -50,6 +51,7 @@ impl Session {
             cache: PathBuf::new(),
             live: false,
             confirm: None,
+            offer: None,
             lock_path: PathBuf::new(),
             opener: None,
             process: ProcessInfo {
@@ -153,7 +155,16 @@ impl Session {
         let Some(label) = self.rows.get(self.selected).map(|row| row.label.clone()) else {
             return;
         };
+        self.offer = None;
         self.confirm = Some(super::confirm::Confirm::discard(&label));
+    }
+
+    pub(super) fn ask_stale(&mut self, event: &str, sha: &str, prompt: String) {
+        self.offer = Some(super::confirm::Offer {
+            event: event.to_string(),
+            sha: sha.to_string(),
+        });
+        self.confirm = Some(super::confirm::Confirm::stale(prompt));
     }
 
     pub(super) fn highlight_confirm(&mut self, safe: bool) {
@@ -164,24 +175,33 @@ impl Session {
 
     pub(super) fn cancel_confirm(&mut self) {
         self.confirm = None;
+        self.offer = None;
     }
 
-    pub(super) async fn accept_confirm(&mut self, store: &Store) -> Result<(), Error> {
+    pub(super) async fn accept_confirm(
+        &mut self,
+        store: &Store,
+    ) -> Result<Option<super::confirm::Offer>, Error> {
         let Some(confirm) = self.confirm.take() else {
-            return Ok(());
+            return Ok(None);
         };
+        let offer = self.offer.take();
         if confirm.highlighted_safe {
-            return Ok(());
+            return Ok(None);
+        }
+        if confirm.sends() {
+            return Ok(offer);
         }
         if confirm.cancels() {
-            return self.cancel_publication(store).await;
+            self.cancel_publication(store).await?;
+            return Ok(None);
         }
         let Some(pr) = self.selected_pr() else {
-            return Ok(());
+            return Ok(None);
         };
         store.discard(&pr).await?;
         self.rows = store.queue_rows().await?;
-        Ok(())
+        Ok(None)
     }
 
     pub(super) async fn ask_cancel(&mut self, store: &Store) -> Result<(), Error> {
@@ -190,6 +210,7 @@ impl Session {
         };
         match store.publish_gate(target).await? {
             crate::store::publish::Gate::Queued => {
+                self.offer = None;
                 self.confirm = Some(super::confirm::Confirm::cancel_queued());
             }
             crate::store::publish::Gate::Started => {
