@@ -8,7 +8,7 @@ use crate::paths::Paths;
 use crate::store::Store;
 use rusqlite::OptionalExtension;
 
-pub(super) async fn serve<H: Gh>(store: &Store, gh: &H) -> Result<(), Error> {
+pub(super) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Result<(), Error> {
     loop {
         let Some((id, kind)) = next_service(store).await? else {
             return Ok(());
@@ -17,7 +17,7 @@ pub(super) async fn serve<H: Gh>(store: &Store, gh: &H) -> Result<(), Error> {
             return Ok(());
         }
         store.start_job(id).await?;
-        crate::publish::execute_publish(store, gh, id).await?;
+        crate::publish::execute_publish(store, gh, id, max_retries).await?;
     }
 }
 
@@ -38,7 +38,7 @@ pub(super) async fn drive<H: Gh, G: Git>(
         session.hold(lock);
         crate::recovery::run(paths, store, git, settings).await?;
     }
-    serve(store, gh).await
+    serve(store, gh, settings.max_retries()).await
 }
 
 async fn next_service(store: &Store) -> Result<Option<(i64, String)>, Error> {

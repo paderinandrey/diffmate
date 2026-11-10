@@ -19,7 +19,7 @@ async fn snapshot_ignores_later_edits() {
         .unwrap();
     let after = cell::<String>(&store, "SELECT snapshot FROM publications").await;
     assert_eq!(before, after);
-    execute_publish(&store, &script, job).await.unwrap();
+    execute_publish(&store, &script, job, 2).await.unwrap();
     let review = script.seen().into_iter().next().unwrap();
     let comment = &review.comments[0];
     assert!(comment.body.contains("Title"), "{}", comment.body);

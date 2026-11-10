@@ -6,6 +6,8 @@ pub(super) struct JobRow {
     pub publication_id: String,
     pub snapshot: String,
     pub event: String,
+    pub confirmed_sha: String,
+    pub publication_state: String,
     pub head_sha: String,
     pub owner: String,
     pub repo: String,
@@ -15,17 +17,19 @@ pub(super) struct JobRow {
 pub(super) async fn load_job(store: &Store, job_id: i64) -> Result<JobRow, Error> {
     store
         .call(move |conn| {
-            let sql = "SELECT p.id, p.snapshot, r.head_sha, t.owner, t.repo, t.number FROM jobs j JOIN publications p ON p.id = j.publication_id JOIN runs r ON r.id = p.run_id JOIN targets t ON t.id = p.target_id WHERE j.id = ?1 AND j.kind = 'publish'";
+            let sql = "SELECT p.id, p.snapshot, p.confirmed_sha, p.state, r.head_sha, t.owner, t.repo, t.number FROM jobs j JOIN publications p ON p.id = j.publication_id JOIN runs r ON r.id = p.run_id JOIN targets t ON t.id = p.target_id WHERE j.id = ?1 AND j.kind = 'publish'";
             conn.query_row(sql, [job_id], |row| {
                 let snapshot: String = row.get(1)?;
-                let number: i64 = row.get(5)?;
+                let number: i64 = row.get(7)?;
                 Ok(JobRow {
                     publication_id: row.get(0)?,
                     event: event_of(&snapshot)?,
                     snapshot,
-                    head_sha: row.get(2)?,
-                    owner: row.get(3)?,
-                    repo: row.get(4)?,
+                    confirmed_sha: row.get(2)?,
+                    publication_state: row.get(3)?,
+                    head_sha: row.get(4)?,
+                    owner: row.get(5)?,
+                    repo: row.get(6)?,
                     number: u64::try_from(number).map_err(sql_err)?,
                 })
             })

@@ -7,11 +7,13 @@ enum Purpose {
     Discard,
     Cancel,
     Stale,
+    Moved,
 }
 
 pub(super) struct Offer {
     pub event: String,
     pub sha: String,
+    pub publication: Option<String>,
 }
 
 pub(crate) struct Confirm {
@@ -57,8 +59,22 @@ impl Confirm {
         matches!(self.purpose, Purpose::Cancel)
     }
 
+    pub(crate) fn moved(prompt: String) -> Self {
+        Self {
+            prompt,
+            safe: "Don't send".to_string(),
+            danger: "Send anyway".to_string(),
+            highlighted_safe: true,
+            purpose: Purpose::Moved,
+        }
+    }
+
     pub(super) fn sends(&self) -> bool {
-        matches!(self.purpose, Purpose::Stale)
+        matches!(self.purpose, Purpose::Stale | Purpose::Moved)
+    }
+
+    pub(super) fn is_moved(&self) -> bool {
+        matches!(self.purpose, Purpose::Moved)
     }
 }
 

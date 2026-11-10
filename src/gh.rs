@@ -40,14 +40,12 @@ pub(crate) trait Gh {
     fn search_review_requested(
         &self,
     ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send;
-    #[cfg_attr(not(test), expect(dead_code))]
     fn current_login(&self) -> impl Future<Output = Result<String, Error>> + Send
     where
         Self: Sized,
     {
         unsupported(self)
     }
-    #[cfg_attr(not(test), expect(dead_code))]
     fn list_my_reviews(
         &self,
         pr: &PrRef,

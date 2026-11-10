@@ -66,6 +66,34 @@ pub(super) fn payload(snapshot: &str) -> Result<(Vec<Unanchored>, Vec<Anchored>,
     Ok((loose, anchored, notes))
 }
 
+pub(super) fn pending_review_of_mine(reviews: &[crate::gh::ListedReview], login: &str) -> bool {
+    reviews
+        .iter()
+        .any(|review| review.author == login && review.state == "PENDING")
+}
+
+pub(super) fn transient_gh(error: &Error) -> bool {
+    let Error::Command { detail, .. } = error else {
+        return false;
+    };
+    match status_token(detail) {
+        Some(code) => matches!(code, 408 | 429 | 500..=599),
+        None => true,
+    }
+}
+
+fn status_token(detail: &str) -> Option<u16> {
+    detail
+        .split(|ch: char| !ch.is_ascii_digit())
+        .find_map(|token| {
+            if token.len() != 3 {
+                return None;
+            }
+            let code = token.parse::<u16>().ok()?;
+            (100..600).contains(&code).then_some(code)
+        })
+}
+
 fn line_err(_: std::num::TryFromIntError) -> Error {
     Error::Io {
         what: "publication snapshot".into(),

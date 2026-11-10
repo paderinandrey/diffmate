@@ -163,8 +163,18 @@ impl Session {
         self.offer = Some(super::confirm::Offer {
             event: event.to_string(),
             sha: sha.to_string(),
+            publication: None,
         });
         self.confirm = Some(super::confirm::Confirm::stale(prompt));
+    }
+
+    pub(super) fn ask_moved(&mut self, publication: &str, sha: &str, prompt: String) {
+        self.offer = Some(super::confirm::Offer {
+            event: String::new(),
+            sha: sha.to_string(),
+            publication: Some(publication.to_string()),
+        });
+        self.confirm = Some(super::confirm::Confirm::moved(prompt));
     }
 
     pub(super) fn highlight_confirm(&mut self, safe: bool) {
@@ -187,6 +197,12 @@ impl Session {
         };
         let offer = self.offer.take();
         if confirm.highlighted_safe {
+            if confirm.is_moved()
+                && let Some(id) = offer.and_then(|item| item.publication)
+            {
+                store.decline(&id).await?;
+                self.reload_rows(store).await?;
+            }
             return Ok(None);
         }
         if confirm.sends() {

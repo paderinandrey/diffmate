@@ -6,8 +6,16 @@ use crate::pr_url::PrRef;
 use crate::store::Store;
 use rusqlite::{TransactionBehavior, params};
 
-pub(crate) async fn execute_publish(store: &Store, gh: &impl Gh, job_id: i64) -> Result<(), Error> {
+pub(crate) async fn execute_publish(
+    store: &Store,
+    gh: &impl Gh,
+    job_id: i64,
+    max_retries: u32,
+) -> Result<(), Error> {
     let job = load_job(store, job_id).await?;
+    if !super::gate::before_send(store, gh, &job, job_id, max_retries).await? {
+        return Ok(());
+    }
     mark_sending(store, &job.publication_id).await?;
     let (body, comments) = from_snapshot(&job.snapshot, &job.publication_id)?;
     let request = ReviewRequest {

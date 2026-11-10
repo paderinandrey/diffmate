@@ -46,7 +46,7 @@ async fn submitted_draft_is_refused() {
         .confirm_publication(1, "COMMENT", "other", &process())
         .await
         .unwrap();
-    execute_publish(&store, &script, job).await.unwrap();
+    execute_publish(&store, &script, job, 2).await.unwrap();
     store
         .save_finding_text("f1", "Changed", "Changed body")
         .await

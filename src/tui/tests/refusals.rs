@@ -50,7 +50,7 @@ async fn second_c_while_pending_posts_once() {
         "{text}"
     );
     drop(held);
-    super::super::runner::serve(&store, &gh).await.unwrap();
+    super::super::runner::serve(&store, &gh, 2).await.unwrap();
     assert_eq!(gh.seen().len(), 1);
     let submitted = "SELECT count(*) FROM publications WHERE state = 'submitted'";
     assert_eq!(queue::count(&store, submitted).await, 1);

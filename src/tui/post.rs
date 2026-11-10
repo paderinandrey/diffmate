@@ -8,6 +8,7 @@ use crate::git::Git;
 use crate::paths::Paths;
 use crate::store::Store;
 use crate::store::publish::ConfirmError;
+use rusqlite::OptionalExtension;
 
 #[derive(Clone, Copy)]
 pub(super) enum Mode<'a, H, G> {
@@ -62,6 +63,9 @@ pub(super) async fn commit<H: Gh, G: Git>(
     mode: &Mode<'_, H, G>,
     offer: &super::confirm::Offer,
 ) -> Result<(), Error> {
+    if offer.publication.is_some() {
+        return resume(session, store, mode, offer).await;
+    }
     publish_now(session, store, mode, &offer.event, &offer.sha).await
 }
 
@@ -94,6 +98,7 @@ async fn publish_now<H: Gh, G: Git>(
     {
         Ok(_) => {
             runner::drive(session, store, gh, git, paths, settings, &intent).await?;
+            surface(session, store, intent.draft).await?;
             session.reload_rows(store).await
         }
         Err(error) => {
@@ -101,6 +106,87 @@ async fn publish_now<H: Gh, G: Git>(
             Ok(())
         }
     }
+}
+
+async fn resume<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &Mode<'_, H, G>,
+    offer: &super::confirm::Offer,
+) -> Result<(), Error> {
+    let Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+    } = *mode
+    else {
+        return Ok(());
+    };
+    let Some(intent) = session.intent() else {
+        return Ok(());
+    };
+    let Some(id) = offer.publication.clone() else {
+        return Ok(());
+    };
+    let sha = offer.sha.clone();
+    store.reconfirm(&id, &sha).await?;
+    runner::drive(session, store, gh, git, paths, settings, &intent).await?;
+    surface(session, store, intent.draft).await?;
+    session.reload_rows(store).await
+}
+
+struct Follow {
+    id: String,
+    state: String,
+    reason: Option<String>,
+    job: String,
+    seen: Option<String>,
+    run: String,
+}
+
+async fn surface(session: &mut Session, store: &Store, draft: i64) -> Result<(), Error> {
+    let Some(row) = follow(store, draft).await? else {
+        return Ok(());
+    };
+    if row.job == "needs_confirmation"
+        && row.state == "pending"
+        && let Some(seen) = row.seen
+    {
+        let now = crate::store::now_ms();
+        let line = crate::status::freshness::stored(&row.run, Some((seen.as_str(), now)), now);
+        session.ask_moved(&row.id, &seen, line);
+        return Ok(());
+    }
+    if row.state == "abandoned"
+        && let Some(reason) = row.reason.filter(|text| !text.is_empty())
+    {
+        session.set_notice(reason);
+    }
+    Ok(())
+}
+
+async fn follow(store: &Store, draft: i64) -> Result<Option<Follow>, Error> {
+    store
+        .call(move |conn| {
+            let sql = "SELECT p.id, p.state, p.reason, j.state, j.head_sha, r.head_sha \
+                       FROM publications p \
+                       JOIN jobs j ON j.publication_id = p.id AND j.kind = 'publish' \
+                       JOIN runs r ON r.id = p.run_id \
+                       WHERE p.draft_id = ?1 ORDER BY j.id DESC LIMIT 1";
+            conn.query_row(sql, [draft], |row| {
+                Ok(Follow {
+                    id: row.get(0)?,
+                    state: row.get(1)?,
+                    reason: row.get(2)?,
+                    job: row.get(3)?,
+                    seen: row.get(4)?,
+                    run: row.get(5)?,
+                })
+            })
+            .optional()
+        })
+        .await
 }
 
 async fn run_head(store: &Store, draft: i64) -> Result<String, Error> {

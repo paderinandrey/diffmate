@@ -21,7 +21,7 @@ async fn one_kept_finding_reaches_submitted() {
         .confirm_publication(1, "COMMENT", "other", &process())
         .await
         .unwrap();
-    execute_publish(&store, &script, job).await.unwrap();
+    execute_publish(&store, &script, job, 2).await.unwrap();
     let seen = script.seen();
     assert_eq!(seen.len(), 1);
     let review = &seen[0];

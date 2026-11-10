@@ -19,7 +19,7 @@ pub(super) async fn publish(
         .confirm_publication(1, event, "other", &process())
         .await
         .unwrap();
-    execute_publish(&store, &script, job).await.unwrap();
+    execute_publish(&store, &script, job, 2).await.unwrap();
     let review = script.seen().into_iter().next().unwrap();
     (tmp, store, review)
 }

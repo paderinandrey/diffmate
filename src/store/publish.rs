@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), expect(dead_code))]
 
 mod cancel;
+mod confirm;
 mod insert;
 mod rows;
 mod save;
@@ -60,5 +61,36 @@ impl Store {
 
     pub async fn cancel_queued(&self, target: i64) -> Result<CancelQueued, Error> {
         self.call(move |conn| cancel::write(conn, target)).await
+    }
+
+    pub async fn mark_needs_confirmation(&self, job_id: i64, seen_sha: &str) -> Result<(), Error> {
+        let seen_sha = seen_sha.to_string();
+        self.call(move |conn| confirm::needs_confirmation(conn, job_id, &seen_sha))
+            .await
+    }
+
+    pub async fn reconfirm(&self, publication_id: &str, new_sha: &str) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        let new_sha = new_sha.to_string();
+        self.call(move |conn| confirm::reconfirm(conn, &publication_id, &new_sha))
+            .await
+    }
+
+    pub async fn decline(&self, publication_id: &str) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        self.call(move |conn| confirm::decline(conn, &publication_id))
+            .await
+    }
+
+    pub async fn abandon_pending(
+        &self,
+        publication_id: &str,
+        job_id: i64,
+        reason: &str,
+    ) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        let reason = reason.to_string();
+        self.call(move |conn| confirm::abandon(conn, &publication_id, job_id, &reason))
+            .await
     }
 }

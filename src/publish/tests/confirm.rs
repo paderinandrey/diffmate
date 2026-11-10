@@ -3,14 +3,21 @@ use crate::paths::Paths;
 use crate::tui::Fake;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-const RUN: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-const LIVE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+mod accept;
+mod boom;
+mod budget;
+mod harness;
+mod moved;
+mod reviews;
 
-fn key(code: KeyCode) -> KeyEvent {
+pub(super) const RUN: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+pub(super) const LIVE: &str = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+pub(super) fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
 
-async fn seed(store: &crate::store::Store) {
+pub(super) async fn seed(store: &crate::store::Store) {
     let now = crate::store::now_ms();
     let sql = format!(
         "INSERT INTO targets (id, owner, repo, number, tracking, created_at, head_sha, head_checked_at) VALUES (1, 'o', 'r', 1, 'tracked', 1, '{RUN}', {now});
@@ -22,7 +29,12 @@ async fn seed(store: &crate::store::Store) {
     batch(store, &sql).await;
 }
 
-async fn press(store: &crate::store::Store, paths: &Paths, gh: &Fake, keys: &[KeyCode]) -> String {
+pub(super) async fn press(
+    store: &crate::store::Store,
+    paths: &Paths,
+    gh: &Fake,
+    keys: &[KeyCode],
+) -> String {
     let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
     let settings = crate::config::Settings::default();
     let events: Vec<_> = keys.iter().copied().map(key).collect();
