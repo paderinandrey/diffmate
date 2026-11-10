@@ -4,9 +4,9 @@ use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tempfile::TempDir;
 
-const HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
+pub(super) const HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
 
-async fn seed(store: &Store, number: i64) {
+pub(super) async fn seed(store: &Store, number: i64) {
     let now = crate::store::now_ms();
     store
         .call(move |conn| {
@@ -26,21 +26,21 @@ async fn seed(store: &Store, number: i64) {
         .unwrap();
 }
 
-fn key(code: KeyCode) -> KeyEvent {
+pub(super) fn key(code: KeyCode) -> KeyEvent {
     KeyEvent::new(code, KeyModifiers::NONE)
 }
 
-fn text_of(backend: &TestBackend) -> String {
+pub(super) fn text_of(backend: &TestBackend) -> String {
     backend.to_string()
 }
 
-async fn open() -> (TempDir, Store) {
+pub(super) async fn open() -> (TempDir, Store) {
     let tmp = TempDir::new().unwrap();
     let paths = crate::paths::Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
     (tmp, Store::open(&paths).await.unwrap())
 }
 
-async fn count(store: &Store, sql: &'static str) -> i64 {
+pub(super) async fn count(store: &Store, sql: &'static str) -> i64 {
     store
         .call(move |conn| conn.query_row(sql, [], |row| row.get(0)))
         .await

@@ -1,3 +1,5 @@
+mod draft;
+
 use super::model::Session;
 use crate::render::sanitize;
 use crate::store::status::QueueRow;
@@ -6,6 +8,10 @@ use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
 pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
+    if let Some((draft, focus)) = session.draft() {
+        draft::screen(frame, draft, focus);
+        return;
+    }
     let lines = if session.rows.is_empty() {
         vec![Line::from("No targets.")]
     } else {

@@ -2,10 +2,12 @@ use super::{Store, TargetId};
 use crate::error::Error;
 use crate::pr_url::PrRef;
 
+mod draft;
 mod latest;
 mod queue;
 use latest::{Row, latest};
 
+pub(crate) use draft::DraftView;
 pub(crate) use queue::QueueRow;
 
 pub(crate) struct TargetStatus {

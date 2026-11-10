@@ -39,9 +39,32 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         terminal
             .draw(|frame| draw::screen(frame, &session))
             .map_err(Error::io("draw the terminal"))?;
-        if keys::on_key(&mut session, read_key().await?) {
+        if apply(&mut session, &store, read_key().await?).await? {
             return Ok(());
         }
+    }
+}
+
+async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bool, Error> {
+    match keys::on_key(session, key) {
+        keys::Command::Quit => Ok(true),
+        keys::Command::Open => {
+            session.open_draft(store).await?;
+            Ok(false)
+        }
+        keys::Command::Back => {
+            session.close_draft();
+            Ok(false)
+        }
+        keys::Command::Down => {
+            session.move_down();
+            Ok(false)
+        }
+        keys::Command::Up => {
+            session.move_up();
+            Ok(false)
+        }
+        keys::Command::Ignored => Ok(false),
     }
 }
 
@@ -77,7 +100,7 @@ pub(crate) async fn run_scripted(
     let mut session = Session::load(store).await?;
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if keys::on_key(&mut session, *key) {
+        if apply(&mut session, store, *key).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);

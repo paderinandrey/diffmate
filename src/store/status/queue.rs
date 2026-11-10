@@ -9,7 +9,6 @@ pub(crate) struct QueueRow {
     pub latest: String,
     pub freshness: String,
     pub publication: String,
-    #[cfg_attr(not(test), allow(dead_code))]
     pub target_id: TargetId,
 }
 
