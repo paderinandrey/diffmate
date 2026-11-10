@@ -12,10 +12,25 @@ pub(super) enum Command {
     KeepRest,
     Edit,
     Include,
+    Discard,
+    Accept,
+    Cancel,
+    Safer,
+    Riskier,
     Ignored,
 }
 
 pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
+    if session.confirming() {
+        return match key.code {
+            KeyCode::Char('q') => Command::Quit,
+            KeyCode::Esc => Command::Cancel,
+            KeyCode::Enter => Command::Accept,
+            KeyCode::Left | KeyCode::Up => Command::Safer,
+            KeyCode::Right | KeyCode::Down => Command::Riskier,
+            _ => Command::Ignored,
+        };
+    }
     match key.code {
         KeyCode::Char('q') => Command::Quit,
         KeyCode::Enter if !session.on_draft() => Command::Open,
@@ -27,6 +42,7 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
         KeyCode::Char('K') if session.on_draft() => Command::KeepRest,
         KeyCode::Char('e') if session.on_draft() => Command::Edit,
         KeyCode::Char('i') if session.on_draft() => Command::Include,
+        KeyCode::Char('x') => Command::Discard,
         _ => Command::Ignored,
     }
 }

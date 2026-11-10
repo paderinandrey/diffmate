@@ -1,5 +1,6 @@
 use super::{TargetStatus, read_status};
 use crate::error::Error;
+use crate::pr_url::PrRef;
 use crate::status::freshness;
 use crate::store::{Store, TargetId, now_ms};
 
@@ -10,6 +11,7 @@ pub(crate) struct QueueRow {
     pub freshness: String,
     pub publication: String,
     pub target_id: TargetId,
+    pub pr: PrRef,
 }
 
 fn freshness_of(target: &TargetStatus, now: i64) -> String {
@@ -32,6 +34,7 @@ fn queue_row(target: TargetStatus, now: i64) -> QueueRow {
         freshness,
         publication: target.publication,
         target_id: target.id,
+        pr: target.pr,
     }
 }
 

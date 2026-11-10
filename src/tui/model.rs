@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::pr_url::PrRef;
 use crate::store::Store;
 use crate::store::status::{DraftView, QueueRow};
 use std::path::PathBuf;
@@ -17,6 +18,7 @@ pub(super) struct Session {
     editor: Option<String>,
     cache: PathBuf,
     live: bool,
+    confirm: Option<super::confirm::Confirm>,
 }
 
 impl Session {
@@ -30,7 +32,52 @@ impl Session {
             editor: None,
             cache: PathBuf::new(),
             live: false,
+            confirm: None,
         })
+    }
+
+    pub(super) fn confirming(&self) -> bool {
+        self.confirm.is_some()
+    }
+
+    pub(super) fn confirm_modal(&self) -> Option<&super::confirm::Confirm> {
+        self.confirm.as_ref()
+    }
+
+    pub(super) fn ask_discard(&mut self) {
+        let Some(label) = self.rows.get(self.selected).map(|row| row.label.clone()) else {
+            return;
+        };
+        self.confirm = Some(super::confirm::Confirm::discard(&label));
+    }
+
+    pub(super) fn highlight_confirm(&mut self, safe: bool) {
+        if let Some(confirm) = &mut self.confirm {
+            confirm.highlighted_safe = safe;
+        }
+    }
+
+    pub(super) fn cancel_confirm(&mut self) {
+        self.confirm = None;
+    }
+
+    pub(super) async fn accept_confirm(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(confirm) = self.confirm.take() else {
+            return Ok(());
+        };
+        if confirm.highlighted_safe {
+            return Ok(());
+        }
+        let Some(pr) = self.selected_pr() else {
+            return Ok(());
+        };
+        store.discard(&pr).await?;
+        self.rows = store.queue_rows().await?;
+        Ok(())
+    }
+
+    fn selected_pr(&self) -> Option<PrRef> {
+        self.rows.get(self.selected).map(|row| row.pr.clone())
     }
 
     pub(super) fn clear_notice(&mut self) {

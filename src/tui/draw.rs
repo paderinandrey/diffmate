@@ -8,6 +8,10 @@ use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
 pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
+    if let Some(confirm) = session.confirm_modal() {
+        super::confirm::draw(frame, confirm);
+        return;
+    }
     if let Some((draft, focus)) = session.draft() {
         draft::screen(frame, draft, focus, session.notice());
         return;

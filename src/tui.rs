@@ -1,3 +1,4 @@
+mod confirm;
 mod draw;
 mod edit;
 mod keys;
@@ -90,6 +91,26 @@ async fn apply(session: &mut Session, store: &Store, key: KeyEvent) -> Result<bo
         }
         keys::Command::Include => {
             session.include_limitation(store).await?;
+            Ok(false)
+        }
+        keys::Command::Discard => {
+            session.ask_discard();
+            Ok(false)
+        }
+        keys::Command::Cancel => {
+            session.cancel_confirm();
+            Ok(false)
+        }
+        keys::Command::Accept => {
+            session.accept_confirm(store).await?;
+            Ok(false)
+        }
+        keys::Command::Safer => {
+            session.highlight_confirm(true);
+            Ok(false)
+        }
+        keys::Command::Riskier => {
+            session.highlight_confirm(false);
             Ok(false)
         }
         keys::Command::Ignored => Ok(false),
