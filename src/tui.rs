@@ -136,6 +136,14 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
             session.ask_cancel(store).await?;
             Ok(false)
         }
+        keys::Command::Reconcile => {
+            post::reconcile(session, store, mode).await?;
+            Ok(false)
+        }
+        keys::Command::Abandon => {
+            session.ask_abandon(store).await?;
+            Ok(false)
+        }
         keys::Command::Approve => {
             post::send(session, store, mode, "APPROVE").await?;
             Ok(false)

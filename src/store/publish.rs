@@ -11,7 +11,7 @@ pub(crate) use cancel::{CancelQueued, Gate};
 use super::Store;
 use crate::app::ProcessInfo;
 use crate::error::Error;
-use rusqlite::{TransactionBehavior, params};
+use rusqlite::{OptionalExtension, TransactionBehavior, params};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -81,6 +81,31 @@ impl Store {
         let publication_id = publication_id.to_string();
         self.call(move |conn| confirm::decline(conn, &publication_id))
             .await
+    }
+
+    pub async fn unknown_publication(&self, target: i64) -> Result<Option<String>, Error> {
+        self.call(move |conn| {
+            let sql = "SELECT id FROM publications WHERE target_id = ?1 AND state = 'unknown' ORDER BY created_at DESC LIMIT 1";
+            conn.query_row(sql, [target], |row| row.get(0)).optional()
+        })
+        .await
+    }
+
+    pub async fn enqueue_reconcile(
+        &self,
+        publication_id: &str,
+        process: &ProcessInfo,
+    ) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        let pid = i64::from(process.pid);
+        let started = process.started_at_ms;
+        self.call(move |conn| {
+            let now = crate::store::now_ms();
+            let sql = "INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) SELECT 'reconcile', p.target_id, 'queued', ?2, ?3, ?4, ?4, 'manual', p.id FROM publications p WHERE p.id = ?1 AND p.state = 'unknown' AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.publication_id = p.id AND j.kind = 'reconcile' AND j.state IN ('queued', 'running'))";
+            conn.execute(sql, params![publication_id, pid, started, now])?;
+            Ok(())
+        })
+        .await
     }
 
     pub async fn abandon_unknown(&self, publication_id: &str) -> Result<(), Error> {

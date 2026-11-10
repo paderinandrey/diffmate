@@ -13,7 +13,6 @@ struct Row {
     number: u64,
 }
 
-#[cfg_attr(not(test), expect(dead_code))]
 pub(crate) async fn execute_reconcile(
     store: &Store,
     gh: &impl Gh,

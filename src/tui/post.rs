@@ -97,7 +97,7 @@ async fn publish_now<H: Gh, G: Git>(
         .await
     {
         Ok(_) => {
-            runner::drive(session, store, gh, git, paths, settings, &intent).await?;
+            runner::drive(session, store, gh, git, paths, settings).await?;
             surface(session, store, intent.draft).await?;
             session.reload_rows(store).await
         }
@@ -131,8 +131,34 @@ async fn resume<H: Gh, G: Git>(
     };
     let sha = offer.sha.clone();
     store.reconfirm(&id, &sha).await?;
-    runner::drive(session, store, gh, git, paths, settings, &intent).await?;
+    runner::drive(session, store, gh, git, paths, settings).await?;
     surface(session, store, intent.draft).await?;
+    session.reload_rows(store).await
+}
+
+pub(super) async fn reconcile<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &Mode<'_, H, G>,
+) -> Result<(), Error> {
+    let Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+    } = *mode
+    else {
+        return Ok(());
+    };
+    let Some(target) = session.selected_target() else {
+        return Ok(());
+    };
+    let Some(id) = store.unknown_publication(target).await? else {
+        return Ok(());
+    };
+    let process = session.process_info();
+    store.enqueue_reconcile(&id, &process).await?;
+    runner::drive(session, store, gh, git, paths, settings).await?;
     session.reload_rows(store).await
 }
 

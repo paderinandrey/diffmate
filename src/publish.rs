@@ -10,5 +10,4 @@ mod reconcile;
 mod tests;
 
 pub(crate) use post::execute_publish;
-#[cfg_attr(not(test), allow(unused_imports))]
 pub(crate) use reconcile::execute_reconcile;

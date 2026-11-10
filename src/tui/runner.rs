@@ -1,4 +1,4 @@
-use super::model::{Intent, Session};
+use super::model::Session;
 use crate::config::Settings;
 use crate::error::Error;
 use crate::gh::Gh;
@@ -13,11 +13,17 @@ pub(crate) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Res
         let Some((id, kind)) = next_service(store).await? else {
             return Ok(());
         };
-        if kind != "publish" {
-            return Ok(());
+        match kind.as_str() {
+            "publish" => {
+                store.start_job(id).await?;
+                crate::publish::execute_publish(store, gh, id, max_retries).await?;
+            }
+            "reconcile" => {
+                store.start_job(id).await?;
+                crate::publish::execute_reconcile(store, gh, id).await?;
+            }
+            _ => return Ok(()),
         }
-        store.start_job(id).await?;
-        crate::publish::execute_publish(store, gh, id, max_retries).await?;
     }
 }
 
@@ -28,10 +34,9 @@ pub(super) async fn drive<H: Gh, G: Git>(
     git: &G,
     paths: &Paths,
     settings: &Settings,
-    intent: &Intent,
 ) -> Result<(), Error> {
     if !session.running() {
-        let Some(lock) = lock::try_acquire(&intent.lock).await? else {
+        let Some(lock) = lock::try_acquire(session.lock_path()).await? else {
             return Ok(());
         };
         lock.announce(Role::Tui).await?;

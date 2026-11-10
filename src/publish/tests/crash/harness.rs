@@ -19,6 +19,18 @@ pub(super) async fn ready() -> (tempfile::TempDir, Store, Arc<Remote>, i64) {
     (tmp, store, remote, job)
 }
 
+pub(super) async fn planted(state: &str) -> (tempfile::TempDir, Store, Arc<Remote>) {
+    let (tmp, store) = open().await;
+    batch(&store, support::KEPT).await;
+    let sql = format!(
+        "INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, created_at, updated_at) VALUES ('{PUBLICATION}', 1, 1, 1, '{state}', 'COMMENT', 'abc123', '{{}}', 1, 1);
+         INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id, failure_reason) VALUES ('publish', 1, 'failed', 1, 0, 2, 2, 'manual', '{PUBLICATION}', 'outcome unknown');"
+    );
+    batch(&store, &sql).await;
+    let remote = Arc::new(Remote::new(store.clone()));
+    (tmp, store, remote)
+}
+
 pub(super) async fn unknown() -> (tempfile::TempDir, Store, Arc<Remote>, i64) {
     let (tmp, store) = open().await;
     batch(&store, support::KEPT).await;

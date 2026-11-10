@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), expect(dead_code))]
-
 mod parse;
 #[cfg(test)]
 mod tests;

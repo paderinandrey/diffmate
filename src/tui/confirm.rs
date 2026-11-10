@@ -8,6 +8,7 @@ enum Purpose {
     Cancel,
     Stale,
     Moved,
+    Abandon,
 }
 
 pub(super) struct Offer {
@@ -57,6 +58,20 @@ impl Confirm {
 
     pub(super) fn cancels(&self) -> bool {
         matches!(self.purpose, Purpose::Cancel)
+    }
+
+    pub(super) fn abandon_unknown() -> Self {
+        Self {
+            prompt: "Abandon this unknown publication?".to_string(),
+            safe: "Leave unknown".to_string(),
+            danger: "Abandon".to_string(),
+            highlighted_safe: true,
+            purpose: Purpose::Abandon,
+        }
+    }
+
+    pub(super) fn abandons(&self) -> bool {
+        matches!(self.purpose, Purpose::Abandon)
     }
 
     pub(crate) fn moved(prompt: String) -> Self {

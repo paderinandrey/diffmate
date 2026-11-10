@@ -36,7 +36,6 @@ pub(super) struct Intent {
     pub undecided: Vec<String>,
     pub pid: u32,
     pub started: i64,
-    pub lock: PathBuf,
 }
 
 impl Session {
@@ -78,7 +77,6 @@ impl Session {
             undecided,
             pid: self.process.pid,
             started: self.process.started_at_ms,
-            lock: self.lock_path.clone(),
         })
     }
 
@@ -88,6 +86,17 @@ impl Session {
 
     pub(super) fn running(&self) -> bool {
         self.runner.is_some()
+    }
+
+    pub(super) fn lock_path(&self) -> &std::path::Path {
+        &self.lock_path
+    }
+
+    pub(super) fn process_info(&self) -> ProcessInfo {
+        ProcessInfo {
+            pid: self.process.pid,
+            started_at_ms: self.process.started_at_ms,
+        }
     }
 
     pub(super) fn hold(&mut self, lock: crate::lock::RunnerLock) {
@@ -212,12 +221,39 @@ impl Session {
             self.cancel_publication(store).await?;
             return Ok(None);
         }
+        if confirm.abandons() {
+            self.abandon_selected(store).await?;
+            return Ok(None);
+        }
         let Some(pr) = self.selected_pr() else {
             return Ok(None);
         };
         store.discard(&pr).await?;
         self.rows = store.queue_rows().await?;
         Ok(None)
+    }
+
+    pub(super) async fn ask_abandon(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(target) = self.selected_target() else {
+            return Ok(());
+        };
+        if store.unknown_publication(target).await?.is_none() {
+            return Ok(());
+        }
+        self.offer = None;
+        self.confirm = Some(super::confirm::Confirm::abandon_unknown());
+        Ok(())
+    }
+
+    async fn abandon_selected(&mut self, store: &Store) -> Result<(), Error> {
+        let Some(target) = self.selected_target() else {
+            return Ok(());
+        };
+        if let Some(id) = store.unknown_publication(target).await? {
+            store.abandon_unknown(&id).await?;
+            self.reload_rows(store).await?;
+        }
+        Ok(())
     }
 
     pub(super) async fn ask_cancel(&mut self, store: &Store) -> Result<(), Error> {
@@ -250,7 +286,7 @@ impl Session {
         self.reload_rows(store).await
     }
 
-    fn selected_target(&self) -> Option<i64> {
+    pub(super) fn selected_target(&self) -> Option<i64> {
         self.rows.get(self.selected).map(|row| row.target_id)
     }
 
