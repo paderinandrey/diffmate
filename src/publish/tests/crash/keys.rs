@@ -133,3 +133,47 @@ async fn y_runs_reconcile_after_a_due_sync() {
     );
     assert_eq!(super::super::support::cell::<i64>(&store, &due).await, 1);
 }
+
+#[tokio::test]
+async fn serve_runs_a_due_sync_then_a_newer_publish() {
+    let (_tmp, store) = super::super::support::open().await;
+    super::super::support::batch(&store, super::super::support::KEPT).await;
+    let synced = "fedcba9876543210fedcba9876543210";
+    let review_id = "5150";
+    let sql = format!(
+        "INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, github_review_id, created_at, updated_at) VALUES ('{synced}', 1, 1, 1, 'submitted', 'COMMENT', 'abc123', '{{}}', '{review_id}', 1, 1);"
+    );
+    super::super::support::batch(&store, &sql).await;
+    store.enqueue_sync(synced).await.unwrap();
+    let second = "\
+INSERT INTO targets (id, owner, repo, number, tracking, created_at) VALUES (2, 'o', 'r', 2, 'tracked', 1);
+INSERT INTO jobs (id, kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at) VALUES (3, 'review', 2, 'succeeded', 1, 0, 0, 0);
+INSERT INTO runs (id, target_id, job_id, state, result, head_sha, merge_base_sha, base_tip_sha, base_ref, created_at) VALUES (2, 2, 3, 'succeeded', 'findings', 'abc123', 'base', 'base', 'main', 0);
+INSERT INTO drafts (id, run_id, original_output, created_at) VALUES (2, 2, '{}', 0);
+INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body, decision) VALUES ('f2', 2, 2, 1, 'high', 'src/a.rs', 4, 'RIGHT', 'Title', 'Body text', 'kept');";
+    super::super::support::batch(&store, second).await;
+    let publish = store
+        .confirm_publication(2, "COMMENT", "abc123", &super::super::support::process())
+        .await
+        .unwrap();
+    let remote = Remote::new(store.clone());
+    crate::tui::serve(&store, &remote, 2).await.unwrap();
+    assert_eq!(remote.posts(), 1);
+    let submitted = format!("SELECT state FROM publications WHERE id = '{synced}'");
+    assert_eq!(harness::text(&store, &submitted).await, "submitted");
+    let stored_review = format!("SELECT github_review_id FROM publications WHERE id = '{synced}'");
+    assert_eq!(harness::text(&store, &stored_review).await, review_id);
+    let sync_job =
+        format!("SELECT state FROM jobs WHERE kind = 'sync' AND publication_id = '{synced}'");
+    assert_eq!(harness::text(&store, &sync_job).await, "queued");
+    let due = format!(
+        "SELECT next_attempt_at IS NOT NULL FROM jobs WHERE kind = 'sync' AND publication_id = '{synced}'"
+    );
+    assert_eq!(super::super::support::cell::<i64>(&store, &due).await, 1);
+    assert_eq!(
+        harness::text(&store, "SELECT thread_status FROM findings WHERE id = 'f1'").await,
+        "unknown"
+    );
+    let published = format!("SELECT state FROM jobs WHERE id = {publish}");
+    assert_eq!(harness::text(&store, &published).await, "succeeded");
+}

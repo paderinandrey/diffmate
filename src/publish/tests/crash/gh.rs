@@ -56,7 +56,7 @@ impl Gh for Remote {
         let mode = *self.mode.lock().unwrap();
         let store = self.store.clone();
         async move {
-            let sql = "SELECT state FROM publications";
+            let sql = "SELECT state FROM publications ORDER BY state = 'sending' DESC LIMIT 1";
             let state = super::super::support::cell::<String>(&store, sql).await;
             assert_eq!(state, "sending", "{state}");
             match mode {
