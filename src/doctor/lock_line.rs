@@ -20,10 +20,24 @@ fn inspect(path: &Path) -> Check {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return missing(path),
         Err(error) => return unreadable(path, &error),
     };
-    match fcntl_getlk(&file, &Flock::from(FlockType::WriteLock)) {
-        Ok(None) => Check::pass("runner lock: ok \u{2014} not held"),
-        Ok(Some(_)) => Check::pass(held(&mut file).to_owned()),
+    match blocking_lock(&file) {
+        Ok(false) => Check::pass("runner lock: ok \u{2014} not held"),
+        Ok(true) => Check::pass(held(&mut file).to_owned()),
         Err(error) => unreadable(path, &error),
+    }
+}
+
+// macOS F_GETLK sets l_pid to -1 for a BSD flock. rustix debug-asserts that the pid is non-negative.
+fn blocking_lock(file: &File) -> rustix::io::Result<bool> {
+    let hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let probed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        fcntl_getlk(file, &Flock::from(FlockType::WriteLock))
+    }));
+    std::panic::set_hook(hook);
+    match probed {
+        Ok(result) => result.map(|blocking| blocking.is_some()),
+        Err(_) => Ok(true),
     }
 }
 
