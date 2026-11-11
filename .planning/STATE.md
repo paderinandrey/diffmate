@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: Daily use
-status: verifying
-stopped_at: Phase 5 context gathered
-last_updated: "2026-11-11T17:27:08.405Z"
+status: complete
+stopped_at: Phase 05 complete. Phases 2 and 3 stay open
+last_updated: "2026-11-11T19:02:24.216Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 05 execution started
-state_head: 430028c8148ceea4cfc4297b3a34141028717dc5
+last_activity_desc: Phase 05 complete
+state_head: ae780bd7711deb1a89af6d888e4415ea3f3c9d40
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 43
   completed_plans: 43
-  percent: 40
+  percent: 60
 ---
 
 # Project State
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 05 — Daily use
+**Current focus:** Phase 05 complete. Phases 2 and 3 remain open for human verification.
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
 
-Phase: 05 (Daily use) — EXECUTING
+Phase: 05 (Daily use) — COMPLETE
 Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-11-11 — Phase 05 execution started
+Status: Phase complete
+Last activity: 2026-11-11 — Phase 05 complete
 
-Progress: [████░░░░░░] 40%
+Progress: [████████████████████] 43/43 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 25
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 40%
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
 | 04 | 10 | - | - |
+| 05 | 3 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -150,6 +151,9 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: tui serve runs a due sync with execute_sync and continues the loop; later() owns next_attempt_at
 - [Phase 04]: A second POST is another create_review of the same publication. The continuation fixture uses another draft only so its job id sorts after the sync.
 - [Phase 04]: The crash remote create_review check prefers a sending publication when more than one row exists.
+- [Phase 05]: doctor prints five lines and does not take the runner lock or migrate. user_version stays 5. A broken config.toml fails only the storage line.
+- [Phase 05]: Install instructions are docs/install.md. The plist stays in dotfiles. Umask is the string 0077.
+- [Phase 05]: The owner marked the reboot check pass. Phases 2 and 3 stay unaccepted.
 
 ### Pending Todos
 
@@ -179,6 +183,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T14:30:47.406Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-daily-use/05-CONTEXT.md
+Last session: 2026-11-11T19:02:24Z
+Stopped at: Phase 05 complete. Phases 2 and 3 stay open for human verification
+Resume file: None

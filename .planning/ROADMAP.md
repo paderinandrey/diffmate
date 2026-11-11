@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Reliability** - idempotent runs, crash recovery, freshness, timeouts, `--force`, signal handling, job attachment
 - [ ] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications
 - [x] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync (completed 2026-11-11)
-- [ ] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor`
+- [x] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor` (completed 2026-11-11)
 
 ## Phase Details
 
@@ -229,7 +229,7 @@ Plans:
   - OPS-01 and OPS-03 have no "Done when" line of their own; the two criteria exercise them. `doctor` checks `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version.
   - The reboot check is manual by nature.
 
-**Plans**: 3/3 plans executed
+**Plans**: 3/3 plans complete
 **Wave 1**
 - [x] 05-01-PLAN.md
 - [x] 05-03-PLAN.md
@@ -248,4 +248,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
 | 3. Queue | 8/8 implemented | Human verification needed | - |
 | 4. Review and publish | 10/10 | Complete    | 2026-11-11 |
-| 5. Daily use | 3/3 | In Progress | - |
+| 5. Daily use | 3/3 | Complete    | 2026-11-11 |

@@ -92,11 +92,11 @@ Slice description: `diffmate tui` shows targets and drafts. I can set decisions,
 
 Slice description: launchd agent for `watch` (plist lives in dotfiles), install instructions, and `diffmate doctor`.
 
-- [ ] **OPS-01**: A launchd agent runs `watch`. Its plist lives in my dotfiles, outside this repo; this repo documents what it needs and how to install it. (Slice description.)
-- [ ] **OPS-02**: Install instructions exist and are enough to set diffmate up on a fresh macOS machine. (Slice description.)
-- [ ] **OPS-03**: `diffmate doctor` checks `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version. (SPEC "Commands".)
-- [ ] **OPS-04**: `watch` survives a reboot.
-- [ ] **OPS-05**: `doctor` explains every failed check.
+- [x] **OPS-01**: A launchd agent runs `watch`. Its plist lives in my dotfiles, outside this repo; this repo documents what it needs and how to install it. (Slice description.)
+- [x] **OPS-02**: Install instructions exist and are enough to set diffmate up on a fresh macOS machine. (Slice description.)
+- [x] **OPS-03**: `diffmate doctor` checks `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version. (SPEC "Commands".)
+- [x] **OPS-04**: `watch` survives a reboot.
+- [x] **OPS-05**: `doctor` explains every failed check.
 
 ## v2 Requirements
 
@@ -193,11 +193,11 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | PUB-13 | Phase 4 | Complete |
 | PUB-14 | Phase 4 | Complete |
 | PUB-15 | Phase 4 | Complete |
-| OPS-01 | Phase 5 | Pending |
-| OPS-02 | Phase 5 | Pending |
-| OPS-03 | Phase 5 | Pending |
-| OPS-04 | Phase 5 | Pending |
-| OPS-05 | Phase 5 | Pending |
+| OPS-01 | Phase 5 | Complete |
+| OPS-02 | Phase 5 | Complete |
+| OPS-03 | Phase 5 | Complete |
+| OPS-04 | Phase 5 | Complete |
+| OPS-05 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 56 total
