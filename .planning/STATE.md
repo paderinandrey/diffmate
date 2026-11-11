@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
 status: executing
-stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-11-11T01:28:39.783Z"
-last_activity: 2026-11-10
+stopped_at: Completed 04-10-PLAN.md
+last_updated: "2026-11-11T08:16:01.533Z"
+last_activity: 2026-11-11
 last_activity_desc: Phase 04 execution started
-state_head: 8dabc61c270d3607c18ad3fc1f2be39c2a8b8d26
+state_head: 1464ef68a13d1f07c86ac462d384e80ce9c17415
 progress:
   total_phases: 5
   completed_phases: 1
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 
 ## Current Position
 
-Phase: 04 (Review and publish) — READY TO EXECUTE
-Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-11-10 — Phase 04 execution started
+Phase: 04 (Review and publish) — EXECUTING
+Plan: 9 of 10
+Status: Executing Phase 04
+Last activity: 2026-11-11 — Phase 04 execution started
 
 Progress: [██░░░░░░░░] 20%
 
@@ -77,6 +77,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P06 | 41 min | 2 tasks | 28 files |
 | Phase 04 P07 | 43 min | 3 tasks | 29 files |
 | Phase 04 P08 | 53min | 3 tasks | 33 files |
+| Phase 04 P10 | 15 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,7 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: Watch runs one due publish, reconcile, or sync job on the one-second lock poll while the agent future stays pending. Shutdown uses request_stop.
 - [Phase 04]: Comment sync is queued in the submitted transaction, retries the same job 60 seconds later via next_attempt_at, and never calls create_review.
 - [Phase 04]: previous.json reads isResolved for linked inline findings. A failed read writes unknown and does not fail the review. Body findings stay none.
+- [Phase 04]: Status and the queue join the latest review job, so a later publish or sync does not replace the review run. — Retry text uses that same review job. Publication state, draft freshness, and both ORDER BY clauses stay as they were.
 
 ### Pending Todos
 
@@ -173,6 +175,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T00:46:09.924Z
-Stopped at: Completed 04-08-PLAN.md
+Last session: 2026-11-11T08:16:01.206Z
+Stopped at: Completed 04-10-PLAN.md
 Resume file: None
