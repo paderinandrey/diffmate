@@ -93,3 +93,34 @@ After login, `diffmate doctor` prints `runner lock: ok — held by watch`
 and exits 0. `watch` already waits for the runner lock instead of
 exiting, and already exits 0 on SIGTERM, which is what `KeepAlive`
 needs. The agent runs in the GUI session, not at the login window.
+
+## Update
+
+A second bootstrap is not how a new binary is picked up. Copy the binary
+again, then kickstart the job that is already loaded:
+
+```text
+cp target/release/diffmate ~/.local/bin/diffmate
+launchctl kickstart -k gui/$UID/dev.diffmate.watch
+```
+
+## Remove
+
+```text
+launchctl bootout gui/$UID/dev.diffmate.watch
+```
+
+## Empty the logs
+
+`StandardErrorPath` is `~/Library/Logs/diffmate/watch.log`.
+`StandardOutPath` is `~/Library/Logs/diffmate/watch.out.log`. launchd
+appends both streams. `diffmate` does not open a log. `watch` prints one
+timestamped line per event to stderr, and launchd writes that stream to
+`watch.log`.
+
+Both files grow. There is no rotator in `diffmate` and no `newsyslog`
+example. To empty them: bootout, then truncate or delete the two files,
+then bootstrap. If the directory was removed, run
+`mkdir -p -m 0700 ~/Library/Logs/diffmate` before bootstrap again. An
+existing directory is not mode-changed by `mkdir -p`, which is why
+`chmod 0700` stays on the page when the directory already exists.
