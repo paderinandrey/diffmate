@@ -5,8 +5,10 @@ mod confirm;
 mod insert;
 mod rows;
 mod save;
+mod sync;
 
 pub(crate) use cancel::{CancelQueued, Gate};
+pub(crate) use sync::insert as insert_sync_job;
 
 use super::Store;
 use crate::app::ProcessInfo;
@@ -156,6 +158,17 @@ impl Store {
                 })
             })
             .optional()
+        })
+        .await
+    }
+
+    pub async fn enqueue_sync(&self, publication_id: &str) -> Result<(), Error> {
+        let publication_id = publication_id.to_string();
+        self.call(move |conn| {
+            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            sync::insert(&tx, &publication_id, crate::store::now_ms())?;
+            tx.commit()?;
+            Ok(())
         })
         .await
     }

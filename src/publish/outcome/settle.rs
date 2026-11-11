@@ -36,6 +36,9 @@ pub(super) async fn settle(
             if changed != 1 {
                 return Err(constraint("publish job is missing"));
             }
+            if state == "submitted" {
+                crate::store::publish::insert_sync_job(&tx, &publication_id, now)?;
+            }
             tx.commit()?;
             Ok(())
         })

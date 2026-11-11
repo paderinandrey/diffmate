@@ -105,6 +105,10 @@ async fn serve<G: Git, H: Gh, A: Agent>(
             store.start_job(job.id).await?;
             crate::publish::execute_reconcile(store, &deps.gh, job.id).await
         }
+        "sync" => {
+            store.start_job(job.id).await?;
+            crate::publish::execute_sync(store, &deps.gh, job.id).await
+        }
         _ => {
             tokio::time::sleep(super::WATCH_LOCK_POLL).await;
             Ok(())

@@ -42,7 +42,9 @@ pub(super) async fn submit(
         .call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let sql = "UPDATE publications SET state = 'submitted', github_review_id = ?2, updated_at = ?3 WHERE id = ?1 AND state = 'unknown'";
-            tx.execute(sql, params![publication_id, review_id, now])?;
+            if tx.execute(sql, params![publication_id, review_id, now])? == 1 {
+                crate::store::publish::insert_sync_job(&tx, &publication_id, now)?;
+            }
             let sql = "UPDATE jobs SET state = 'succeeded', updated_at = ?2 WHERE id = ?1 AND kind = 'reconcile'";
             if tx.execute(sql, params![job_id, now])? != 1 {
                 return Err(constraint("reconcile job is missing"));

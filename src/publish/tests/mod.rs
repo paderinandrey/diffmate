@@ -7,6 +7,7 @@ mod once;
 mod script;
 mod snap;
 mod support;
+mod sync;
 
 use script::Script;
 use support::{KEPT, batch, cell, open, process};

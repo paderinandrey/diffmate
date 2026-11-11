@@ -3,6 +3,7 @@ mod discussion;
 mod meta;
 mod reviews;
 mod search;
+mod threads;
 
 use crate::error::Error;
 use crate::pr_url::PrRef;
@@ -13,6 +14,7 @@ use std::future::Future;
 use tokio::process::Command;
 
 pub(crate) use reviews::{CreatedReview, InlineComment, ListedReview, ReviewRequest};
+pub(crate) use threads::{CommentLink, ThreadState};
 
 pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
@@ -65,6 +67,27 @@ pub(crate) trait Gh {
         Self: Sized,
     {
         let _ = (pr, review);
+        unsupported(self)
+    }
+    fn review_comment_threads(
+        &self,
+        pr: &PrRef,
+        review_id: &str,
+    ) -> impl Future<Output = Result<Vec<CommentLink>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = (pr, review_id);
+        unsupported(self)
+    }
+    fn thread_resolved(
+        &self,
+        pr: &PrRef,
+    ) -> impl Future<Output = Result<Vec<ThreadState>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = pr;
         unsupported(self)
     }
 }
@@ -151,5 +174,17 @@ impl Gh for GhCli {
         review: &ReviewRequest,
     ) -> Result<CreatedReview, Error> {
         reviews::create_review(self, pr, review).await
+    }
+
+    async fn review_comment_threads(
+        &self,
+        pr: &PrRef,
+        review_id: &str,
+    ) -> Result<Vec<CommentLink>, Error> {
+        threads::comments(self, pr, review_id).await
+    }
+
+    async fn thread_resolved(&self, pr: &PrRef) -> Result<Vec<ThreadState>, Error> {
+        threads::statuses(self, pr).await
     }
 }
