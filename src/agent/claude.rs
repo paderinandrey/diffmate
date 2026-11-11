@@ -9,10 +9,9 @@ use crate::store::records::Metrics;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
-use contract::AUTH_ENV;
 #[cfg(test)]
 pub(crate) use contract::TestOverrides;
-pub(crate) use contract::{production_args, user_prompt};
+pub(crate) use contract::{AUTH_ENV, production_args, user_prompt};
 
 #[cfg(test)]
 mod cancel_tests;

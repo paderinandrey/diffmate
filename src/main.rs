@@ -7,6 +7,7 @@ mod context;
 mod crash;
 mod debug;
 mod diff;
+mod doctor;
 mod error;
 mod gh;
 mod git;
@@ -69,6 +70,7 @@ fn main() -> ExitCode {
         cli::Command::Status => runtime.block_on(status::run(&config)),
         cli::Command::Watch => runtime.block_on(watch::run(&config)),
         cli::Command::Tui => runtime.block_on(tui::run(&config)),
+        cli::Command::Doctor => runtime.block_on(doctor::run(&config)),
         cli::Command::Debug { command } => match command {
             cli::DebugCommand::Enqueue {
                 url,

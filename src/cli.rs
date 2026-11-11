@@ -17,6 +17,7 @@ pub(crate) enum Command {
     Status,
     Watch,
     Tui,
+    Doctor,
     #[command(hide = true)]
     Debug {
         #[command(subcommand)]

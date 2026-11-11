@@ -123,7 +123,7 @@ impl GhCli {
         GhCli { env: vars }
     }
 
-    fn command(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Command {
+    pub(crate) fn command(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Command {
         let mut command = Command::new("gh");
         command.args(args).env_clear();
         command.envs(self.env.iter().map(|(name, value)| (name, value)));

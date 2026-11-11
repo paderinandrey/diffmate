@@ -3,7 +3,7 @@ use crate::agent::AgentRequest;
 use std::ffi::OsString;
 use std::path::Path;
 
-pub(super) const AUTH_ENV: [&str; 17] = [
+pub(crate) const AUTH_ENV: [&str; 17] = [
     "PATH",
     "HOME",
     "USER",
