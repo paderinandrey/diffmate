@@ -22,6 +22,10 @@ pub(crate) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Res
                 store.start_job(id).await?;
                 crate::publish::execute_reconcile(store, gh, id).await?;
             }
+            "sync" => {
+                store.start_job(id).await?;
+                crate::publish::execute_sync(store, gh, id).await?;
+            }
             _ => return Ok(()),
         }
     }
