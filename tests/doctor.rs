@@ -4,4 +4,8 @@ mod fresh;
 mod held;
 #[path = "doctor/pass.rs"]
 mod pass;
+#[path = "doctor/schema.rs"]
+mod schema;
 mod support;
+#[path = "doctor/wal.rs"]
+mod wal;
