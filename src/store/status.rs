@@ -43,7 +43,7 @@ const SQL: &str = "SELECT t.owner, t.repo, t.number, t.tracking,
        (SELECT p.state FROM publications p WHERE p.target_id = t.id
         ORDER BY p.created_at DESC LIMIT 1)
     FROM targets t
-    LEFT JOIN jobs j ON j.id = (SELECT max(id) FROM jobs WHERE target_id = t.id)
+    LEFT JOIN jobs j ON j.id = (SELECT max(id) FROM jobs WHERE target_id = t.id AND kind = 'review')
     LEFT JOIN runs r ON r.id = coalesce(j.result_run_id,
         (SELECT max(id) FROM runs WHERE job_id = j.id))";
 

@@ -61,3 +61,55 @@ async fn fallback_uses_the_stored_head_and_latest_successful_run() {
     );
     assert!(!paths.lock().exists());
 }
+
+#[tokio::test]
+async fn later_publish_and_sync_keep_the_review_run() {
+    let (_tmp, _paths, store) = fixture::store().await;
+    store
+        .call(|conn| {
+            conn.execute_batch(
+                "UPDATE targets SET head_sha = 'known-head', head_checked_at = 20000;
+         INSERT INTO runs (id, target_id, job_id, state, result, head_sha, merge_base_sha, base_tip_sha, base_ref, created_at)
+         VALUES (1, 1, 1, 'succeeded', 'findings', 'draft-head', 'base', 'base', 'main', 0);
+         INSERT INTO drafts (id, run_id, original_output, created_at) VALUES (1, 1, '{}', 0);
+         INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body, decision)
+         VALUES ('f1', 1, 1, 1, 'high', 'src/a.rs', 4, 'RIGHT', 'Title', 'Body text', 'kept');
+         INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, created_at, updated_at)
+         VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 1, 1, 1, 'submitted', 'COMMENT', 'draft-head', '{}', 1, 1);",
+            )
+        })
+        .await
+        .unwrap();
+    let before = store.target_statuses().await.unwrap();
+    let before_queue = store.queue_rows().await.unwrap();
+    let publication = before[0].publication.clone();
+    let draft_head = before[0].draft_head.clone();
+    let known_head = before[0].known_head.clone();
+    assert_eq!(before[0].latest, "succeeded (findings: 1)");
+    assert_eq!(before_queue[0].latest, "succeeded (findings: 1)");
+    assert_eq!(publication, "submitted");
+    assert_eq!(draft_head.as_deref(), Some("draft-head"));
+    assert_eq!(known_head, Some(("known-head".into(), 20_000)));
+    store
+        .call(|conn| {
+            conn.execute_batch(
+                "INSERT INTO jobs (id, kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, publication_id)
+         VALUES (2, 'publish', 1, 'succeeded', 1, 0, 1, 1, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+         INSERT INTO jobs (id, kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, publication_id)
+         VALUES (3, 'sync', 1, 'queued', 1, 0, 2, 2, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');",
+            )
+        })
+        .await
+        .unwrap();
+    let rows = store.target_statuses().await.unwrap();
+    let queued = store.queue_rows().await.unwrap();
+    assert_eq!(rows[0].latest, "succeeded (findings: 1)");
+    assert_eq!(queued[0].latest, "succeeded (findings: 1)");
+    assert_eq!(
+        super::super::latest(&rows[0], 10_000),
+        "succeeded (findings: 1)"
+    );
+    assert_eq!(rows[0].publication, publication);
+    assert_eq!(rows[0].draft_head, draft_head);
+    assert_eq!(rows[0].known_head, known_head);
+}
