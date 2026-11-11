@@ -229,13 +229,13 @@ Plans:
   - OPS-01 and OPS-03 have no "Done when" line of their own; the two criteria exercise them. `doctor` checks `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version.
   - The reboot check is manual by nature.
 
-**Plans**: 0/3 plans executed
+**Plans**: 3/3 plans executed
 **Wave 1**
-- [ ] 05-01-PLAN.md
-- [ ] 05-03-PLAN.md
+- [x] 05-01-PLAN.md
+- [x] 05-03-PLAN.md
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 05-02-PLAN.md
+- [x] 05-02-PLAN.md
 
 ## Progress
 
@@ -248,4 +248,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
 | 3. Queue | 8/8 implemented | Human verification needed | - |
 | 4. Review and publish | 10/10 | Complete    | 2026-11-11 |
-| 5. Daily use | 0/3 | Planned     | - |
+| 5. Daily use | 3/3 | In Progress | - |
