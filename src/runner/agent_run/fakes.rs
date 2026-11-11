@@ -1,5 +1,5 @@
 mod git;
-pub(super) use git::FakeGit;
+pub(crate) use git::FakeGit;
 
 use crate::agent::{Agent, AgentOutcome, AgentRequest};
 use crate::error::Error;

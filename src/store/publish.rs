@@ -33,6 +33,11 @@ pub(super) enum Outcome {
     Blocked,
 }
 
+pub(crate) struct ServiceJob {
+    pub id: i64,
+    pub kind: String,
+}
+
 impl Store {
     pub async fn confirm_publication(
         &self,
@@ -136,5 +141,22 @@ impl Store {
         let reason = reason.to_string();
         self.call(move |conn| confirm::abandon(conn, &publication_id, job_id, &reason))
             .await
+    }
+
+    pub async fn next_service_job(&self, now: i64) -> Result<Option<ServiceJob>, Error> {
+        self.call(move |conn| {
+            let sql = "SELECT id, kind FROM jobs WHERE kind IN ('publish', 'reconcile', 'sync') \
+                       AND state = 'queued' AND held = 0 \
+                       AND (next_attempt_at IS NULL OR next_attempt_at <= ?1) \
+                       ORDER BY id LIMIT 1";
+            conn.query_row(sql, [now], |row| {
+                Ok(ServiceJob {
+                    id: row.get(0)?,
+                    kind: row.get(1)?,
+                })
+            })
+            .optional()
+        })
+        .await
     }
 }
