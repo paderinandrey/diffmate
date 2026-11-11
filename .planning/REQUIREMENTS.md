@@ -73,19 +73,19 @@ Slice description: `diffmate watch` with the queue rules, jobs handed over from 
 Slice description: `diffmate tui` shows targets and drafts. I can set decisions, edit findings and future improvements, include the limitation, open the PR in the browser, re-run, reconcile, abandon an `unknown` publication, and publish with `a` (approve), `r` (request changes), `c` (comment).
 
 - [x] **PUB-01**: `diffmate tui` shows the queue view (targets with tracking, latest run, draft freshness with the time of the last head check, and publication state) and the draft view (findings, limitation, future improvements). (Slice description.)
-- [ ] **PUB-02**: In `tui` I can set a decision on each finding (`undecided`, `kept`, `edited`, `dropped`), edit findings and future improvements in `$EDITOR`, and include the limitation; a shortcut marks all remaining undecided findings `kept`. (Slice description and SPEC "Publication" step 2.)
+- [x] **PUB-02**: In `tui` I can set a decision on each finding (`undecided`, `kept`, `edited`, `dropped`), edit findings and future improvements in `$EDITOR`, and include the limitation; a shortcut marks all remaining undecided findings `kept`. (Slice description and SPEC "Publication" step 2.)
 - [x] **PUB-03**: In `tui` I can open the PR in the browser, re-run a review, discard a target, reconcile an `unknown` publication, and abandon an `unknown` publication after checking. A re-run requested with no `watch` running is enqueued, and `tui` explains that `diffmate review` or `diffmate watch` must run it. (Slice description and SPEC "Commands".)
-- [ ] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
-- [ ] **PUB-05**: Publishing with undecided findings is refused until every finding has a decision.
-- [ ] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
-- [ ] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
-- [ ] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
-- [ ] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
-- [ ] **PUB-10**: A crash before `sending` is committed resumes safely after restart and publishes exactly once.
-- [ ] **PUB-11**: A crash after `sending` is committed leaves the publication `unknown`, with no automatic second POST.
-- [ ] **PUB-12**: Declining a `needs_confirmation` publication cancels the job and abandons the publication; redelivering the old job does not revive it.
-- [ ] **PUB-13**: While `tui` holds the lock it shows that it acts as the runner and does not run `review` jobs.
-- [ ] **PUB-14**: A simulated timeout on the GitHub call leaves the publication `unknown`, and a new attempt stays blocked until reconciliation finds the marker or I abandon it.
+- [x] **PUB-04**: Publishing creates one GitHub review on the reviewed commit, with kept and edited findings as inline comments carrying finding markers, and the publication marker in the body.
+- [x] **PUB-05**: Publishing with undecided findings is refused until every finding has a decision.
+- [x] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
+- [x] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
+- [x] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
+- [x] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
+- [x] **PUB-10**: A crash before `sending` is committed resumes safely after restart and publishes exactly once.
+- [x] **PUB-11**: A crash after `sending` is committed leaves the publication `unknown`, with no automatic second POST.
+- [x] **PUB-12**: Declining a `needs_confirmation` publication cancels the job and abandons the publication; redelivering the old job does not revive it.
+- [x] **PUB-13**: While `tui` holds the lock it shows that it acts as the runner and does not run `review` jobs.
+- [x] **PUB-14**: A simulated timeout on the GitHub call leaves the publication `unknown`, and a new attempt stays blocked until reconciliation finds the marker or I abandon it.
 - [x] **PUB-15**: A failed comment sync leaves the publication `submitted`, inline thread statuses `unknown`, and is retried without a new POST.
 
 ### Daily use (OPS) - Phase 5
@@ -179,19 +179,19 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | QUE-10 | Phase 3 | Pending |
 | QUE-11 | Phase 3 | Pending |
 | PUB-01 | Phase 4 | Complete |
-| PUB-02 | Phase 4 | Gaps Found |
+| PUB-02 | Phase 4 | Complete |
 | PUB-03 | Phase 4 | Complete |
-| PUB-04 | Phase 4 | Gaps Found |
-| PUB-05 | Phase 4 | Gaps Found |
-| PUB-06 | Phase 4 | Gaps Found |
-| PUB-07 | Phase 4 | Gaps Found |
-| PUB-08 | Phase 4 | Gaps Found |
-| PUB-09 | Phase 4 | Gaps Found |
-| PUB-10 | Phase 4 | Gaps Found |
-| PUB-11 | Phase 4 | Gaps Found |
-| PUB-12 | Phase 4 | Gaps Found |
-| PUB-13 | Phase 4 | Gaps Found |
-| PUB-14 | Phase 4 | Gaps Found |
+| PUB-04 | Phase 4 | Complete |
+| PUB-05 | Phase 4 | Complete |
+| PUB-06 | Phase 4 | Complete |
+| PUB-07 | Phase 4 | Complete |
+| PUB-08 | Phase 4 | Complete |
+| PUB-09 | Phase 4 | Complete |
+| PUB-10 | Phase 4 | Complete |
+| PUB-11 | Phase 4 | Complete |
+| PUB-12 | Phase 4 | Complete |
+| PUB-13 | Phase 4 | Complete |
+| PUB-14 | Phase 4 | Complete |
 | PUB-15 | Phase 4 | Complete |
 | OPS-01 | Phase 5 | Pending |
 | OPS-02 | Phase 5 | Pending |

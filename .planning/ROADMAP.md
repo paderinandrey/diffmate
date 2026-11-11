@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Single review** - `diffmate review <url>` and `status` with an isolated agent, validated output, runner lock, bare clone and worktree (completed 2026-10-27)
 - [ ] **Phase 2: Reliability** - idempotent runs, crash recovery, freshness, timeouts, `--force`, signal handling, job attachment
 - [ ] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications
-- [ ] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync
+- [x] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync (completed 2026-11-11)
 - [ ] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor`
 
 ## Phase Details
@@ -186,7 +186,7 @@ Plans:
   - Failure injection on the GitHub call (timeouts, client and server errors) needs a test seam on the `gh` boundary.
   - Thread statuses are read from GitHub GraphQL and feed `previous.json` for later re-reviews; comment links come from comment sync.
 
-**Plans**: 10/10 plans executed
+**Plans**: 10/10 plans complete
 **Wave 1**
 - [x] 04-01-PLAN.md
 
@@ -241,5 +241,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
 | 3. Queue | 8/8 implemented | Human verification needed | - |
-| 4. Review and publish | 10/10 | In Progress | - |
+| 4. Review and publish | 10/10 | Complete    | 2026-11-11 |
 | 5. Daily use | 0/TBD | Not started | - |

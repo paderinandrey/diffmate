@@ -1,44 +1,44 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 04
-current_phase_name: Review and publish
-status: verifying
-stopped_at: Completed 04-09-PLAN.md
-last_updated: "2026-11-11T08:49:13.004Z"
+current_phase: 05
+current_phase_name: Daily use
+status: planning
+stopped_at: Phase 04 complete, ready to plan Phase 05
+last_updated: "2026-11-11T12:26:01.017Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 04 execution started
-state_head: 9693fd66c944666811f83d17e92ff94bc15981c3
+last_activity_desc: Phase 04 complete, ready to plan Phase 05
+state_head: d08a353e4184e079a49f133086be673356e50d02
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 40
   completed_plans: 40
-  percent: 20
+  percent: 40
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-27)
+See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 04 — Review and publish
+**Current focus:** Phase 05 — Daily use
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
 
-Phase: 04 (Review and publish) — EXECUTING
-Plan: 10 of 10
-Status: Phase complete — ready for verification
-Last activity: 2026-11-11 — Phase 04 execution started
+Phase: 05 (Daily use)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-11 — Phase 04 complete
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 22
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -47,6 +47,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
+| 04 | 10 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -141,7 +142,7 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: Recovery inserts one reconcile job per unknown publication and does not call gh. A second recovery does not duplicate a queued or running reconcile.
 - [Phase 04]: create_review is bounded at 30 seconds. A timeout, a network error, or HTTP 500-599 leaves unknown. Other HTTP statuses, including 401, 403, and 422, reject. The POST is not retried.
 - [Phase 04]: Reconcile submits only from unknown when a review by the current login contains the publication marker. A missing marker or a failed list leaves unknown.
-- [Phase 04]: The tui runner starts publish and reconcile. A sync job ends the loop without start_job. y enqueues one reconcile and runs it. b highlights Leave unknown. Abandon writes confirmed by me.
+- [Phase 04]: y enqueues one reconcile and runs it. b highlights Leave unknown. Abandon writes confirmed by me.
 - [Phase 04]: Watch runs one due publish, reconcile, or sync job on the one-second lock poll while the agent future stays pending. Shutdown uses request_stop.
 - [Phase 04]: Comment sync is queued in the submitted transaction, retries the same job 60 seconds later via next_attempt_at, and never calls create_review.
 - [Phase 04]: previous.json reads isResolved for linked inline findings. A failed read writes unknown and does not fail the review. Body findings stay none.
@@ -160,7 +161,6 @@ None yet.
 - [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
 - [Phase 2]: Anthropic HTTP 403 requires account verification. The owner explicitly chose to preserve the live gate as blocked: do not repeat Claude API calls automatically or treat this as a waiver. Six non-model E2E checks passed; auth failed and four model-backed cases remain unrun.
 - [Phase 2]: Implementation is complete with no code-review findings or verification code gaps. `.planning/phases/02-reliability/02-UAT.md` preserves 12 pending acceptance/confirmation items and 2 blocked live items. The owner continued into Phase 3 on 2026-11-09 without marking those items. Do not mark any UAT item pass. Resume `/gsd-verify-work 02` when accepting Phase 2.
-- [Phase 3]: The QUE-07 discard key stays in Phase 4. This phase uses hidden `debug discard` (D-02).
 - [Phase 3]: macOS notifications use `osascript` with no new crate (D-01). A give-up names the failure reason.
 
 ### Quick Tasks Completed
@@ -179,6 +179,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:48:37.384Z
-Stopped at: Completed 04-09-PLAN.md
+Last session: 2026-11-11T12:28:09Z
+Stopped at: Phase 04 complete, ready to plan Phase 05
 Resume file: None
