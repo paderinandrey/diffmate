@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 15
+open_count: 17
 waived_count: 0
 fixed_count: 1
-total_count: 16
-last_updated: 2026-11-10T18:38:59.087Z
+total_count: 18
+last_updated: 2026-11-11T08:48:40.537Z
 ---
 
 # Broken Windows Ledger
@@ -31,6 +31,8 @@ last_updated: 2026-11-10T18:38:59.087Z
 | 14 | 04 | deviation | src/tui/model.rs |  | Accepting Discard reloads queue rows after Store::discard so the latched target leaves the list. | open |  | 2026-11-10T17:10:18.894Z |  |
 | 15 | 04 | deviation | src/tui/tests/actions.rs |  | Task 2 has no separate test(04-04) RED commit. hk runs the full suite, so the failing tests and the implementation landed together in 9f1a62a. | open |  | 2026-11-10T17:10:19.312Z |  |
 | 16 | 04 | deviation | src/publish/tests/script.rs |  | Script answers pr_view, current_login, and list_my_reviews so the publish gate does not treat the trait default as a transient gh error | open |  | 2026-11-10T18:38:59.087Z |  |
+| 17 | 04 | deviation | src/publish/tests/crash/gh.rs | 59 | Crash remote create_review prefers a sending publication when more than one row exists | open |  | 2026-11-11T08:48:39.857Z |  |
+| 18 | 04 | deviation | src/publish/tests/crash/keys.rs | 160 | Continuation test calls crate::tui::serve because the runner module is private | open |  | 2026-11-11T08:48:40.537Z |  |
 
 ````json
 [
@@ -239,6 +241,32 @@ last_updated: 2026-11-10T18:38:59.087Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-11-10T18:38:59.087Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 17,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/publish/tests/crash/gh.rs",
+    "line": 59,
+    "description": "Crash remote create_review prefers a sending publication when more than one row exists",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-11T08:48:39.857Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 18,
+    "kind": "deviation",
+    "phase": "04",
+    "file": "src/publish/tests/crash/keys.rs",
+    "line": 160,
+    "description": "Continuation test calls crate::tui::serve because the runner module is private",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-11-11T08:48:40.537Z",
     "resolved_at": null,
     "milestone": null
   }
