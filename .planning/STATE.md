@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Review and publish
-status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-11-10T19:26:08.685Z"
+status: verifying
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-11-11T00:46:10.269Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 04 execution started
-state_head: d62d024fc2c30e9a62bce0ad8ee4d288a1f5b1e1
+state_head: f70267398fe8c0f05242cfd188cf32ff9c50bd5d
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 38
-  completed_plans: 37
+  completed_plans: 38
   percent: 20
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-27)
 
 Phase: 04 (Review and publish) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-10 — Phase 04 execution started
 
 Progress: [██░░░░░░░░] 20%
@@ -76,6 +76,7 @@ Progress: [██░░░░░░░░] 20%
 | Phase 04 P05 | 38min | 3 tasks | 18 files |
 | Phase 04 P06 | 41 min | 2 tasks | 28 files |
 | Phase 04 P07 | 43 min | 3 tasks | 29 files |
+| Phase 04 P08 | 53min | 3 tasks | 33 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,9 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: create_review is bounded at 30 seconds. A timeout, a network error, or HTTP 500-599 leaves unknown. Other HTTP statuses, including 401, 403, and 422, reject. The POST is not retried.
 - [Phase 04]: Reconcile submits only from unknown when a review by the current login contains the publication marker. A missing marker or a failed list leaves unknown.
 - [Phase 04]: The tui runner starts publish and reconcile. A sync job ends the loop without start_job. y enqueues one reconcile and runs it. b highlights Leave unknown. Abandon writes confirmed by me.
+- [Phase 04]: Watch runs one due publish, reconcile, or sync job on the one-second lock poll while the agent future stays pending. Shutdown uses request_stop.
+- [Phase 04]: Comment sync is queued in the submitted transaction, retries the same job 60 seconds later via next_attempt_at, and never calls create_review.
+- [Phase 04]: previous.json reads isResolved for linked inline findings. A failed read writes unknown and does not fail the review. Body findings stay none.
 
 ### Pending Todos
 
@@ -169,6 +173,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-10T19:26:08.381Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-11-11T00:46:09.924Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None

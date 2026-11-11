@@ -80,13 +80,13 @@ Slice description: `diffmate tui` shows targets and drafts. I can set decisions,
 - [x] **PUB-06**: Pressing a publish key twice creates one GitHub review, and publishing an already submitted draft is refused.
 - [x] **PUB-07**: Publishing a stale draft asks for confirmation first, and asks again if the head moves before the runner sends it.
 - [x] **PUB-08**: With an existing pending review of mine on the PR, publish stops with a clear message and changes nothing on GitHub.
-- [ ] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
+- [x] **PUB-09**: Publishing while `watch` is in the middle of an agent run completes without waiting for that run.
 - [x] **PUB-10**: A crash before `sending` is committed resumes safely after restart and publishes exactly once.
 - [x] **PUB-11**: A crash after `sending` is committed leaves the publication `unknown`, with no automatic second POST.
 - [x] **PUB-12**: Declining a `needs_confirmation` publication cancels the job and abandons the publication; redelivering the old job does not revive it.
-- [ ] **PUB-13**: While `tui` holds the lock it shows that it acts as the runner and does not run `review` jobs.
+- [x] **PUB-13**: While `tui` holds the lock it shows that it acts as the runner and does not run `review` jobs.
 - [x] **PUB-14**: A simulated timeout on the GitHub call leaves the publication `unknown`, and a new attempt stays blocked until reconciliation finds the marker or I abandon it.
-- [ ] **PUB-15**: A failed comment sync leaves the publication `submitted`, inline thread statuses `unknown`, and is retried without a new POST.
+- [x] **PUB-15**: A failed comment sync leaves the publication `submitted`, inline thread statuses `unknown`, and is retried without a new POST.
 
 ### Daily use (OPS) - Phase 5
 
@@ -186,13 +186,13 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | PUB-06 | Phase 4 | Complete |
 | PUB-07 | Phase 4 | Complete |
 | PUB-08 | Phase 4 | Complete |
-| PUB-09 | Phase 4 | Pending |
+| PUB-09 | Phase 4 | Complete |
 | PUB-10 | Phase 4 | Complete |
 | PUB-11 | Phase 4 | Complete |
 | PUB-12 | Phase 4 | Complete |
-| PUB-13 | Phase 4 | Pending |
+| PUB-13 | Phase 4 | Complete |
 | PUB-14 | Phase 4 | Complete |
-| PUB-15 | Phase 4 | Pending |
+| PUB-15 | Phase 4 | Complete |
 | OPS-01 | Phase 5 | Pending |
 | OPS-02 | Phase 5 | Pending |
 | OPS-03 | Phase 5 | Pending |
