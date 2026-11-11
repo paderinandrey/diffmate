@@ -1,3 +1,4 @@
+use super::fake_gh::{FakeGh, pr};
 use crate::agent::{Severity, Side};
 use crate::app::ProcessInfo;
 use crate::context::previous;
@@ -10,7 +11,7 @@ use serde_json::{Value, json};
 use std::fs;
 use tempfile::TempDir;
 
-fn finding(line: Option<u32>, title: &str) -> FindingRecord {
+pub(super) fn finding(line: Option<u32>, title: &str) -> FindingRecord {
     FindingRecord {
         severity: Severity::High,
         path: Some("src/lib.rs".into()),
@@ -23,7 +24,8 @@ fn finding(line: Option<u32>, title: &str) -> FindingRecord {
 }
 
 async fn written(store: &Store, dir: &std::path::Path, ids: (i64, i64)) -> (Value, Vec<String>) {
-    let mut ids_found: Vec<_> = previous::write(dir, store, ids)
+    let gh = FakeGh::default();
+    let mut ids_found: Vec<_> = previous::write(dir, store, &gh, &pr(), ids)
         .await
         .unwrap()
         .into_iter()

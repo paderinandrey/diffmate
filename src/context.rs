@@ -73,7 +73,7 @@ pub(crate) async fn write<G: Git, H: Gh>(
     note_truncation(&mut warnings, "ci.md", &ci);
     put(&inputs.dir.join("ci.md"), ci).await?;
     let ids = (inputs.target, inputs.run);
-    let previous_ids = previous::write(inputs.dir, inputs.store, ids).await?;
+    let previous_ids = previous::write(inputs.dir, inputs.store, inputs.gh, inputs.pr, ids).await?;
     Ok(WrittenContext {
         diff_as_written,
         previous_ids,

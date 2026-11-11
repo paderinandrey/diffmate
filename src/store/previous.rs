@@ -11,6 +11,7 @@ pub(crate) struct StoredFinding {
     pub title: String,
     pub body: String,
     pub decision: String,
+    pub github_thread_id: Option<String>,
 }
 
 pub(crate) struct PreviousRun {
@@ -35,7 +36,8 @@ impl Store {
             else {
                 return Ok(None);
             };
-            let sql = "SELECT id, severity, path, line, side, title, body, decision
+            let sql =
+                "SELECT id, severity, path, line, side, title, body, decision, github_thread_id
                        FROM findings WHERE run_id = ?1 ORDER BY ordinal";
             let mut statement = conn.prepare(sql)?;
             let stored = |r: &rusqlite::Row| {
@@ -48,6 +50,7 @@ impl Store {
                     title: r.get(5)?,
                     body: r.get(6)?,
                     decision: r.get(7)?,
+                    github_thread_id: r.get(8)?,
                 })
             };
             let findings = statement

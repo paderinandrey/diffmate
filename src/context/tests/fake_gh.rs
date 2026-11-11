@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta};
+use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta, ThreadState};
 use crate::pr_url::PrRef;
 use std::future::ready;
 use std::sync::Mutex;
@@ -12,6 +12,7 @@ pub(super) struct FakeGh {
     pub runs: Mutex<Option<CheckRuns>>,
     pub annotations_fail: bool,
     pub annotated: Mutex<Vec<u64>>,
+    pub threads: Mutex<Option<Vec<ThreadState>>>,
 }
 
 fn broken<T>() -> Done<T> {
@@ -61,6 +62,19 @@ impl Gh for FakeGh {
             message,
         };
         ready(Ok(vec![found]))
+    }
+
+    fn thread_resolved(&self, _: &PrRef) -> Done<Vec<ThreadState>> {
+        self.threads.lock().unwrap().clone().map_or_else(
+            || {
+                ready(Err(Error::Command {
+                    program: "gh",
+                    args: String::new(),
+                    detail: "publication is not available on this gh".into(),
+                }))
+            },
+            |rows| ready(Ok(rows)),
+        )
     }
 }
 
