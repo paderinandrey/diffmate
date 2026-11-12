@@ -1,6 +1,8 @@
 mod gh_auth;
 mod grok;
 mod lock_line;
+#[cfg(test)]
+mod proc_locks;
 mod schema;
 mod storage;
 mod which;
