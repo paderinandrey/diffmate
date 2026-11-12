@@ -56,17 +56,17 @@ Slice description: idempotent runs, crash recovery, freshness, timeouts, `--forc
 
 Slice description: `diffmate watch` with the queue rules, jobs handed over from `review`, and macOS notifications for ready drafts and abandoned automatic reviews.
 
-- [ ] **QUE-01**: Requesting my review on a PR leads to a ready draft and a notification without any action from me.
-- [ ] **QUE-02**: Two pushes within the debounce window produce one run.
-- [ ] **QUE-03**: A PR stays tracked after I submit a review and my request disappears.
-- [ ] **QUE-04**: A draft PR is not reviewed until it is marked ready.
-- [ ] **QUE-05**: A review request to my team does not queue the PR.
-- [ ] **QUE-06**: A PR I reviewed manually is not reviewed again on new pushes until my review is requested on it.
-- [ ] **QUE-07**: A discarded PR with a still visible request stays untracked; removing and re-adding the request tracks it again.
-- [ ] **QUE-08**: An agent failure is retried, and after the last retry a notification names the reason.
-- [ ] **QUE-09**: `review` while `watch` runs hands the job to `watch` and prints the findings when it ends.
-- [ ] **QUE-10**: Starting `watch` while `review` holds the lock makes `watch` wait, not exit.
-- [ ] **QUE-11**: Configuration (SPEC "Configuration"): `config.toml` also honors the poll interval and `debounce` (default 60 seconds).
+- [x] **QUE-01**: Requesting my review on a PR leads to a ready draft and a notification without any action from me.
+- [x] **QUE-02**: Two pushes within the debounce window produce one run.
+- [x] **QUE-03**: A PR stays tracked after I submit a review and my request disappears.
+- [x] **QUE-04**: A draft PR is not reviewed until it is marked ready.
+- [x] **QUE-05**: A review request to my team does not queue the PR.
+- [x] **QUE-06**: A PR I reviewed manually is not reviewed again on new pushes until my review is requested on it.
+- [x] **QUE-07**: A discarded PR with a still visible request stays untracked; removing and re-adding the request tracks it again.
+- [x] **QUE-08**: An agent failure is retried, and after the last retry a notification names the reason.
+- [x] **QUE-09**: `review` while `watch` runs hands the job to `watch` and prints the findings when it ends.
+- [x] **QUE-10**: Starting `watch` while `review` holds the lock makes `watch` wait, not exit.
+- [x] **QUE-11**: Configuration (SPEC "Configuration"): `config.toml` also honors the poll interval and `debounce` (default 60 seconds).
 
 ### Review and publish (PUB) - Phase 4
 
@@ -167,17 +167,17 @@ Which phases cover which requirements. Each requirement maps to exactly one phas
 | REL-11 | Phase 2 | Complete |
 | REL-12 | Phase 2 | Complete |
 | REL-13 | Phase 2 | Complete |
-| QUE-01 | Phase 3 | Pending |
-| QUE-02 | Phase 3 | Pending |
-| QUE-03 | Phase 3 | Pending |
-| QUE-04 | Phase 3 | Pending |
-| QUE-05 | Phase 3 | Pending |
-| QUE-06 | Phase 3 | Pending |
-| QUE-07 | Phase 3 | Pending |
-| QUE-08 | Phase 3 | Pending |
-| QUE-09 | Phase 3 | Pending |
-| QUE-10 | Phase 3 | Pending |
-| QUE-11 | Phase 3 | Pending |
+| QUE-01 | Phase 3 | Complete |
+| QUE-02 | Phase 3 | Complete |
+| QUE-03 | Phase 3 | Complete |
+| QUE-04 | Phase 3 | Complete |
+| QUE-05 | Phase 3 | Complete |
+| QUE-06 | Phase 3 | Complete |
+| QUE-07 | Phase 3 | Complete |
+| QUE-08 | Phase 3 | Complete |
+| QUE-09 | Phase 3 | Complete |
+| QUE-10 | Phase 3 | Complete |
+| QUE-11 | Phase 3 | Complete |
 | PUB-01 | Phase 4 | Complete |
 | PUB-02 | Phase 4 | Complete |
 | PUB-03 | Phase 4 | Complete |

@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: Daily use
 status: complete
-stopped_at: Phase 05 complete. Phases 2 and 3 stay open
-last_updated: "2026-11-11T19:02:24.216Z"
-last_activity: 2026-11-11
-last_activity_desc: Phase 05 complete
-state_head: ae780bd7711deb1a89af6d888e4415ea3f3c9d40
+stopped_at: Phase 03 complete. Phase 2 stays open
+last_updated: "2026-11-12T11:43:10.967Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 03 complete
+state_head: 191f926e6281ae6636401f4e72f077158c3babc8
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 43
   completed_plans: 43
-  percent: 60
+  percent: 80
 ---
 
 # Project State
@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 05 complete. Phases 2 and 3 remain open for human verification.
+**Current focus:** Phase 05 complete. Phase 2 remains open for human verification.
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
@@ -31,14 +31,14 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 Phase: 05 (Daily use) — COMPLETE
 Plan: 3 of 3
 Status: Phase complete
-Last activity: 2026-11-11 — Phase 05 complete
+Last activity: 2026-11-12 — Phase 03 complete
 
 Progress: [████████████████████] 43/43 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
+- Total plans completed: 33
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -49,6 +49,7 @@ Progress: [████████████████████] 43/43 p
 | 01 | 12 | - | - |
 | 04 | 10 | - | - |
 | 05 | 3 | - | - |
+| 03 | 8 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -153,7 +154,8 @@ Both Task 1 blocking-human gates are satisfied; do not ask again.
 - [Phase 04]: The crash remote create_review check prefers a sending publication when more than one row exists.
 - [Phase 05]: doctor prints five lines and does not take the runner lock or migrate. user_version stays 5. A broken config.toml fails only the storage line.
 - [Phase 05]: Install instructions are docs/install.md. The plist stays in dotfiles. Umask is the string 0077.
-- [Phase 05]: The owner marked the reboot check pass. Phases 2 and 3 stay unaccepted.
+- [Phase 05]: The owner marked the reboot check pass. Phase 2 stays unaccepted.
+- [Phase 03]: The owner marked both live queue checks pass on 2026-11-12. Phase 2 stays open.
 
 ### Pending Todos
 
@@ -164,7 +166,7 @@ None yet.
 - [Phase 1]: Tool-level confinement (an agent Read outside the worktree or through a symlink) has no direct control; accepted in Phase 1 UAT (01-11 coverage D6)
 - [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
 - [Phase 2]: Anthropic HTTP 403 requires account verification. The owner explicitly chose to preserve the live gate as blocked: do not repeat Claude API calls automatically or treat this as a waiver. Six non-model E2E checks passed; auth failed and four model-backed cases remain unrun.
-- [Phase 2]: Implementation is complete with no code-review findings or verification code gaps. `.planning/phases/02-reliability/02-UAT.md` preserves 12 pending acceptance/confirmation items and 2 blocked live items. The owner continued into Phase 3 on 2026-11-09 without marking those items. Do not mark any UAT item pass. Resume `/gsd-verify-work 02` when accepting Phase 2.
+- [Phase 2]: Implementation is complete. On 2026-11-12 the owner marked UAT tests 1–10 and 13–14 pass. LIVE-01 and LIVE-02 stay blocked. Do not call the Claude API or `mise run test:e2e`. Do not mark phase 2 accepted. Resume `/gsd-verify-work 02` only when accepting those two live checks.
 - [Phase 3]: macOS notifications use `osascript` with no new crate (D-01). A give-up names the failure reason.
 
 ### Quick Tasks Completed
@@ -183,6 +185,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-11T19:02:24Z
-Stopped at: Phase 05 complete. Phases 2 and 3 stay open for human verification
+Last session: 2026-11-12T11:43:10Z
+Stopped at: Phase 03 complete. Phase 2 stays open for the blocked live gate
 Resume file: None

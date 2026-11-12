@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Single review** - `diffmate review <url>` and `status` with an isolated agent, validated output, runner lock, bare clone and worktree (completed 2026-10-27)
 - [ ] **Phase 2: Reliability** - idempotent runs, crash recovery, freshness, timeouts, `--force`, signal handling, job attachment
-- [ ] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications
+- [x] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications (completed 2026-11-12)
 - [x] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync (completed 2026-11-11)
 - [x] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor` (completed 2026-11-11)
 
@@ -140,7 +140,7 @@ Plans:
   - SPEC.md does not fix the macOS notification mechanism. Pick it in planning, with the latest stable version of whatever it uses. Candidate research item.
   - `config.toml` gains the poll interval and `debounce` (QUE-11).
 
-**Plans:** 8 plans
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -246,6 +246,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 8/8 implemented | Human verification needed | - |
+| 3. Queue | 8/8 | Complete    | 2026-11-12 |
 | 4. Review and publish | 10/10 | Complete    | 2026-11-11 |
 | 5. Daily use | 3/3 | Complete    | 2026-11-11 |
