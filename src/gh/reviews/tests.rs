@@ -41,5 +41,13 @@ fn parsers_read_login_reviews_and_the_created_id() {
     assert_eq!(listed[0].id, "9");
     assert_eq!(listed[0].author, "octo");
     assert!(reviews_from(br#"[{"id":9,"user":null,"state":"COMMENTED","body":""}]"#).is_err());
+    let pages = reviews_from(
+        br#"[{"id":1,"user":{"login":"old"},"state":"COMMENTED","body":""}]
+[{"id":2,"user":{"login":"octo"},"state":"PENDING","body":"later"}]"#,
+    )
+    .unwrap();
+    assert_eq!(pages.len(), 2);
+    assert_eq!(pages[1].id, "2");
+    assert_eq!(pages[1].state, "PENDING");
     assert_eq!(created_from(br#"{"id":9001}"#).unwrap().id, "9001");
 }

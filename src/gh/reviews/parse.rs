@@ -37,8 +37,19 @@ pub(super) fn login_from(bytes: &[u8]) -> Result<String, Error> {
 }
 
 pub(super) fn reviews_from(bytes: &[u8]) -> Result<Vec<ListedReview>, Error> {
-    let rows: Vec<RawReview> = serde_json::from_slice(bytes)?;
-    rows.into_iter().map(one_review).collect()
+    let mut listed = Vec::new();
+    let mut pages = 0;
+    let stream = serde_json::Deserializer::from_slice(bytes).into_iter::<Vec<RawReview>>();
+    for page in stream {
+        pages += 1;
+        for row in page? {
+            listed.push(one_review(row)?);
+        }
+    }
+    if pages == 0 {
+        let _: Vec<RawReview> = serde_json::from_slice(bytes)?;
+    }
+    Ok(listed)
 }
 
 fn one_review(row: RawReview) -> Result<ListedReview, Error> {

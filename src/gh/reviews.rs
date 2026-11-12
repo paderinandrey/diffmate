@@ -70,7 +70,11 @@ pub(super) async fn current_login(gh: &GhCli) -> Result<String, Error> {
 
 pub(super) async fn list_my_reviews(gh: &GhCli, pr: &PrRef) -> Result<Vec<ListedReview>, Error> {
     let path = endpoint(pr);
-    let stdout = Box::pin(run_tool("gh", gh.command(["api", path.as_str()]))).await?;
+    let stdout = Box::pin(run_tool(
+        "gh",
+        gh.command(["api", "--paginate", path.as_str()]),
+    ))
+    .await?;
     parse::reviews_from(&stdout)
 }
 
