@@ -69,10 +69,43 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         terminal
             .draw(|frame| draw::screen(frame, &session))
             .map_err(Error::io("draw the terminal"))?;
-        if apply(&mut session, &store, &mode, read_key().await?).await? {
+        service(&mut session, &store, &mode).await?;
+        terminal
+            .draw(|frame| draw::screen(frame, &session))
+            .map_err(Error::io("draw the terminal"))?;
+        if let Some(key) = read_key(SERVICE_TICK).await?
+            && apply(&mut session, &store, &mode, key).await?
+        {
             return Ok(());
         }
     }
+}
+
+const SERVICE_TICK: std::time::Duration = std::time::Duration::from_secs(1);
+
+async fn service<H: crate::gh::Gh, G: crate::git::Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &post::Mode<'_, H, G>,
+) -> Result<(), Error> {
+    let post::Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+    } = *mode
+    else {
+        return Ok(());
+    };
+    let due = store
+        .next_service_job(crate::store::now_ms())
+        .await?
+        .is_some();
+    if !session.running() && !due {
+        return Ok(());
+    }
+    runner::drive(session, store, gh, git, paths, settings).await?;
+    session.reload_rows(store).await
 }
 
 async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
@@ -186,13 +219,19 @@ impl Drop for Restore {
     }
 }
 
-async fn read_key() -> Result<KeyEvent, Error> {
-    tokio::task::spawn_blocking(|| -> io::Result<KeyEvent> {
+async fn read_key(wait: std::time::Duration) -> Result<Option<KeyEvent>, Error> {
+    tokio::task::spawn_blocking(move || -> io::Result<Option<KeyEvent>> {
+        if !ratatui::crossterm::event::poll(wait)? {
+            return Ok(None);
+        }
         loop {
             if let Event::Key(key) = ratatui::crossterm::event::read()?
                 && key.kind == KeyEventKind::Press
             {
-                return Ok(key);
+                return Ok(Some(key));
+            }
+            if !ratatui::crossterm::event::poll(std::time::Duration::ZERO)? {
+                return Ok(None);
             }
         }
     })
