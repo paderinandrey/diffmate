@@ -7,7 +7,7 @@ use crate::proc::run_tool;
 
 pub(crate) use parse::{CommentLink, ThreadState};
 
-const COMMENTS: &str = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviews(first:100){nodes{databaseId comments(first:100){nodes{databaseId body pullRequestReviewThread{id}}}}}}}}";
+const COMMENTS: &str = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id comments(first:100){nodes{databaseId body pullRequestReview{databaseId}}}}}}}}";
 
 const STATUSES: &str = "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved}}}}}";
 

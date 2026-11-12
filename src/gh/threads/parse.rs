@@ -17,12 +17,15 @@ pub(crate) struct ThreadState {
 pub(super) fn comments(stdout: &[u8], review_id: &str) -> Result<Vec<CommentLink>, Error> {
     let wanted = review_id.parse::<i64>().ok();
     let mut links = Vec::new();
-    for review in nodes(&pull(stdout)?, "reviews") {
-        if review["databaseId"].as_i64() != wanted {
+    for thread in nodes(&pull(stdout)?, "reviewThreads") {
+        let Some(thread_id) = thread["id"].as_str() else {
             continue;
-        }
-        for node in nodes(&review, "comments") {
-            if let Some(link) = one(&node) {
+        };
+        for node in nodes(&thread, "comments") {
+            if node["pullRequestReview"]["databaseId"].as_i64() != wanted {
+                continue;
+            }
+            if let Some(link) = one(&node, thread_id) {
                 links.push(link);
             }
         }
@@ -47,10 +50,10 @@ pub(super) fn statuses(stdout: &[u8]) -> Result<Vec<ThreadState>, Error> {
     Ok(rows)
 }
 
-fn one(node: &Value) -> Option<CommentLink> {
+fn one(node: &Value, thread_id: &str) -> Option<CommentLink> {
     Some(CommentLink {
         comment_id: node["databaseId"].as_i64()?.to_string(),
-        thread_id: node["pullRequestReviewThread"]["id"].as_str()?.to_string(),
+        thread_id: thread_id.to_string(),
         body: node["body"].as_str()?.to_string(),
     })
 }
@@ -80,7 +83,7 @@ mod tests {
 
     #[test]
     fn comments_keep_the_submitted_review() {
-        let raw = r#"{"data":{"repository":{"pullRequest":{"reviews":{"nodes":[{"databaseId":9001,"comments":{"nodes":[{"databaseId":7,"body":"<!-- diffmate:finding=f1 -->","pullRequestReviewThread":{"id":"t1"}}]}},{"databaseId":3,"comments":{"nodes":[{"databaseId":8,"body":"other","pullRequestReviewThread":{"id":"t2"}}]}}]}}}}}"#;
+        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"t1","comments":{"nodes":[{"databaseId":7,"body":"<!-- diffmate:finding=f1 -->","pullRequestReview":{"databaseId":9001}}]}},{"id":"t2","comments":{"nodes":[{"databaseId":8,"body":"other","pullRequestReview":{"databaseId":3}}]}}]}}}}}"#;
         let links = comments(raw.as_bytes(), "9001").unwrap();
         assert_eq!(links.len(), 1);
         assert_eq!(links[0].comment_id, "7");
