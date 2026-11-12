@@ -9,7 +9,7 @@ use std::ffi::{OsStr, OsString};
 use std::process::Stdio;
 use tokio::process::Command;
 
-const PROGRAM: &str = "claude";
+const PROGRAM: &str = "grok";
 
 fn refused(error: &Error) -> Refusal {
     Box::new(FailureDetail {
@@ -43,11 +43,14 @@ pub(super) async fn invoke(cli: &ClaudeCli, request: &AgentRequest) -> Invoked {
     let Some(()) = probe::check_version(program, &env, cancel()).await? else {
         return Ok(None);
     };
-    let args = cli.args_for(request);
-    let cwd = &request.worktree;
-    let Some(()) = probe::check_flags(program, &env, &args, cwd, cancel()).await? else {
+    let Some(()) = probe::check_flags(program, &env, cancel()).await? else {
         return Ok(None);
     };
+    let rules = tokio::fs::read_to_string(&request.prompt_file).await;
+    let rules = rules
+        .map_err(Error::io("read the review prompt"))
+        .map_err(|e| refused(&e))?;
+    let args = cli.args_for(request, &rules);
     start(&env, &args, request).await.map_err(|e| refused(&e))
 }
 
@@ -69,7 +72,7 @@ async fn start(
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    let child = command.spawn().map_err(Error::io("start claude"))?;
+    let child = command.spawn().map_err(Error::io("start grok"))?;
     if let (Some(hook), Some(pid)) = (&request.spawn_hook, child.id()) {
         let _ = hook.send(pid);
     }
@@ -79,5 +82,5 @@ async fn start(
         stderr: 64 << 10,
     };
     let captured = supervise(child, Some(prompt), limits, cancel).await;
-    captured.map_err(Error::io("run claude"))
+    captured.map_err(Error::io("run grok"))
 }

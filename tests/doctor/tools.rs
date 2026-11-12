@@ -26,10 +26,10 @@ fn missing_gh_and_claude_name_path_without_a_sixth_line() {
 }
 
 #[test]
-fn old_claude_does_not_run_the_flag_probe() {
+fn old_cli_does_not_run_the_flag_probe() {
     let sandbox = Sandbox::new();
     sandbox.gh.route("auth status", "logged in\n");
-    sandbox.claude.set_version("2.1.303 (Claude Code)");
+    sandbox.claude.set_version("grok 1.0.76 (old) [stable]");
     let lines = failed_lines(&sandbox);
     assert!(lines[1].contains("older than the minimum"), "{lines:?}");
     assert!(

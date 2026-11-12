@@ -22,15 +22,15 @@ pub(crate) fn failed_run(sandbox: &Sandbox) -> (String, String) {
 fn refused_before_agent(
     sandbox: &Sandbox,
     version: Option<&str>,
-    probe: Option<&str>,
+    help: Option<(&str, i32)>,
     expect: &str,
 ) {
     with_pr(sandbox);
     if let Some(version) = version {
         sandbox.claude.set_version(version);
     }
-    if let Some(probe) = probe {
-        sandbox.claude.set_probe(probe, 1);
+    if let Some((text, exit)) = help {
+        sandbox.claude.set_help(text, exit);
     }
 
     let output = review(sandbox);
@@ -51,19 +51,14 @@ fn refused_before_agent(
 
 #[test]
 fn missing_flag_fails_before_agent_starts() {
-    let probe = "error: unknown option '--disable-slash-commands'";
-    refused_before_agent(
-        &Sandbox::new(),
-        None,
-        Some(probe),
-        "--disable-slash-commands",
-    );
+    let help = Some(("Usage: grok\n--single\n", 0));
+    refused_before_agent(&Sandbox::new(), None, help, "--tools");
 }
 
 #[test]
 fn old_cli_version_fails_before_agent_starts() {
-    let old = Some("2.1.200 (Claude Code)");
-    refused_before_agent(&Sandbox::new(), old, None, "2.1.304");
+    let old = Some("grok 1.0.76 (old) [stable]");
+    refused_before_agent(&Sandbox::new(), old, None, "1.0.77");
 }
 
 #[test]
@@ -76,7 +71,7 @@ fn inconclusive_probe_fails_closed() {
     refused_before_agent(
         &Sandbox::new(),
         None,
-        Some("something unrelated"),
+        Some(("something unrelated", 2)),
         "inconclusive",
     );
 }

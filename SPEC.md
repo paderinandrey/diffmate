@@ -57,7 +57,7 @@ queued → running → succeeded (findings | no_findings)
 
 - `findings` and `no_findings` are results of a successful analysis. `failed` is never shown as `no_findings`.
 - Failure kinds:
-  - `cli_error`: diffmate or the Claude CLI setup fails before or around the agent: preparing the run (`gh`, `git`, the filesystem), the CLI binary, its version, a missing flag, or authentication.
+  - `cli_error`: diffmate or the Grok CLI setup fails before or around the agent: preparing the run (`gh`, `git`, the filesystem), the CLI binary, its version, a missing flag, or authentication.
   - `agent_error`: the CLI returns a result envelope that parses and reports an error (`is_error`, or a `subtype` other than `success`), or exits non-zero with such an envelope.
   - `invalid_output`: stdout does not parse as an envelope, `structured_output` is missing or does not match the schema, `status` disagrees with `findings`, or the CLI ran out of structured-output retries.
   - The envelope's `subtype`, `errors`, `api_error_status`, and `terminal_reason` are stored with the failure.
@@ -154,7 +154,7 @@ Job × publication for a `publish` job, including crashes. "Recovery" means the 
 3. Restarting after a crash at any point does not create duplicate runs, drafts, or worktrees, and does not create a second GitHub review for the same draft. diffmate does not promise an atomic transaction across SQLite and GitHub; it relies on the publication ID, the markers, reconciliation, and my confirmation.
 4. An agent or CLI failure is never reported as "no findings", and a failed automatic review is never silent.
 5. Publication requires my action and a decision on every finding. The agent never calls GitHub APIs.
-6. The agent cannot run commands, write files, reach the network, use my MCP servers, or load instructions, imports, hooks, or plugins from the PR, within the limits of the Claude CLI isolation flags (see "Agent contract"). Text from the PR is untrusted input and cannot change the review rules.
+6. The agent cannot run commands, write files, use my MCP servers, or load instructions, hooks, or plugins from the PR, within the limits of the Grok CLI flags (see "Agent contract"). Those flags do not stop the model API from using the network, and on macOS they do not stop a child process from using the network. Text from the PR is untrusted input and cannot change the review rules.
 7. If I already have a pending review on a PR in GitHub, diffmate does not publish, and does not extend, change, or delete that review.
 8. Only one process at a time changes runs, worktrees, clones, or publications (see "Concurrency").
 9. A crash never makes diffmate restart the same review endlessly: interrupted reviews are retried only within the retry budget.
@@ -240,13 +240,20 @@ Every file states when its data is unavailable or truncated. Missing CI data is 
 
 ## Agent contract
 
-- Invocation: `claude -p` with the worktree as working directory and `--add-dir` for the context directory. The prompt is passed on stdin, because `--tools` takes a variable number of values and would consume a trailing argument.
-- Isolation flags: `--safe-mode`, `--restricted`, `--strict-mcp-config` without `--mcp-config`, `--tools Read,Grep,Glob`, `--no-session-persistence`, `--permission-prompts none`, `--disable-slash-commands`. `--allowedTools` is not used to limit tools.
-- Managed (policy) settings still apply under these flags, so the flags alone do not prove full isolation. Whether the flags hold is established by the isolation checks in slice 1, not assumed.
-- CLI support: diffmate requires a minimum Claude CLI version, and before every run checks that each flag it uses is supported. If one is missing, the run fails with `cli_error` and does not start the agent.
-- Environment: built from an explicit allowlist (`PATH`, `HOME`, locale, and the variables Claude needs for authentication). Nothing else is inherited. No GitHub credentials. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1` are set, so git commands the CLI runs itself ignore my git config too. The CLI does not pass this environment to every git call it makes, and a PR's `.gitattributes` could select a filter defined in my global git config. So `PATH` starts with a directory holding a `git` wrapper that sets both variables and then runs the real `git`.
-- Instructions: `prompts/review.md` is passed with `--append-system-prompt-file`.
-- Output: `--output-format json` with `--json-schema` set to `schemas/review.schema.json`. The file declares `$schema` draft 2020-12, and diffmate's validator uses that draft explicitly. The CLI rejects the draft 2020-12 meta-schema URI (checked with Claude CLI 2.1.304), so diffmate removes the `$schema` key before passing the schema to `--json-schema`. The run succeeds only when all of these hold, in order:
+The review agent is the `grok` CLI, version 1.0.77 or newer. diffmate does not spawn `claude`.
+
+- Invocation: `grok -p <prompt>` with the worktree as the working directory. The prompt names the context directory. The same prompt is also written to stdin so a test double can tell a run from a probe. diffmate does not pass `--trust` or `--add-dir`. `--add-dir` is refused for a folder that is not trusted, and `--trust` would trust the worktree, which loads its project instructions, hooks, skills, and MCP servers. The context directory is a sibling of the worktree. The `read-only` sandbox can read it because that profile can read the whole filesystem.
+- Isolation flags: `--tools read_file,grep,list_dir`, `--disallowed-tools run_terminal_cmd,write,search_replace,web_search,web_fetch,task,Agent,search_tool,use_tool,todo_write`, `--disable-web-search`, `--no-subagents`, `--sandbox read-only`, `--permission-mode dontAsk`. `--allow` is not used to widen tools.
+- Limits of those flags, taken from the Grok CLI 1.0.77 help and its user guide, not from a live model call. The flags do not prove that a PR cannot influence the model:
+  - `read-only` can read the whole filesystem. It can write `~/.grok/`, `/tmp`, and `/var/tmp`. Sessions are still stored. There is no `--no-session-persistence`.
+  - Child-process network blocking in `read-only` is enforced on Linux only. On macOS it does nothing. The model API and in-process tools still have network access.
+  - `dontAsk` runs the documented read-only tools without a prompt and refuses other tool calls. A headless approval refusal can still exit 0. diffmate treats any result that is not `subtype` `success` with `is_error` false as a failed run.
+  - Project instructions, hooks, skills, and MCP servers load for a trusted folder. diffmate does not grant trust. It also sets `GROK_CLAUDE_AGENTS_ENABLED`, `GROK_CLAUDE_HOOKS_ENABLED`, `GROK_CLAUDE_MCPS_ENABLED`, `GROK_CLAUDE_RULES_ENABLED`, `GROK_CLAUDE_SKILLS_ENABLED`, and the matching `GROK_CURSOR_*_ENABLED` variables to `0`, which the CLI accepts as false. Rules under `~/.grok/rules/` and managed settings still load.
+  - An unknown `--disallowed-tools` name removes nothing and prints a warning. The names above are the tool ids from the user guide.
+- CLI support: before every run diffmate runs `grok --version` and `grok --help`. The version is the first `major.minor.patch` word. `--help` must exit 0 and mention every flag diffmate passes (`--single` stands for `-p`). A missing flag, an unreadable version, or a version older than 1.0.77 fails with `cli_error` and does not start the agent. Neither check sends a prompt.
+- Environment: an explicit allowlist. Inherited names are `PATH`, `HOME`, `USER`, `LOGNAME`, `TMPDIR`, `LANG`, `LC_ALL`, `LC_CTYPE`, `XAI_API_KEY`, `GROK_CODE_XAI_API_KEY`, `GROK_HOME`, `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`, and `SSL_CERT_FILE`. Nothing else is inherited. No GitHub credentials. `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1` are set. `PATH` starts with a directory holding a `git` wrapper that sets both variables and then runs the real `git`, because a PR `.gitattributes` filter could otherwise use the global git config.
+- Instructions: the text of `prompts/review.md` is passed with `--rules`.
+- Output: `--output-format streaming-messages-json` and `--json-schema`. The schema file declares `$schema` draft 2020-12, and diffmate's validator uses that draft explicitly. diffmate removes the `$schema` key before passing the schema to `--json-schema`. stdout is NDJSON. diffmate classifies the last object whose `type` is `result`. That object carries `subtype`, `is_error`, `structured_output`, `total_cost_usd`, and `duration_ms`. One JSON object is accepted as well. A failure before a result is one object `{"type":"error","message":"..."}` and a non-zero exit. On this output format `total_cost_usd` is `0` when the cost is unknown, so a stored `0` does not mean the run was free. `duration_ms` is the prompt-execution wall clock. The run succeeds only when all of these hold, in order:
   1. the process exits with code 0;
   2. the CLI result envelope parses, `is_error` is false, and `subtype` is `success`;
   3. `structured_output` matches the schema;
@@ -297,7 +304,7 @@ The steps below are the `publish` job. The publication, with its ID, was created
 - `diffmate status`: list targets with tracking, latest run, draft freshness with the time of the last head check, and publication state.
 - `diffmate watch`: poll and act as the runner in the background.
 - `diffmate tui`: queue view, draft view, decisions, edit in `$EDITOR`, publish, reconcile, abandon an `unknown` publication, discard a target.
-- `diffmate doctor`: check `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version.
+- `diffmate doctor`: check `gh` auth, Grok CLI version and flag support, storage paths, the runner lock, and the SQLite schema version.
 
 ## Configuration
 
@@ -326,6 +333,7 @@ Done when:
   - a `CLAUDE.md` in the worktree containing the canary is not loaded;
   - a `CLAUDE.md` with an `@` import of a file outside the worktree containing the canary does not leak it;
   - `.claude/settings.json` with a hook, a plugin, and `.mcp.json` from the PR do not run or load.
+- Those Claude checks record what slice 1 verified. They are not evidence that the Grok invocation in "Agent contract" holds.
 - Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
 - A PR from a fork is reviewed the same way.
 - A missing CLI flag fails the run before the agent starts.

@@ -24,7 +24,7 @@ diffmate is a personal pull-request review agent written in Rust. For every PR w
 - rustfmt defaults. Clippy pedantic is a warning, and hooks and CI deny all warnings. `unsafe_code` is forbidden.
 - No `unwrap`, `expect` or `panic!` outside tests unless an invariant makes failure impossible. Return errors that keep their cause.
 - Use tokio for async work and subprocesses, and never block the runtime: rusqlite and other blocking work go through spawn_blocking or a dedicated thread.
-- Run `git`, `gh` and `claude` through tokio::process with explicit argument vectors, never a shell, and in the controlled environment SPEC.md requires.
+- Run `git`, `gh` and `grok` through tokio::process with explicit argument vectors, never a shell, and in the controlled environment SPEC.md requires.
 - External processes sit behind traits at the seam. No global mutable state.
 - The stack is fixed by SPEC.md "Stack" (Ratatui, tokio, rusqlite bundled, jsonschema, gh CLI). Add any other crate only for a concrete need, explained in the PR. Cargo.lock is committed.
 
@@ -33,8 +33,8 @@ diffmate is a personal pull-request review agent written in Rust. For every PR w
 - Run tests with nextest via `mise run test`. Line coverage must stay at 80% or above via `mise run coverage`; never lower the gate.
 - Timers, debounce, retries and timeouts use `#[tokio::test(start_paused = true)]` or `tokio::time::pause()`, never real sleeps.
 - Use proptest for parsers and normalizers such as diff hunk parsing and anchor normalization.
-- Use hand-written typed fakes behind traits for gh, git and claude, with no mock frameworks.
-- Live checks that need real `claude` or `gh` auth are `#[ignore]` tests run only locally via `mise run test:e2e`.
+- Use hand-written typed fakes behind traits for gh, git and grok, with no mock frameworks.
+- Live checks that need real `grok` or `gh` auth are `#[ignore]` tests run only locally via `mise run test:e2e`. The ignored Claude isolation checks still need the `claude` CLI. They are not evidence for the Grok contract.
 - Test observable behaviour and failure cases, and do not weaken tests to make them pass.
 
 ## Verification

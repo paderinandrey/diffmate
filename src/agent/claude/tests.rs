@@ -21,16 +21,23 @@ pub(super) fn inherited(extra: &[(&str, &str)]) -> InheritedEnv {
 
 pub(super) fn request() -> AgentRequest {
     let path = |text: &str| PathBuf::from(text);
-    AgentRequest::new(path("/wt"), path("/ctx"), path("/prompt/review.md"))
+    let prompt = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("prompts/review.md");
+    AgentRequest::new(path("/wt"), path("/ctx"), prompt)
+}
+
+pub(super) fn rules(request: &AgentRequest) -> String {
+    std::fs::read_to_string(&request.prompt_file).unwrap()
 }
 
 #[test]
 fn overrides_change_only_the_test_command() {
     let plain = ClaudeCli::new(&inherited(&[("HOME", "/h")])).unwrap();
-    let base = plain.args_for(&request());
+    let request = request();
+    let rules = rules(&request);
+    let base = plain.args_for(&request, &rules);
     let overrides = TestOverrides {
         extra_args: vec!["--bogus".into()],
-        removed_flags: vec!["--disable-slash-commands", "--safe-mode"],
+        removed_flags: vec!["--disable-web-search", "--no-subagents"],
         extra_env: vec![
             ("HOME".into(), "/other".into()),
             ("EXTRA".into(), "1".into()),
@@ -41,10 +48,10 @@ fn overrides_change_only_the_test_command() {
         .with_overrides(overrides);
 
     let mut expected = base.clone();
-    expected.retain(|arg| arg != "--disable-slash-commands" && arg != "--safe-mode");
+    expected.retain(|arg| arg != "--disable-web-search" && arg != "--no-subagents");
     expected.push("--bogus".into());
-    assert_eq!(tuned.args_for(&request()), expected);
-    assert_eq!(plain.args_for(&request()), base);
+    assert_eq!(tuned.args_for(&request, &rules), expected);
+    assert_eq!(plain.args_for(&request, &rules), base);
     let homes: Vec<_> = tuned
         .env_vars()
         .iter()

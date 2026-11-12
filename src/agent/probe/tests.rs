@@ -1,18 +1,21 @@
-use super::{MIN_VERSION, PROBE_OK_TEXT, interpret_probe, parse_version};
+use super::{HELP_FLAGS, MIN_VERSION, interpret_help, parse_version};
 use proptest::prelude::*;
 
 #[test]
 fn parses_the_version_line() {
     assert_eq!(parse_version("2.1.304 (Claude Code)"), Some((2, 1, 304)));
-    assert_eq!(parse_version("2.1.304 (Claude Code)\n"), Some((2, 1, 304)));
+    assert_eq!(
+        parse_version("grok 1.0.77 (50ca579fa996) [stable]\n"),
+        Some((1, 0, 77))
+    );
 }
 
 #[test]
 fn compares_numerically_not_as_text() {
-    assert!(parse_version("2.1.40 (Claude Code)").unwrap() < MIN_VERSION);
-    assert!(parse_version("2.1.1000 (Claude Code)").unwrap() > MIN_VERSION);
-    assert!(parse_version("2.2.0 (Claude Code)").unwrap() > MIN_VERSION);
-    assert!(parse_version("10.0.0 (Claude Code)").unwrap() > MIN_VERSION);
+    assert!(parse_version("1.0.76").unwrap() < MIN_VERSION);
+    assert!(parse_version("1.0.1000").unwrap() > MIN_VERSION);
+    assert!(parse_version("1.1.0").unwrap() > MIN_VERSION);
+    assert!(parse_version("2.0.0").unwrap() > MIN_VERSION);
 }
 
 #[test]
@@ -36,44 +39,26 @@ proptest! {
     }
 }
 
-fn probe(stderr: &str, exit: Option<i32>) -> Result<(), String> {
-    interpret_probe(b"", stderr.as_bytes(), exit).map_err(|detail| detail.message)
+fn help(stdout: &str, exit: Option<i32>) -> Result<(), String> {
+    interpret_help(stdout.as_bytes(), exit).map_err(|detail| detail.message)
 }
 
 #[test]
-fn expected_input_error_is_the_only_pass() {
-    assert!(probe(PROBE_OK_TEXT, Some(1)).is_ok());
-    assert!(probe(&format!("{PROBE_OK_TEXT}\n"), Some(2)).is_ok());
+fn help_that_lists_every_flag_passes() {
+    assert!(help(&HELP_FLAGS.join("\n"), Some(0)).is_ok());
 }
 
 #[test]
-fn unknown_option_names_the_flag() {
-    let text = "error: unknown option '--disable-slash-commands'\n";
-    let message = probe(text, Some(1)).unwrap_err();
-    assert!(message.contains("--disable-slash-commands"), "{message}");
+fn help_missing_a_flag_names_it() {
+    let text = HELP_FLAGS.join("\n").replace("--json-schema", "");
+    let message = help(&text, Some(0)).unwrap_err();
+    assert!(message.contains("--json-schema"), "{message}");
 }
 
 #[test]
-fn rejected_schema_and_missing_prompt_file_are_named() {
-    let schema = "Error: --json-schema is not a valid JSON Schema: no schema with key or ref";
-    assert!(
-        probe(schema, Some(1))
-            .unwrap_err()
-            .contains("--json-schema")
-    );
-    let prompt = "Error: Append system prompt file not found: /nonexistent/prompt.md";
-    assert!(probe(prompt, Some(1)).unwrap_err().contains("prompt file"));
-}
-
-#[test]
-fn anything_else_is_inconclusive() {
-    for (text, exit) in [
-        ("", Some(1)),
-        ("boom", Some(1)),
-        (PROBE_OK_TEXT, Some(0)),
-        (PROBE_OK_TEXT, None),
-    ] {
-        let message = probe(text, exit).unwrap_err();
+fn help_that_does_not_exit_zero_is_inconclusive() {
+    for exit in [Some(1), None] {
+        let message = help("nope", exit).unwrap_err();
         assert!(message.starts_with("flag probe inconclusive"), "{message}");
     }
 }

@@ -31,11 +31,11 @@ chmod 0700 ~/Library/Logs/diffmate
 
 Replace every `/Users/YOU` with the output of `echo $HOME`. On this
 machine that home is `/Users/apaderin`. `PATH` is the directories from
-`which git`, `which gh`, and `which claude`, duplicates removed, then
+`which git`, `which gh`, and `which grok`, duplicates removed, then
 `/usr/bin:/bin:/usr/sbin:/sbin`. Do not copy the full shell `PATH`. Do
 not put a token in the plist. The machine `PATH` written with an
 absolute home is
-`/opt/homebrew/bin:/Users/apaderin/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin`.
+`/opt/homebrew/bin:/Users/apaderin/.grok/bin:/Users/apaderin/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin`.
 A plist integer umask is decimal, so the example uses the string 0077.
 The integer form was measured as umask 0115.
 
@@ -60,7 +60,7 @@ true, `ThrottleInterval` integer 10, `Umask` the string 0077,
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
-    <string>/opt/homebrew/bin:/Users/YOU/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <string>/opt/homebrew/bin:/Users/YOU/.grok/bin:/Users/YOU/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>KeepAlive</key>
   <true/>

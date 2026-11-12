@@ -13,6 +13,14 @@ pub struct FakeCall {
     pub child_pid: Option<u32>,
 }
 
+fn split_args(text: &str) -> Vec<String> {
+    let mut args: Vec<String> = text.split('\0').map(str::to_string).collect();
+    if args.last().is_some_and(String::is_empty) {
+        args.pop();
+    }
+    args
+}
+
 impl FakeCall {
     pub fn read(calls: &Path, n: u32) -> FakeCall {
         let dir = calls.join(n.to_string());
@@ -20,7 +28,7 @@ impl FakeCall {
         let number = |name: &str| text(name).trim().parse().ok();
         FakeCall {
             n,
-            argv: text("argv").lines().map(String::from).collect(),
+            argv: split_args(&text("argv")),
             env: text("env")
                 .lines()
                 .filter_map(|line| line.split_once('='))

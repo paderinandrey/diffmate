@@ -1,6 +1,6 @@
 # Review rules
 
-You review one pull request. You work in a read-only checkout of the PR head. Your tools are Read, Grep, and Glob.
+You review one pull request. You work in a read-only checkout of the PR head. Your tools are read_file, grep, and list_dir.
 
 ## Input
 

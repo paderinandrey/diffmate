@@ -1,5 +1,6 @@
-use super::tests::{contract, inherited, request};
+use super::tests::{contract, inherited, request, rules};
 use super::{AUTH_ENV, ClaudeCli, user_prompt};
+use crate::agent::probe::HELP_FLAGS;
 use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -25,21 +26,30 @@ fn allowlist_matches_spike() {
 fn production_vector_matches_spike() {
     let cli = ClaudeCli::new(&inherited(&[])).unwrap();
     let request = request();
+    let rules = rules(&request);
     let expected: Vec<String> = strings(&contract()["production_flags"])
         .into_iter()
         .map(|flag| match flag.as_str() {
-            "CONTEXT_DIR" => request.context_dir.to_str().unwrap().to_string(),
-            "PROMPT_FILE" => request.prompt_file.to_str().unwrap().to_string(),
+            "PROMPT" => user_prompt(&request.context_dir),
+            "RULES" => rules.clone(),
             "CLI_SCHEMA" => cli.schemas.cli_arg.clone(),
             _ => flag,
         })
         .collect();
     let actual: Vec<String> = cli
-        .args_for(&request)
+        .args_for(&request, &rules)
         .iter()
         .map(|arg| arg.to_str().unwrap().to_string())
         .collect();
     assert_eq!(actual, expected);
+    for flag in HELP_FLAGS {
+        let present = if *flag == "--single" {
+            actual.iter().any(|arg| arg == "-p")
+        } else {
+            actual.iter().any(|arg| arg == *flag)
+        };
+        assert!(present, "{flag}");
+    }
 }
 
 #[test]

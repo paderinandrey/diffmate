@@ -30,7 +30,7 @@ fn stdout_lines(output: &Output) -> Vec<String> {
 }
 
 fn assert_order(lines: &[String]) {
-    let prefixes = ["gh auth:", "claude:", "storage:", "runner lock:", "schema:"];
+    let prefixes = ["gh auth:", "grok:", "storage:", "runner lock:", "schema:"];
     assert_eq!(lines.len(), prefixes.len(), "{lines:?}");
     for (line, prefix) in lines.iter().zip(prefixes) {
         assert!(line.starts_with(prefix), "{lines:?}");
@@ -51,7 +51,7 @@ fn fresh_home_prints_five_lines_and_creates_nothing() {
     let lines = stdout_lines(&output);
     assert_order(&lines);
     assert_eq!(lines[0], "gh auth: ok");
-    assert_eq!(lines[1], "claude: ok");
+    assert_eq!(lines[1], "grok: ok");
     assert_eq!(lines[2], "storage: ok");
     assert!(!lines[3].starts_with("runner lock: ok"), "{lines:?}");
     assert_eq!(lines[4], SCHEMA);

@@ -1,5 +1,5 @@
-use super::ClaudeCli;
 use super::tests::inherited;
+use super::{ClaudeCli, LOCKED_ENV};
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -11,13 +11,14 @@ fn agent_env_is_the_allowlist() {
         ("CLAUDECODE", "1"),
         ("GIT_DIR", "/elsewhere"),
         ("AWS_SECRET_ACCESS_KEY", "k"),
+        ("ANTHROPIC_API_KEY", "a"),
         ("ANTHROPIC_BASE_URL", "http://evil"),
     ];
     let allowed = [
         ("HOME", "/h"),
         ("USER", "u"),
         ("LANG", "C"),
-        ("ANTHROPIC_API_KEY", "a"),
+        ("XAI_API_KEY", "a"),
     ];
     let all: Vec<_> = secrets.iter().chain(&allowed).copied().collect();
     let cli = ClaudeCli::new(&inherited(&all)).unwrap();
@@ -33,6 +34,7 @@ fn agent_env_is_the_allowlist() {
         .map(|(name, _)| (*name).to_string())
         .collect();
     expected.extend(["PATH", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_NOSYSTEM"].map(String::from));
+    expected.extend(LOCKED_ENV.iter().map(|(name, _)| (*name).to_string()));
     assert_eq!(names(cli.env_vars()), expected);
     let value_of = |name: &str| {
         cli.env_vars()
@@ -42,6 +44,9 @@ fn agent_env_is_the_allowlist() {
             .1
             .clone()
     };
+    for (name, value) in LOCKED_ENV {
+        assert_eq!(value_of(name), *value);
+    }
     assert_eq!(value_of("GIT_CONFIG_GLOBAL"), "/dev/null");
     assert_eq!(value_of("GIT_CONFIG_NOSYSTEM"), "1");
     let run = cli.run_env(Path::new("/run/prompt/bin")).unwrap();

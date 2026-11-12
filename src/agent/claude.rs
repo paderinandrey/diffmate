@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 
 #[cfg(test)]
 pub(crate) use contract::TestOverrides;
-pub(crate) use contract::{AUTH_ENV, production_args, user_prompt};
+pub(crate) use contract::{AUTH_ENV, LOCKED_ENV, user_prompt};
 
 #[cfg(test)]
 mod cancel_tests;
@@ -37,6 +37,9 @@ impl ClaudeCli {
         let mut vars = env.pick(&AUTH_ENV);
         vars.push(("GIT_CONFIG_GLOBAL".into(), "/dev/null".into()));
         vars.push(("GIT_CONFIG_NOSYSTEM".into(), "1".into()));
+        for (name, value) in LOCKED_ENV {
+            vars.push(((*name).into(), (*value).into()));
+        }
         Ok(ClaudeCli {
             env: vars,
             real_git,
@@ -50,8 +53,11 @@ impl ClaudeCli {
         &self.env
     }
 
-    pub fn args_for(&self, request: &AgentRequest) -> Vec<OsString> {
-        contract::adjust(self, production_args(request, &self.schemas.cli_arg))
+    pub fn args_for(&self, request: &AgentRequest, rules: &str) -> Vec<OsString> {
+        contract::adjust(
+            self,
+            contract::production_args(request, &self.schemas.cli_arg, rules),
+        )
     }
 
     pub(super) fn run_env(&self, bin: &Path) -> Result<Pairs, Error> {

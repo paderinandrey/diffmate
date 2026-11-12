@@ -3,7 +3,7 @@ use crate::agent::AgentRequest;
 use std::ffi::OsString;
 use std::path::Path;
 
-pub(crate) const AUTH_ENV: [&str; 17] = [
+pub(crate) const AUTH_ENV: [&str; 15] = [
     "PATH",
     "HOME",
     "USER",
@@ -12,16 +12,29 @@ pub(crate) const AUTH_ENV: [&str; 17] = [
     "LANG",
     "LC_ALL",
     "LC_CTYPE",
-    "CLAUDE_CONFIG_DIR",
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-    "CLAUDE_CODE_OAUTH_TOKEN",
+    "XAI_API_KEY",
+    "GROK_CODE_XAI_API_KEY",
+    "GROK_HOME",
     "HTTPS_PROXY",
     "HTTP_PROXY",
     "NO_PROXY",
-    "NODE_EXTRA_CA_CERTS",
     "SSL_CERT_FILE",
 ];
+
+pub(crate) const LOCKED_ENV: &[(&str, &str)] = &[
+    ("GROK_CLAUDE_AGENTS_ENABLED", "0"),
+    ("GROK_CLAUDE_HOOKS_ENABLED", "0"),
+    ("GROK_CLAUDE_MCPS_ENABLED", "0"),
+    ("GROK_CLAUDE_RULES_ENABLED", "0"),
+    ("GROK_CLAUDE_SKILLS_ENABLED", "0"),
+    ("GROK_CURSOR_AGENTS_ENABLED", "0"),
+    ("GROK_CURSOR_HOOKS_ENABLED", "0"),
+    ("GROK_CURSOR_MCPS_ENABLED", "0"),
+    ("GROK_CURSOR_RULES_ENABLED", "0"),
+    ("GROK_CURSOR_SKILLS_ENABLED", "0"),
+];
+
+const DISALLOWED_TOOLS: &str = "run_terminal_cmd,write,search_replace,web_search,web_fetch,task,Agent,search_tool,use_tool,todo_write";
 
 #[cfg(test)]
 #[derive(Default)]
@@ -55,26 +68,34 @@ pub(super) fn adjust(_: &ClaudeCli, args: Vec<OsString>) -> Vec<OsString> {
     args
 }
 
-pub(crate) fn production_args(request: &AgentRequest, cli_schema: &str) -> Vec<OsString> {
-    let flags = [
-        "-p",
-        "--safe-mode",
-        "--restricted",
-        "--strict-mcp-config",
-        "--tools",
-        "Read,Grep,Glob",
-        "--no-session-persistence",
-        "--permission-prompts",
-        "none",
-        "--disable-slash-commands",
-        "--add-dir",
+pub(crate) fn production_args(
+    request: &AgentRequest,
+    cli_schema: &str,
+    rules: &str,
+) -> Vec<OsString> {
+    let mut args = vec![
+        OsString::from("-p"),
+        user_prompt(&request.context_dir).into(),
     ];
-    let mut args: Vec<OsString> = flags.iter().map(OsString::from).collect();
-    args.push(request.context_dir.clone().into());
-    args.push("--append-system-prompt-file".into());
-    args.push(request.prompt_file.clone().into());
-    args.extend(["--output-format", "json", "--json-schema"].map(OsString::from));
+    let flags = [
+        "--tools",
+        "read_file,grep,list_dir",
+        "--disallowed-tools",
+        DISALLOWED_TOOLS,
+        "--disable-web-search",
+        "--no-subagents",
+        "--sandbox",
+        "read-only",
+        "--permission-mode",
+        "dontAsk",
+        "--output-format",
+        "streaming-messages-json",
+        "--json-schema",
+    ];
+    args.extend(flags.map(OsString::from));
     args.push(cli_schema.into());
+    args.push("--rules".into());
+    args.push(rules.into());
     args
 }
 

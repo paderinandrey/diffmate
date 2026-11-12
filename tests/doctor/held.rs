@@ -59,7 +59,7 @@ fn held_watch_lock_and_schema_five_exit_zero() {
         stdout,
         "\
 gh auth: ok
-claude: ok
+grok: ok
 storage: ok
 runner lock: ok \u{2014} held by watch
 schema: ok

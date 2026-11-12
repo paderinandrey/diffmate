@@ -52,6 +52,33 @@ fn string_structured_output_is_parsed_once() {
 }
 
 #[test]
+fn ndjson_uses_the_last_result_and_an_error_object_names_its_message() {
+    let stdout = format!(
+        "{}\n{}\n",
+        json!({"type": "assistant", "message": "partial"}),
+        good()
+    );
+    assert!(matches!(
+        run_text(&stdout, 0),
+        AgentOutcome::Succeeded { .. }
+    ));
+    let error = json!({"type": "error", "message": "authentication failed"});
+    let (kind, detail, _) = failure(run(&error, 1));
+    assert_eq!(kind, "agent_error");
+    assert!(
+        detail.message.contains("authentication failed"),
+        "{detail:?}"
+    );
+}
+
+fn run_text(stdout: &str, exit: i32) -> AgentOutcome {
+    super::classify(
+        &super::support::captured(stdout, exit),
+        &super::support::schemas(),
+    )
+}
+
+#[test]
 fn exhausted_structured_output_retries_is_invalid_output() {
     let value = envelope("error_max_structured_output_retries", true, None);
     let (kind, detail, _) = failure(run(&value, 1));

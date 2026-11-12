@@ -7,7 +7,7 @@ use std::process::Stdio;
 fn expected() -> String {
     [
         "gh auth: ok",
-        "claude: ok",
+        "grok: ok",
         "storage: ok",
         "runner lock: ok \u{2014} not held",
         "schema: ok \u{2014} no database yet",

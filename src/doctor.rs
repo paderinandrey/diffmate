@@ -1,8 +1,7 @@
-mod claude;
 mod gh_auth;
+mod grok;
 mod lock_line;
 mod schema;
-mod scratch;
 mod storage;
 mod which;
 
@@ -29,10 +28,6 @@ impl Check {
             text: text.into(),
         }
     }
-
-    pub(super) fn with_extra(self, extra: &str) -> Self {
-        Self::fail(format!("{}; {extra}", self.text))
-    }
 }
 
 fn print_line(text: &str) {
@@ -43,7 +38,7 @@ fn print_line(text: &str) {
 pub(crate) async fn run(config: &AppConfig) -> ExitCode {
     let checks = [
         gh_auth::check(config).await,
-        claude::check(config).await,
+        grok::check(config).await,
         storage::check(config).await,
         lock_line::check(config).await,
         schema::check(config).await,
