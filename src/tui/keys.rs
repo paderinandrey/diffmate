@@ -1,5 +1,5 @@
 use super::model::Session;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub(super) enum Command {
     Quit,
@@ -29,6 +29,16 @@ pub(super) enum Command {
 }
 
 pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
+    if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
+    {
+        return Command::Quit;
+    }
+    if key
+        .modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+    {
+        return Command::Ignored;
+    }
     if session.confirming() {
         return match key.code {
             KeyCode::Char('q') => Command::Quit,

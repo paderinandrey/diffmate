@@ -1,7 +1,9 @@
 use super::fake::Fake;
 use super::publish::{base, batch, paths, press, seed};
-use super::queue::{HEAD, open};
-use ratatui::crossterm::event::KeyCode;
+use super::queue::{self, HEAD, key, open};
+use crate::tui::run_scripted_publish;
+use ratatui::backend::TestBackend;
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 #[tokio::test]
 async fn approve_and_request_changes_set_the_event() {
@@ -34,4 +36,33 @@ async fn empty_draft_body_is_only_the_marker() {
     assert!(body.ends_with(" -->"), "{body}");
     assert_eq!(body.lines().count(), 1, "{body}");
     assert_eq!(gh.seen()[0].comments, Vec::new());
+}
+
+#[tokio::test]
+async fn control_c_quits_without_posting() {
+    let (tmp, store) = open().await;
+    seed(&store).await;
+    let gh = Fake::new(HEAD);
+    let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
+    let settings = crate::config::Settings::default();
+    let keys = [
+        key(KeyCode::Enter),
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+    ];
+    run_scripted_publish(
+        &store,
+        &keys,
+        TestBackend::new(160, 8),
+        &paths(&tmp),
+        &gh,
+        &git,
+        &settings,
+    )
+    .await
+    .unwrap();
+    assert_eq!(gh.seen().len(), 0);
+    assert_eq!(
+        queue::count(&store, "SELECT count(*) FROM publications").await,
+        0
+    );
 }
