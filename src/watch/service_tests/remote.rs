@@ -1,4 +1,4 @@
-use std::future::{Ready, ready};
+use std::future::{Future, Ready, ready};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -14,7 +14,10 @@ use crate::pr_url::PrRef;
 use crate::store::records::Metrics;
 
 type Done<T> = Ready<Result<T, Error>>;
-pub(super) struct Remote(pub Arc<AtomicUsize>);
+pub(super) struct Remote {
+    pub posts: Arc<AtomicUsize>,
+    pub hang: bool,
+}
 pub(super) struct Bot(pub Option<watch::Sender<bool>>);
 
 fn gone<T>() -> Done<T> {
@@ -66,9 +69,19 @@ impl Gh for Remote {
     fn list_my_reviews(&self, _: &PrRef) -> Done<Vec<ListedReview>> {
         ready(Ok(Vec::new()))
     }
-    fn create_review(&self, _: &PrRef, _: &ReviewRequest) -> Done<CreatedReview> {
-        self.0.fetch_add(1, Ordering::Relaxed);
-        ready(Ok(CreatedReview { id: "9".into() }))
+    fn create_review(
+        &self,
+        _: &PrRef,
+        _: &ReviewRequest,
+    ) -> impl Future<Output = Result<CreatedReview, Error>> + Send {
+        self.posts.fetch_add(1, Ordering::Relaxed);
+        let hang = self.hang;
+        async move {
+            if hang {
+                std::future::pending::<()>().await;
+            }
+            Ok(CreatedReview { id: "9".into() })
+        }
     }
 }
 

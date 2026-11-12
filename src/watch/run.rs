@@ -81,10 +81,19 @@ async fn alongside<G: Git, H: Gh, A: Agent>(
                     .await;
                 break review.await;
             }
-            () = tokio::time::sleep(super::WATCH_LOCK_POLL) => serve(config, store, deps).await?,
+            outcome = service_slot(config, store, deps) => outcome?,
         }
     };
     job::complete(config, store, queued, &result, &stop).await
+}
+
+async fn service_slot<G: Git, H: Gh, A: Agent>(
+    config: &AppConfig,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+) -> Result<(), Error> {
+    tokio::time::sleep(super::WATCH_LOCK_POLL).await;
+    serve(config, store, deps).await
 }
 
 async fn serve<G: Git, H: Gh, A: Agent>(

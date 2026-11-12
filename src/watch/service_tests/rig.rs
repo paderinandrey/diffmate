@@ -84,10 +84,19 @@ impl Rig {
     pub fn deps(&self, hold: bool) -> Deps<FakeGit, Remote, Bot> {
         Deps {
             git: FakeGit::default(),
-            gh: Remote(Arc::clone(&self.posts)),
+            gh: Remote {
+                posts: Arc::clone(&self.posts),
+                hang: false,
+            },
             agent: Bot(hold.then(|| self.gate.clone())),
             settings: self.config.settings.clone(),
         }
+    }
+
+    pub fn deps_hanging(&self) -> Deps<FakeGit, Remote, Bot> {
+        let mut deps = self.deps(true);
+        deps.gh.hang = true;
+        deps
     }
 }
 pub(super) fn end_watch() {

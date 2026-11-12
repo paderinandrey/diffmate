@@ -64,6 +64,53 @@ async fn publish_finishes_during_an_agent_run() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn a_stalled_publish_still_stops_the_agent() {
+    let rig = Rig::open().await;
+    let deps = rig.deps_hanging();
+    let mut signals = crate::review::signals::Signals::new().unwrap();
+    let mut job = std::pin::pin!(super::run::jobs(
+        &rig.config,
+        &rig.store,
+        &deps,
+        &mut signals
+    ));
+    let mut seen = rig.seen.clone();
+    tokio::select! {
+        biased;
+        end = &mut job => panic!("review ended before the agent: {end:?}"),
+        result = seen.wait_for(|inside| *inside) => result.unwrap(),
+    };
+    let sha = "h".repeat(40);
+    rig.store
+        .confirm_publication(1, "COMMENT", &sha, &rig.config.process)
+        .await
+        .unwrap();
+    let mut started = false;
+    for _ in 0..5 {
+        tokio::select! {
+            biased;
+            end = &mut job => panic!("watch ended before the publish stalled: {end:?}"),
+            () = tokio::time::sleep(super::WATCH_LOCK_POLL) => {}
+        }
+        if rig.posts.load(Ordering::Relaxed) >= 1 {
+            started = true;
+            break;
+        }
+    }
+    assert!(started);
+    end_watch();
+    tokio::select! {
+        biased;
+        end = &mut job => end.unwrap(),
+        () = tokio::time::sleep(Duration::from_secs(5)) => {
+            panic!("shutdown did not stop the review")
+        }
+    };
+    let review = format!("SELECT state FROM jobs WHERE id = {}", rig.review);
+    assert_ne!(cell(&rig.store, &review).await, "running");
+}
+
+#[tokio::test(start_paused = true)]
 async fn a_review_completes_without_a_service_job() {
     let rig = Rig::open().await;
     let deps = rig.deps(false);
