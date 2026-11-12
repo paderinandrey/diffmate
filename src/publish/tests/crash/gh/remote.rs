@@ -12,6 +12,7 @@ pub(super) enum Mode {
     Post,
     Wait,
     Code(u16),
+    Decode,
 }
 
 pub(in crate::publish::tests::crash) struct Remote {
@@ -37,6 +38,10 @@ impl Remote {
 
     pub(in crate::publish::tests::crash) fn fail(&self, code: u16) {
         *self.mode.lock().unwrap() = Mode::Code(code);
+    }
+
+    pub(in crate::publish::tests::crash) fn decode(&self) {
+        *self.mode.lock().unwrap() = Mode::Decode;
     }
 
     pub(in crate::publish::tests::crash) fn reviews(&self, reviews: Vec<ListedReview>) {

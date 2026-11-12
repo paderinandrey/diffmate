@@ -79,3 +79,27 @@ async fn server_error_is_unknown() {
     );
     assert_eq!(remote.posts(), 1);
 }
+
+#[tokio::test]
+async fn a_decode_failure_stays_unknown() {
+    let (_tmp, store, remote, job) = ready().await;
+    remote.decode();
+    crate::publish::execute_publish(&store, remote.as_ref(), job, 0)
+        .await
+        .unwrap();
+    assert_eq!(
+        harness::text(&store, "SELECT state FROM publications").await,
+        "unknown"
+    );
+    assert_eq!(remote.posts(), 1);
+    let err = store
+        .confirm_publication(
+            1,
+            "COMMENT",
+            "abc123",
+            &crate::publish::tests::support::process(),
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(err, ConfirmError::Blocked));
+}

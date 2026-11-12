@@ -82,6 +82,16 @@ pub(super) fn transient_gh(error: &Error) -> bool {
     }
 }
 
+pub(super) fn client_rejected(error: &Error) -> bool {
+    let Error::Command { detail, .. } = error else {
+        return false;
+    };
+    matches!(
+        status_token(detail),
+        Some(code) if (400..500).contains(&code) && !matches!(code, 408 | 429)
+    )
+}
+
 fn status_token(detail: &str) -> Option<u16> {
     detail
         .split(|ch: char| !ch.is_ascii_digit())

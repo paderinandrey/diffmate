@@ -67,6 +67,7 @@ impl Gh for Remote {
                     args: String::new(),
                     detail: format!("HTTP {code}"),
                 }),
+                Mode::Decode => Err(serde_json::from_str::<u8>("no").unwrap_err().into()),
             }
         }
     }
