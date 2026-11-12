@@ -54,7 +54,7 @@ fn linux_flock(file: &File) -> Result<bool, Probe> {
     use std::os::unix::fs::MetadataExt;
     let meta = file.metadata().map_err(Probe::File)?;
     let text = std::fs::read_to_string("/proc/locks").map_err(Probe::Proc)?;
-    Ok(proc_locks_held(&text, meta.st_dev(), meta.st_ino()))
+    Ok(proc_locks_held(&text, meta.dev(), meta.ino()))
 }
 
 #[cfg(not(target_os = "linux"))]
