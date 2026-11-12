@@ -165,8 +165,8 @@ None yet.
 
 - [Phase 1]: Tool-level confinement (an agent Read outside the worktree or through a symlink) has no direct control; accepted in Phase 1 UAT (01-11 coverage D6)
 - [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
-- [Phase 2]: Anthropic HTTP 403 requires account verification. The owner explicitly chose to preserve the live gate as blocked: do not repeat Claude API calls automatically or treat this as a waiver. Six non-model E2E checks passed; auth failed and four model-backed cases remain unrun.
-- [Phase 2]: Implementation is complete. On 2026-11-12 the owner marked UAT tests 1–10 and 13–14 pass. LIVE-01 and LIVE-02 stay blocked. Do not call the Claude API or `mise run test:e2e`. Do not mark phase 2 accepted. Resume `/gsd-verify-work 02` only when accepting those two live checks.
+- [Phase 2]: Anthropic HTTP 403 requires account verification. On 2026-11-12 the owner chose to continue without Anthropic. LIVE-01 and LIVE-02 stay blocked. Do not call the Claude API or `mise run test:e2e`, and do not treat this as a waiver. Six non-model E2E checks passed; four model-backed cases remain unrun.
+- [Phase 2]: Implementation is complete. On 2026-11-12 the owner marked UAT tests 1–10 and 13–14 pass. Do not mark phase 2 accepted. Resume `/gsd-verify-work 02` only when the owner explicitly says Anthropic access is restored.
 - [Phase 3]: macOS notifications use `osascript` with no new crate (D-01). A give-up names the failure reason.
 
 ### Quick Tasks Completed

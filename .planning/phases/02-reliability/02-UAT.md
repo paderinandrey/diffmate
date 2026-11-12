@@ -3,7 +3,7 @@ status: partial
 phase: 02-reliability
 source: [02-VERIFICATION.md]
 started: 2026-11-03T15:35:56.260Z
-updated: 2026-11-12T09:53:17.993Z
+updated: 2026-11-12T15:04:12Z
 ---
 
 ## Current Test
@@ -66,14 +66,14 @@ source: 02-01 Task 3 human-check
 expected: Настоящий Claude работает с production isolation flags, без HTTP 403.
 result: blocked
 blocked_by: third-party
-reason: Сейчас внешний account-verification барьер. Владелец выбрал сохранить live gate заблокированным; это не waiver и не разрешение на автоматический повтор.
+reason: Внешний account-verification барьер. 2026-11-12 владелец решил идти дальше без Anthropic. Live gate остаётся заблокированным; это не waiver и не разрешение вызывать Claude или mise run test:e2e.
 source: WINDOWS-11
 
 ### 12. LIVE-02: После восстановления account access выполнить четыре оставшихся model-backed случая через mise run test:e2e.
 expected: Max-turns даёт failed, clean PR — no_findings, bug и fork PR — ожидаемую находку calc.py:7.
 result: blocked
 blocked_by: third-party
-reason: Четыре проверки не запускались после fail-fast на auth; локальные fakes не доказывают модельный результат.
+reason: Четыре проверки не запускались после fail-fast на auth. 2026-11-12 владелец решил идти дальше без Anthropic. Локальные fakes не доказывают модельный результат. Не запускать mise run test:e2e, пока владелец явно не восстановит доступ.
 source: WINDOWS-12
 
 ### 13. JUDGMENT-01: При итоговом UAT подтвердить проверенную границу сигналов: только group текущего локально порождённого agent child, никогда PID/PGID из SQLite.
