@@ -3,7 +3,7 @@ use crate::store::Store;
 use ratatui::{backend::TestBackend, crossterm::event::KeyCode};
 use std::{os::unix::fs::PermissionsExt, path::Path};
 use tempfile::TempDir;
-const SCRIPT: &str = "#!/bin/sh\nm=$1\nf=$2\nif [ \"$m\" = \"--touch\" ]; then printf x > \"$2\"; exit 0; fi\nb=$(stat -f %Lp \"$f\"); [ \"$b\" = 700 ] || exit 4\ncase $m in --fail) printf 'x\\n\\nx\\n' > \"$f\"; exit 1;; --empty) : > \"$f\";; --blank) printf ' \\n' > \"$f\";; --same) ;; --noblank) printf 'Just a title\\n' > \"$f\";; --body) t=$(sed -n 1p \"$f\"); printf '%s\\n\\nfresh body\\n' \"$t\" > \"$f\";; --note) printf 'fresh note' > \"$f\";; *) exit 2;; esac\n";
+const SCRIPT: &str = "#!/bin/sh\nm=$1\nf=$2\nif [ \"$m\" = \"--touch\" ]; then printf x > \"$2\"; exit 0; fi\nb=$(stat -c %a \"$f\" 2>/dev/null || stat -f %Lp \"$f\")\n[ \"$b\" = 700 ] || exit 4\ncase $m in --fail) printf 'x\\n\\nx\\n' > \"$f\"; exit 1;; --empty) : > \"$f\";; --blank) printf ' \\n' > \"$f\";; --same) ;; --noblank) printf 'Just a title\\n' > \"$f\";; --body) t=$(sed -n 1p \"$f\"); printf '%s\\n\\nfresh body\\n' \"$t\" > \"$f\";; --note) printf 'fresh note' > \"$f\";; *) exit 2;; esac\n";
 const FINDING: &str = "INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body) VALUES ('a', 1, 1, 1, 'high', 'src/a.rs', 4, 'RIGHT', 'One', 'body a');";
 const SNAP: &str = "SELECT decision || '|' || body || '|' || title || '|' || original_output || '|' || future_improvements FROM findings, drafts WHERE findings.id = 'a'";
 const SAME: &str = "undecided|body a|One|ORIGINAL|[\"keep this\"]";
@@ -63,10 +63,10 @@ async fn editor_saves_only_a_real_change() {
         let text = shown(&store, &cache, editor, &finding).await;
         assert!(text.contains("EDITOR is not set"), "{text}");
     }
-    assert!(!cache.join("a").exists());
+    assert!(cache.read_dir().unwrap().next().is_none());
     let text = shown(&store, &cache, Some("missing-editor-bin"), &finding).await;
     assert!(text.contains("the editor could not be started"), "{text}");
-    assert!(!cache.join("a").exists());
+    assert!(cache.read_dir().unwrap().next().is_none());
     assert_eq!(cell(&store, SNAP).await, SAME);
 }
 

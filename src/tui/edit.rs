@@ -20,6 +20,7 @@ pub enum Edited {
 }
 const FAILED: &str = "the editor could not be started";
 const SHAPE: &str = "the editor file must be a title, a blank line, and a body";
+static EDITOR_FILE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool) -> Result<Edited, Error> {
     let Some(editor) = editor.filter(|value| value.bytes().any(|byte| !byte.is_ascii_whitespace())) else {
@@ -29,7 +30,6 @@ pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool) 
     let Some(path) = named(cache, piece) else { return Ok(Edited::Message(FAILED)); };
     let original = bytes(piece);
     if let Err(error) = write_private(&path, &original).await {
-        let _ = tokio::fs::remove_file(&path).await;
         return Err(Error::io("write the editor file")(error));
     }
     let held = live.then(Hold::suspend);
@@ -63,7 +63,9 @@ fn named(cache: &Path, piece: &Piece) -> Option<PathBuf> {
         Piece::Note { draft_id, index, .. } => format!("note-{draft_id}-{index}"),
     };
     let bad = name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']);
-    (!bad).then(|| cache.join(name))
+    let n = EDITOR_FILE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let id = std::process::id();
+    (!bad).then(|| cache.join(format!("{name}-{id}-{n}")))
 }
 fn bytes(piece: &Piece) -> Vec<u8> {
     match piece {
