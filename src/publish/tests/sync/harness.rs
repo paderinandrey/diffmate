@@ -8,10 +8,13 @@ pub(super) use super::super::support::cell;
 use crate::gh::{CommentLink, ThreadState};
 pub(super) use remote::Remote;
 
-const SEED: &str = "\
-INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, github_review_id, created_at, updated_at) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 1, 1, 1, 'submitted', 'COMMENT', 'abc123', '{}', '9001', 1, 1);
-INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) VALUES ('sync', 1, 'queued', 1, 0, 1, 1, 'manual', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-INSERT INTO findings (id, run_id, draft_id, ordinal, severity, title, body, decision, thread_status) VALUES ('f2', 1, 1, 2, 'low', 'Loose', 'body', 'kept', 'none');";
+const SEED: &str = concat!(
+    "INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, github_review_id, created_at, updated_at) VALUES ('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 1, 1, 1, 'submitted', 'COMMENT', 'abc123', '",
+    r#"{"findings":[{"id":"f1","path":"src/a.rs","line":4,"side":"RIGHT","title":"Title","body":"Body text"}],"limitation":null,"future_improvements":[]}"#,
+    "', '9001', 1, 1);\n",
+    "INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) VALUES ('sync', 1, 'queued', 1, 0, 1, 1, 'manual', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');\n",
+    "INSERT INTO findings (id, run_id, draft_id, ordinal, severity, title, body, decision, thread_status) VALUES ('f2', 1, 1, 2, 'low', 'Loose', 'body', 'kept', 'none');"
+);
 
 pub(super) async fn seeded() -> (tempfile::TempDir, crate::store::Store, i64) {
     let (tmp, store) = open().await;

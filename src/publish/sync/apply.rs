@@ -55,11 +55,21 @@ pub(super) fn missing() -> rusqlite::Error {
 }
 
 fn finding_ids(conn: &Connection, publication_id: &str) -> rusqlite::Result<Vec<String>> {
-    let sql = "SELECT f.id FROM findings f JOIN publications p ON p.draft_id = f.draft_id \
-               WHERE p.id = ?1 AND f.decision IN ('kept', 'edited') AND f.line IS NOT NULL";
-    let mut statement = conn.prepare(sql)?;
-    let rows = statement.query_map(params![publication_id], |row| row.get(0))?;
-    rows.collect()
+    let snapshot: String = conn.query_row(
+        "SELECT snapshot FROM publications WHERE id = ?1",
+        params![publication_id],
+        |row| row.get(0),
+    )?;
+    anchored_ids(&snapshot).map_err(sql_json)
+}
+
+pub(super) fn anchored_ids(snapshot: &str) -> Result<Vec<String>, crate::error::Error> {
+    let (_, anchored, _) = crate::publish::checks::payload(snapshot)?;
+    Ok(anchored.into_iter().map(|finding| finding.id).collect())
+}
+
+pub(super) fn sql_json(error: crate::error::Error) -> rusqlite::Error {
+    rusqlite::Error::ToSqlConversionFailure(Box::new(error))
 }
 
 fn link(finding: &str, comments: &[CommentLink]) -> Option<Link> {

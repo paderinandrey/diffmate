@@ -29,10 +29,19 @@ pub(super) fn statuses(tx: &Transaction, statuses: Option<&[ThreadState]>) -> ru
 }
 
 pub(super) fn open_inline(tx: &Transaction, publication_id: &str) -> rusqlite::Result<i64> {
-    let sql = "SELECT COUNT(*) FROM findings f JOIN publications p ON p.draft_id = f.draft_id \
-               WHERE p.id = ?1 AND f.decision IN ('kept', 'edited') AND f.line IS NOT NULL \
-               AND (f.github_comment_id IS NULL OR f.thread_status = 'unknown')";
-    tx.query_row(sql, params![publication_id], |row| row.get(0))
+    let snapshot: String = tx.query_row(
+        "SELECT snapshot FROM publications WHERE id = ?1",
+        params![publication_id],
+        |row| row.get(0),
+    )?;
+    let ids = super::anchored_ids(&snapshot).map_err(super::sql_json)?;
+    let sql = "SELECT COUNT(*) FROM findings WHERE id = ?1 AND line IS NOT NULL \
+               AND (github_comment_id IS NULL OR thread_status = 'unknown')";
+    let mut open = 0_i64;
+    for id in ids {
+        open += tx.query_row(sql, params![id], |row| row.get::<_, i64>(0))?;
+    }
+    Ok(open)
 }
 
 pub(super) fn finish(tx: &Transaction, job_id: i64, now: i64, open: i64) -> rusqlite::Result<()> {
