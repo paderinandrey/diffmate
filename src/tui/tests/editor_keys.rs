@@ -48,3 +48,35 @@ async fn editor_keys_are_not_replayed_as_commands() {
         .unwrap();
     reader.join().unwrap();
 }
+
+#[tokio::test]
+async fn a_full_key_channel_still_opens_the_editor() {
+    let (tx, mut keys) = tokio::sync::mpsc::channel(16);
+    let gate = Arc::new(super::super::reader::KeyGate::new());
+    let reader_gate = Arc::clone(&gate);
+    let reader = std::thread::spawn(move || {
+        super::super::pump(&tx, &reader_gate, || Ok(Some(key(KeyCode::Char('x')))));
+    });
+    let mut opened = false;
+    {
+        let mut edit = std::pin::pin!(super::super::pause_for_editor(&gate, &mut keys, async {
+            assert!(gate.is_paused());
+            Ok::<(), Error>(())
+        }));
+        for _ in 0..2_000 {
+            tokio::select! {
+                biased;
+                ended = &mut edit => {
+                    ended.unwrap();
+                    opened = true;
+                    break;
+                }
+                () = tokio::task::yield_now() => {}
+            }
+        }
+    }
+    gate.stop();
+    drop(keys);
+    reader.join().unwrap();
+    assert!(opened, "editor did not open");
+}

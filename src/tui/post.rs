@@ -86,7 +86,7 @@ async fn publish_now<H: Gh, G: Git>(
     else {
         return Ok(());
     };
-    if replaced(session, draft) {
+    if replaced(session, store, draft).await? {
         return Ok(());
     }
     let Some(intent) = session.intent() else {
@@ -124,7 +124,7 @@ async fn resume<H: Gh, G: Git>(
     else {
         return Ok(());
     };
-    if replaced(session, offer.draft) {
+    if replaced(session, store, offer.draft).await? {
         return Ok(());
     }
     let Some(id) = offer.publication.clone() else {
@@ -244,12 +244,21 @@ async fn run_head(store: &Store, draft: i64) -> Result<String, Error> {
         .await
 }
 
-fn replaced(session: &mut Session, draft: i64) -> bool {
+async fn replaced(session: &mut Session, store: &Store, draft: i64) -> Result<bool, Error> {
     if session.draft_id() == Some(draft) {
-        return false;
+        return Ok(false);
+    }
+    if session.draft_id().is_none()
+        && let Some(target) = session.selected_target()
+        && store
+            .latest_draft(target)
+            .await?
+            .is_some_and(|row| row.id == draft)
+    {
+        return Ok(false);
     }
     session.set_notice("the open draft changed".to_string());
-    true
+    Ok(true)
 }
 
 fn refusal(error: &ConfirmError) -> String {

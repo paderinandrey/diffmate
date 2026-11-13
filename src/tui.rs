@@ -346,7 +346,21 @@ async fn pause_for_editor<T>(
     edit: impl std::future::Future<Output = T>,
 ) -> T {
     let waiting = std::sync::Arc::clone(gate);
-    let _ = tokio::task::spawn_blocking(move || waiting.suspend_and_wait()).await;
+    let pause = tokio::task::spawn_blocking(move || waiting.suspend_and_wait());
+    tokio::pin!(pause);
+    let mut closed = false;
+    loop {
+        tokio::select! {
+            biased;
+            joined = &mut pause => {
+                let _ = joined;
+                break;
+            }
+            incoming = keys.recv(), if !closed => {
+                closed = incoming.is_none();
+            }
+        }
+    }
     while keys.try_recv().is_ok() {}
     let _resume = Resume(gate);
     edit.await

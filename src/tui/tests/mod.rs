@@ -2,6 +2,7 @@ mod actions;
 mod cancel;
 mod confirm_draft;
 mod confirm_offer;
+mod confirm_queue;
 mod decisions;
 mod draft;
 mod edit;
