@@ -19,6 +19,7 @@ pub(super) struct Session {
     focus: usize,
     notice: Option<String>,
     editor: Option<String>,
+    file_seq: u64,
     cache: PathBuf,
     live: bool,
     repaint: bool,
@@ -48,6 +49,7 @@ impl Session {
             focus: 0,
             notice: None,
             editor: None,
+            file_seq: 0,
             cache: PathBuf::new(),
             live: false,
             repaint: false,
@@ -400,8 +402,14 @@ impl Session {
         let Some(piece) = self.piece() else {
             return Ok(());
         };
-        let edited =
-            super::edit::run(self.editor.as_deref(), &self.cache, &piece, self.live).await?;
+        let edited = super::edit::run(
+            self.editor.as_deref(),
+            &self.cache,
+            &piece,
+            self.live,
+            &mut self.file_seq,
+        )
+        .await?;
         if self.live {
             self.repaint = true;
         }

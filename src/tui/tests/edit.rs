@@ -72,6 +72,27 @@ async fn editor_saves_only_a_real_change() {
 
 #[rustfmt::skip]
 #[tokio::test(start_paused = true)]
+async fn one_session_names_each_editor_file() {
+    let (tmp, store, _) = draft(true).await;
+    let log = tmp.path().join("names");
+    let bin = tmp.path().join("record");
+    let script = format!("#!/bin/sh\nprintf '%s\\n' \"$1\" >> '{}'\n", log.display());
+    std::fs::write(&bin, script).unwrap();
+    std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let cache = tmp.path().join("cache");
+    let keys = [KeyCode::Enter, KeyCode::Char('e'), KeyCode::Char('e')];
+    shown(&store, &cache, Some(&bin.display().to_string()), &keys).await;
+    let names = std::fs::read_to_string(&log).unwrap();
+    let lines: Vec<_> = names.lines().collect();
+    assert_eq!(lines.len(), 2, "{names}");
+    let stem = cache.join(format!("a-{}-", std::process::id()));
+    assert_eq!(lines[0], format!("{}0", stem.display()));
+    assert_eq!(lines[1], format!("{}1", stem.display()));
+    assert!(cache.read_dir().unwrap().next().is_none());
+}
+
+#[rustfmt::skip]
+#[tokio::test(start_paused = true)]
 async fn i_includes_the_limitation_without_starting_an_editor() {
     let (tmp, store, _) = draft(false).await;
     let keys = [KeyCode::Enter, KeyCode::Char('k'), KeyCode::Char('K')];

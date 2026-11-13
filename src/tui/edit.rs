@@ -20,14 +20,13 @@ pub enum Edited {
 }
 const FAILED: &str = "the editor could not be started";
 const SHAPE: &str = "the editor file must be a title, a blank line, and a body";
-static EDITOR_FILE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool) -> Result<Edited, Error> {
+pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool, file_seq: &mut u64) -> Result<Edited, Error> {
     let Some(editor) = editor.filter(|value| value.bytes().any(|byte| !byte.is_ascii_whitespace())) else {
         return Ok(Edited::Message("EDITOR is not set"));
     };
     let argv: Vec<String> = editor.split(|c: char| c.is_ascii_whitespace()).filter(|part| !part.is_empty()).map(String::from).collect();
-    let Some(path) = named(cache, piece) else { return Ok(Edited::Message(FAILED)); };
+    let Some(path) = named(cache, piece, file_seq) else { return Ok(Edited::Message(FAILED)); };
     let original = bytes(piece);
     if let Err(error) = write_private(&path, &original).await {
         return Err(Error::io("write the editor file")(error));
@@ -57,13 +56,14 @@ fn changed(piece: &Piece, original: &[u8], got: &[u8]) -> Edited {
         _ => Edited::Message(SHAPE),
     }
 }
-fn named(cache: &Path, piece: &Piece) -> Option<PathBuf> {
+fn named(cache: &Path, piece: &Piece, file_seq: &mut u64) -> Option<PathBuf> {
     let name = match piece {
         Piece::Finding { id, .. } => id.clone(),
         Piece::Note { draft_id, index, .. } => format!("note-{draft_id}-{index}"),
     };
     let bad = name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\']);
-    let n = EDITOR_FILE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let n = *file_seq;
+    *file_seq = n.saturating_add(1);
     let id = std::process::id();
     (!bad).then(|| cache.join(format!("{name}-{id}-{n}")))
 }

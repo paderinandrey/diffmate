@@ -60,12 +60,9 @@ fn linux_flock(file: &File) -> Result<bool, Probe> {
 #[cfg(not(target_os = "linux"))]
 fn blocking_lock(file: &File) -> io::Result<bool> {
     // macOS F_GETLK sets l_pid to -1 for a BSD flock. rustix debug-asserts that the pid is non-negative.
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
     let probed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         fcntl_getlk(file, &Flock::from(FlockType::WriteLock))
     }));
-    std::panic::set_hook(hook);
     match probed {
         Ok(result) => result
             .map(|blocking| blocking.is_some())
