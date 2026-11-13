@@ -383,7 +383,10 @@ impl Session {
     fn span(&self) -> usize {
         match &self.screen {
             Screen::Queue => self.rows.len(),
-            Screen::Draft(draft) => draft.findings.len() + draft.future.len(),
+            Screen::Draft(draft) => {
+                let limitation = usize::from(draft.limitation.is_some());
+                draft.findings.len() + limitation + draft.future.len()
+            }
         }
     }
 
@@ -554,12 +557,14 @@ impl Session {
                 body: finding.body.clone(),
             });
         }
-        let index = focus.checked_sub(draft.findings.len())?;
-        Some(super::edit::Piece::Note {
-            draft_id: draft.id,
-            index,
-            text: draft.future.get(index)?.clone(),
-        })
+        match super::draw::past_findings(draft, focus)? {
+            super::draw::Place::Limitation => None,
+            super::draw::Place::Note(index) => Some(super::edit::Piece::Note {
+                draft_id: draft.id,
+                index,
+                text: draft.future.get(index)?.clone(),
+            }),
+        }
     }
 
     pub(super) async fn reload(&mut self, store: &Store) -> Result<(), Error> {

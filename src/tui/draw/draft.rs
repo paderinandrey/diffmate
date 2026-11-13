@@ -53,17 +53,21 @@ pub(super) fn screen(
         }
     }
     if let Some(limitation) = &draft.limitation {
-        let suffix = if draft.included { " included" } else { "" };
+        let start = rows.len();
+        let chosen = matches!(past_findings(draft, focus), Some(super::Place::Limitation));
         push(
             &mut rows,
-            &format!("Limitation: {}{suffix}", sanitize(limitation)),
+            &limitation_line(limitation, draft.included, chosen),
             width,
         );
+        if chosen {
+            selected = start..rows.len();
+        }
     }
-    let findings = draft.findings.len();
     for (index, note) in draft.future.iter().enumerate() {
         let start = rows.len();
-        let chosen = focus == findings + index;
+        let chosen =
+            matches!(past_findings(draft, focus), Some(super::Place::Note(at)) if at == index);
         push(
             &mut rows,
             &format!("{} {}", mark(chosen), sanitize(note)),
@@ -98,18 +102,46 @@ pub(super) fn item_rows(draft: &DraftView, focus: usize, width: usize) -> usize 
         push(&mut rows, &sanitize(&finding.body), width);
         return rows.len();
     }
-    let Some(index) = focus.checked_sub(draft.findings.len()) else {
-        return 0;
-    };
-    let Some(note) = draft.future.get(index) else {
-        return 0;
-    };
-    push(
-        &mut rows,
-        &format!("{} {}", mark(true), sanitize(note)),
-        width,
-    );
+    match past_findings(draft, focus) {
+        Some(super::Place::Limitation) => {
+            let Some(text) = draft.limitation.as_deref() else {
+                return 0;
+            };
+            push(
+                &mut rows,
+                &limitation_line(text, draft.included, true),
+                width,
+            );
+        }
+        Some(super::Place::Note(index)) => {
+            let Some(note) = draft.future.get(index) else {
+                return 0;
+            };
+            push(
+                &mut rows,
+                &format!("{} {}", mark(true), sanitize(note)),
+                width,
+            );
+        }
+        None => return 0,
+    }
     rows.len()
+}
+
+pub(super) fn past_findings(draft: &DraftView, focus: usize) -> Option<super::Place> {
+    let mut index = focus.checked_sub(draft.findings.len())?;
+    if draft.limitation.is_some() {
+        if index == 0 {
+            return Some(super::Place::Limitation);
+        }
+        index -= 1;
+    }
+    Some(super::Place::Note(index))
+}
+
+fn limitation_line(text: &str, included: bool, chosen: bool) -> String {
+    let suffix = if included { " included" } else { "" };
+    format!("{} Limitation: {}{suffix}", mark(chosen), sanitize(text))
 }
 
 fn header(

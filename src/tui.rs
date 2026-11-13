@@ -326,7 +326,7 @@ async fn drive_queued<H: crate::gh::Gh, G: crate::git::Git>(
     let idle = queued.is_empty();
     let changed = seen.is_some() && session.draft_id() != seen;
     for key in queued {
-        if changed && keys::publishes(&key) {
+        if changed && keys::follows_draft(&key) {
             session.set_notice("the open draft changed".to_string());
             continue;
         }

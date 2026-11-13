@@ -126,3 +126,32 @@ async fn the_selected_explanation_stays_on_a_short_screen() {
     assert!(text.contains("Title6"), "{text}");
     assert!(!text.contains("Title1"), "{text}");
 }
+
+#[tokio::test]
+async fn down_reaches_a_limitation_below_the_last_finding() {
+    let (_tmp, store) = open().await;
+    let now = crate::store::now_ms();
+    let mut sql = format!(
+        "INSERT INTO targets (id, owner, repo, number, tracking, created_at, head_sha, head_checked_at) VALUES (1, 'o', 'r', 1, 'tracked', 1, '{HEAD}', {now});
+         INSERT INTO jobs (id, kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at) VALUES (1, 'review', 1, 'succeeded', 1, 0, 0, 0);
+         INSERT INTO runs (id, target_id, job_id, state, result, head_sha, merge_base_sha, base_tip_sha, base_ref, created_at) VALUES (1, 1, 1, 'succeeded', 'findings', '{HEAD}', 'base', 'base', 'main', 0);
+         INSERT INTO drafts (id, run_id, original_output, limitation, created_at) VALUES (1, 1, '{{}}', 'HIDDEN-LIMIT', 0);"
+    );
+    for ordinal in 1..=3 {
+        let _ = write!(
+            sql,
+            "INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body) VALUES ('f{ordinal}', 1, 1, {ordinal}, 'high', 'src/a.rs', {ordinal}, 'RIGHT', 'Title{ordinal}', 'short');"
+        );
+    }
+    store
+        .call(move |conn| conn.execute_batch(&sql))
+        .await
+        .unwrap();
+    let hidden = [KeyCode::Enter, KeyCode::Down, KeyCode::Down];
+    let (hidden, _) = frame(&store, &hidden, 4).await;
+    assert!(!hidden.contains("HIDDEN-LIMIT"), "{hidden}");
+    let shown = [KeyCode::Enter, KeyCode::Down, KeyCode::Down, KeyCode::Down];
+    let (shown, rows) = frame(&store, &shown, 4).await;
+    assert!(shown.contains("HIDDEN-LIMIT"), "{shown}");
+    assert!(marked(&rows, "Limitation"), "{rows:?}");
+}

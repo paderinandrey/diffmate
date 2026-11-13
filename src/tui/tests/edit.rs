@@ -37,7 +37,7 @@ async fn shown(store: &Store, cache: &Path, editor: Option<&str>, keys: &[KeyCod
 #[tokio::test(start_paused = true)]
 async fn editor_saves_only_a_real_change() {
     let finding = [KeyCode::Enter, KeyCode::Char('e')];
-    let note = [KeyCode::Enter, KeyCode::Down, KeyCode::Char('e')];
+    let note = [KeyCode::Enter, KeyCode::Down, KeyCode::Down, KeyCode::Char('e')];
     let rows = [
         ("--body", false, "edited|fresh body\n|One|ORIGINAL|[\"keep this\"]"),
         ("--fail", false, SAME),

@@ -18,7 +18,10 @@ async fn future_notes_can_be_focused_and_quit_writes_nothing() {
         ignored.contains("undecided") && !ignored.contains("kept"),
         "{ignored}"
     );
-    let down = [KeyCode::Enter, KeyCode::Down, KeyCode::Down];
+    let limit = [KeyCode::Enter, KeyCode::Down, KeyCode::Down];
+    let (_, focused) = frame(&store, &limit, 12).await;
+    assert!(marked(&focused, "Limitation"), "{focused:?}");
+    let down = [KeyCode::Enter, KeyCode::Down, KeyCode::Down, KeyCode::Down];
     let (_, focused) = frame(&store, &down, 12).await;
     assert!(marked(&focused, "note one"), "{focused:?}");
     assert!(!marked(&focused, "Limitation"), "{focused:?}");

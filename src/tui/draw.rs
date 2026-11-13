@@ -1,5 +1,17 @@
 mod draft;
 
+pub(super) enum Place {
+    Limitation,
+    Note(usize),
+}
+
+pub(super) fn past_findings(
+    draft: &crate::store::status::DraftView,
+    focus: usize,
+) -> Option<Place> {
+    draft::past_findings(draft, focus)
+}
+
 pub(super) fn item_rows(
     draft: &crate::store::status::DraftView,
     focus: usize,
