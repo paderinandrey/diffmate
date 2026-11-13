@@ -1,6 +1,7 @@
 use super::{RunId, Store, TargetId};
 use crate::error::Error;
 use rusqlite::{OptionalExtension, params};
+use serde_json::Value;
 
 pub(crate) struct StoredFinding {
     pub id: String,
@@ -36,21 +37,35 @@ impl Store {
             else {
                 return Ok(None);
             };
-            let sql =
-                "SELECT id, severity, path, line, side, title, body, decision, github_thread_id
-                       FROM findings WHERE run_id = ?1 ORDER BY ordinal";
+            let raw: Option<String> = conn
+                .query_row(
+                    "SELECT original_output FROM drafts WHERE run_id = ?1",
+                    [run_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let originals = raw.as_deref().map(original_texts).unwrap_or_default();
+            let sql = "SELECT id, severity, path, line, side, title, body, decision,
+                       github_thread_id, ordinal FROM findings WHERE run_id = ?1 ORDER BY ordinal";
             let mut statement = conn.prepare(sql)?;
-            let stored = |r: &rusqlite::Row| {
+            let stored = |row: &rusqlite::Row| {
+                let ordinal: i64 = row.get(9)?;
+                let mut title: String = row.get(5)?;
+                let mut body: String = row.get(6)?;
+                if let Some((original_title, original_body)) = text_at(&originals, ordinal) {
+                    title = original_title;
+                    body = original_body;
+                }
                 Ok(StoredFinding {
-                    id: r.get(0)?,
-                    severity: r.get(1)?,
-                    path: r.get(2)?,
-                    line: r.get(3)?,
-                    side: r.get(4)?,
-                    title: r.get(5)?,
-                    body: r.get(6)?,
-                    decision: r.get(7)?,
-                    github_thread_id: r.get(8)?,
+                    id: row.get(0)?,
+                    severity: row.get(1)?,
+                    path: row.get(2)?,
+                    line: row.get(3)?,
+                    side: row.get(4)?,
+                    title,
+                    body,
+                    decision: row.get(7)?,
+                    github_thread_id: row.get(8)?,
                 })
             };
             let findings = statement
@@ -64,4 +79,30 @@ impl Store {
         })
         .await
     }
+}
+
+fn original_texts(raw: &str) -> Vec<(String, String)> {
+    let Ok(value) = serde_json::from_str::<Value>(raw) else {
+        return Vec::new();
+    };
+    let Some(items) = value.get("findings").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .map(|item| (json_str(item, "title"), json_str(item, "body")))
+        .collect()
+}
+
+fn json_str(item: &Value, name: &str) -> String {
+    item.get(name)
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string()
+}
+
+fn text_at(originals: &[(String, String)], ordinal: i64) -> Option<(String, String)> {
+    let index = usize::try_from(ordinal).ok()?.checked_sub(1)?;
+    let (title, body) = originals.get(index)?;
+    (!title.is_empty() && !body.is_empty()).then(|| (title.clone(), body.clone()))
 }

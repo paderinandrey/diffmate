@@ -176,6 +176,7 @@ async fn a_moved_head_is_shown_without_resetting_the_choice() {
         &store,
         &mode,
         queue::key(ratatui::crossterm::event::KeyCode::Enter),
+        None,
     )
     .await
     .unwrap();

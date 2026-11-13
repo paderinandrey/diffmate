@@ -38,7 +38,7 @@ async fn a_stale_confirmation_publishes_its_own_draft() {
     assert_eq!(session.draft().unwrap().0.id, 1);
     assert!(session.confirming());
     session.highlight_confirm(false);
-    super::super::apply(&mut session, &store, &mode, key(KeyCode::Enter))
+    super::super::apply(&mut session, &store, &mode, key(KeyCode::Enter), None)
         .await
         .unwrap();
     assert_eq!(

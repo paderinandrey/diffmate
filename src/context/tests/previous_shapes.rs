@@ -100,3 +100,81 @@ async fn previous_json_is_unavailable_for_a_first_run_and_lists_earlier_findings
     assert_eq!(document["findings"][1]["thread_status"], "none");
     assert_eq!(document["findings"][1]["finding"]["line"], Value::Null);
 }
+
+#[tokio::test]
+async fn previous_json_keeps_the_agent_text_after_an_edit() {
+    let tmp = TempDir::new().unwrap();
+    let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
+    let store = Store::open(&paths).await.unwrap();
+    let pr = PrRef {
+        owner: "o".into(),
+        repo: "r".into(),
+        number: 1,
+    };
+    let process = ProcessInfo {
+        pid: 1,
+        started_at_ms: 0,
+    };
+    let request = EnqueueRequest {
+        origin: JobOrigin::Manual,
+        force: false,
+    };
+    let job = store
+        .enqueue_review(&pr, &process, request)
+        .await
+        .unwrap()
+        .job;
+    let sha = "a".repeat(40);
+    let revision = Revision {
+        head_sha: sha.clone(),
+        merge_base_sha: sha.clone(),
+        base_tip_sha: sha.clone(),
+        base_ref: "main".into(),
+    };
+    let run = store.insert_running_run(&job, &revision).await.unwrap();
+    let mut agent = finding(Some(3), "Agent title");
+    agent.body = "Agent body.".into();
+    let original = json!({
+        "findings": [{
+            "title": "Agent title",
+            "body": "Agent body.",
+        }]
+    });
+    store
+        .finish_succeeded(
+            run,
+            job.job_id,
+            DraftRecord {
+                original_output: original,
+                limitation: None,
+                future_improvements: vec![],
+                findings: vec![agent, finding(None, "Kept title")],
+            },
+            vec![],
+            Metrics::default(),
+        )
+        .await
+        .unwrap();
+    let decision = store
+        .save_finding_text(&format!("{run}.1"), "Owner title", "Owner body")
+        .await
+        .unwrap();
+    assert_eq!(decision, "edited");
+    let dir = tmp.path().join("next");
+    fs::create_dir(&dir).unwrap();
+    let (document, _) = written(&store, &dir, (job.target_id, run + 1)).await;
+    let first = &document["findings"][0];
+    assert_eq!(first["finding"]["title"], "Agent title");
+    assert_eq!(first["finding"]["body"], "Agent body.");
+    assert_eq!(first["decision"], "edited");
+    assert_eq!(document["findings"][1]["finding"]["title"], "Kept title");
+    let stored: String = store
+        .call(|conn| {
+            conn.query_row("SELECT title FROM findings WHERE ordinal = 1", [], |row| {
+                row.get(0)
+            })
+        })
+        .await
+        .unwrap();
+    assert_eq!(stored, "Owner title");
+}

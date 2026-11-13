@@ -5,6 +5,7 @@ mod keys;
 mod model;
 mod open;
 mod post;
+mod reader;
 mod runner;
 
 #[cfg(test)]
@@ -66,7 +67,9 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         settings: &config.settings,
     };
     let (tx, mut keys) = tokio::sync::mpsc::channel(16);
-    let _reader = tokio::task::spawn_blocking(move || read_keys(&tx));
+    let gate = std::sync::Arc::new(reader::KeyGate::new());
+    let reader_gate = std::sync::Arc::clone(&gate);
+    let _reader = tokio::task::spawn_blocking(move || read_keys(&tx, &reader_gate));
     loop {
         if session.take_repaint() {
             terminal.clear().map_err(Error::io("clear the terminal"))?;
@@ -82,15 +85,15 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
                     .map_err(Error::io("draw the terminal"))?;
                 let idle = queued.is_empty();
                 for key in queued {
-                    if apply(&mut session, &store, &mode, key).await? {
+                    if apply(&mut session, &store, &mode, key, Some((&gate, &mut keys))).await? {
                         return Ok(());
                     }
                 }
-                if idle
-                    && let Some(key) = next_key(&mut keys).await?
-                    && apply(&mut session, &store, &mode, key).await?
-                {
-                    return Ok(());
+                if idle && let Some(key) = next_key(&mut keys).await? {
+                    let live = Some((&gate, &mut keys));
+                    if apply(&mut session, &store, &mode, key, live).await? {
+                        return Ok(());
+                    }
                 }
             }
         }
@@ -121,11 +124,17 @@ async fn service<H: crate::gh::Gh, G: crate::git::Git>(
     session.reload(store).await
 }
 
+type LiveReader<'a> = (
+    &'a std::sync::Arc<reader::KeyGate>,
+    &'a mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+);
+
 async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
     session: &mut Session,
     store: &Store,
     mode: &post::Mode<'_, H, G>,
     key: KeyEvent,
+    reader: Option<LiveReader<'_>>,
 ) -> Result<bool, Error> {
     session.clear_notice();
     match keys::on_key(session, key) {
@@ -159,10 +168,7 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
             session.keep_rest(store).await?;
             Ok(false)
         }
-        keys::Command::Edit => {
-            session.edit_selected(store).await?;
-            Ok(false)
-        }
+        keys::Command::Edit => edit_key(session, store, reader).await,
         keys::Command::Include => {
             session.include_limitation(store).await?;
             Ok(false)
@@ -225,6 +231,24 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
     }
 }
 
+async fn edit_key(
+    session: &mut Session,
+    store: &Store,
+    reader: Option<LiveReader<'_>>,
+) -> Result<bool, Error> {
+    if let Some((gate, keys)) = reader.filter(|_| session.edits_text()) {
+        pause_for_editor(gate, keys, async {
+            let edited = session.edit_selected(store).await;
+            discard_pending_keys();
+            edited
+        })
+        .await?;
+    } else {
+        session.edit_selected(store).await?;
+    }
+    Ok(false)
+}
+
 struct Restore;
 
 impl Drop for Restore {
@@ -284,11 +308,63 @@ fn key_stopped() -> Error {
 }
 
 // crossterm::event::poll blocks in the kernel and cannot be cancelled.
-fn read_keys(tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>) {
+fn read_keys(
+    tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>,
+    gate: &reader::KeyGate,
+) {
+    pump(tx, gate, read_one);
+}
+
+fn pump(
+    tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>,
+    gate: &reader::KeyGate,
+    mut read_one: impl FnMut() -> Result<Option<KeyEvent>, Error>,
+) {
     loop {
+        match gate.checkpoint() {
+            reader::Step::Stop => break,
+            reader::Step::Skip => continue,
+            reader::Step::Run => {}
+        }
         let event = read_one();
+        match gate.checkpoint() {
+            reader::Step::Stop => break,
+            reader::Step::Skip => continue,
+            reader::Step::Run => {}
+        }
         let failed = event.is_err();
         if tx.blocking_send(event).is_err() || failed {
+            gate.stop();
+            break;
+        }
+    }
+}
+
+async fn pause_for_editor<T>(
+    gate: &std::sync::Arc<reader::KeyGate>,
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+    edit: impl std::future::Future<Output = T>,
+) -> T {
+    let waiting = std::sync::Arc::clone(gate);
+    let _ = tokio::task::spawn_blocking(move || waiting.suspend_and_wait()).await;
+    while keys.try_recv().is_ok() {}
+    let _resume = Resume(gate);
+    edit.await
+}
+
+struct Resume<'a>(&'a reader::KeyGate);
+
+impl Drop for Resume<'_> {
+    fn drop(&mut self) {
+        self.0.resume();
+    }
+}
+
+fn discard_pending_keys() {
+    let poll = ratatui::crossterm::event::poll;
+    let read = ratatui::crossterm::event::read;
+    while poll(std::time::Duration::ZERO).unwrap_or(false) {
+        if read().is_err() {
             break;
         }
     }
@@ -337,7 +413,7 @@ pub(crate) async fn run_scripted_with(
     }
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if apply(&mut session, store, &idle(), *key).await? {
+        if apply(&mut session, store, &idle(), *key, None).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);
@@ -361,7 +437,7 @@ pub(crate) async fn run_scripted_actions(
     );
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if apply(&mut session, store, &idle(), *key).await? {
+        if apply(&mut session, store, &idle(), *key, None).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);
@@ -396,7 +472,7 @@ pub(crate) async fn run_scripted_publish<H: crate::gh::Gh, G: crate::git::Git>(
     };
     draw_scripted(&mut terminal, &session);
     for key in keys {
-        if apply(&mut session, store, &mode, *key).await? {
+        if apply(&mut session, store, &mode, *key, None).await? {
             break;
         }
         draw_scripted(&mut terminal, &session);

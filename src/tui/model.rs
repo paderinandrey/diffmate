@@ -443,6 +443,10 @@ impl Session {
         self.reload(store).await
     }
 
+    pub(super) fn edits_text(&self) -> bool {
+        self.piece().is_some()
+    }
+
     fn piece(&self) -> Option<super::edit::Piece> {
         let (draft, focus) = self.draft()?;
         if let Some(finding) = draft.findings.get(focus) {

@@ -5,6 +5,7 @@ mod confirm_offer;
 mod decisions;
 mod draft;
 mod edit;
+mod editor_keys;
 mod events;
 pub(super) mod fake;
 mod fixture;
