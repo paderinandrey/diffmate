@@ -178,8 +178,9 @@ impl Session {
         self.confirm = Some(super::confirm::Confirm::discard(&label));
     }
 
-    pub(super) fn ask_stale(&mut self, event: &str, sha: &str, prompt: String) {
+    pub(super) fn ask_stale(&mut self, draft: i64, event: &str, sha: &str, prompt: String) {
         self.offer = Some(super::confirm::Offer {
+            draft,
             event: event.to_string(),
             sha: sha.to_string(),
             publication: None,
@@ -187,8 +188,9 @@ impl Session {
         self.confirm = Some(super::confirm::Confirm::stale(prompt));
     }
 
-    pub(super) fn ask_moved(&mut self, publication: &str, sha: &str, prompt: String) {
+    pub(super) fn ask_moved(&mut self, draft: i64, publication: &str, sha: &str, prompt: String) {
         self.offer = Some(super::confirm::Offer {
+            draft,
             event: String::new(),
             sha: sha.to_string(),
             publication: Some(publication.to_string()),
@@ -459,6 +461,9 @@ impl Session {
     }
 
     pub(super) async fn reload(&mut self, store: &Store) -> Result<(), Error> {
+        if self.confirming() {
+            return Ok(());
+        }
         let Screen::Draft(_) = &self.screen else {
             return Ok(());
         };

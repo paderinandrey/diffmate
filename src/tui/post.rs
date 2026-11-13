@@ -51,10 +51,10 @@ pub(super) async fn send<H: Gh, G: Git>(
     if head != run {
         let now = crate::store::now_ms();
         let line = crate::status::freshness::stored(&run, Some((head.as_str(), now)), now);
-        session.ask_stale(event, &head, line);
+        session.ask_stale(intent.draft, event, &head, line);
         return Ok(());
     }
-    publish_now(session, store, mode, event, &head).await
+    publish_now(session, store, mode, intent.draft, event, &head).await
 }
 
 pub(super) async fn commit<H: Gh, G: Git>(
@@ -66,13 +66,14 @@ pub(super) async fn commit<H: Gh, G: Git>(
     if offer.publication.is_some() {
         return resume(session, store, mode, offer).await;
     }
-    publish_now(session, store, mode, &offer.event, &offer.sha).await
+    publish_now(session, store, mode, offer.draft, &offer.event, &offer.sha).await
 }
 
 async fn publish_now<H: Gh, G: Git>(
     session: &mut Session,
     store: &Store,
     mode: &Mode<'_, H, G>,
+    draft: i64,
     event: &str,
     sha: &str,
 ) -> Result<(), Error> {
@@ -85,6 +86,9 @@ async fn publish_now<H: Gh, G: Git>(
     else {
         return Ok(());
     };
+    if replaced(session, draft) {
+        return Ok(());
+    }
     let Some(intent) = session.intent() else {
         return Ok(());
     };
@@ -92,13 +96,10 @@ async fn publish_now<H: Gh, G: Git>(
         pid: intent.pid,
         started_at_ms: intent.started,
     };
-    match store
-        .confirm_publication(intent.draft, event, sha, &process)
-        .await
-    {
+    match store.confirm_publication(draft, event, sha, &process).await {
         Ok(_) => {
             runner::drive(session, store, gh, git, paths, settings).await?;
-            surface(session, store, intent.draft).await?;
+            surface(session, store, draft).await?;
             session.reload_rows(store).await
         }
         Err(error) => {
@@ -123,16 +124,17 @@ async fn resume<H: Gh, G: Git>(
     else {
         return Ok(());
     };
-    let Some(intent) = session.intent() else {
+    if replaced(session, offer.draft) {
         return Ok(());
-    };
+    }
     let Some(id) = offer.publication.clone() else {
         return Ok(());
     };
     let sha = offer.sha.clone();
+    let draft = offer.draft;
     store.reconfirm(&id, &sha).await?;
     runner::drive(session, store, gh, git, paths, settings).await?;
-    surface(session, store, intent.draft).await?;
+    surface(session, store, draft).await?;
     session.reload_rows(store).await
 }
 
@@ -198,7 +200,7 @@ async fn surface(session: &mut Session, store: &Store, draft: i64) -> Result<(),
     {
         let now = crate::store::now_ms();
         let line = crate::status::freshness::stored(&row.run, Some((seen.as_str(), now)), now);
-        session.ask_moved(&row.id, &seen, line);
+        session.ask_moved(draft, &row.id, &seen, line);
         return Ok(());
     }
     if row.state == "abandoned"
@@ -240,6 +242,14 @@ async fn run_head(store: &Store, draft: i64) -> Result<String, Error> {
             conn.query_row(sql, [draft], |row| row.get(0))
         })
         .await
+}
+
+fn replaced(session: &mut Session, draft: i64) -> bool {
+    if session.draft_id() == Some(draft) {
+        return false;
+    }
+    session.set_notice("the open draft changed".to_string());
+    true
 }
 
 fn refusal(error: &ConfirmError) -> String {

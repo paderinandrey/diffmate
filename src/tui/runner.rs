@@ -31,6 +31,24 @@ pub(crate) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Res
     }
 }
 
+pub(super) async fn needs_runner(store: &Store, held: bool) -> Result<bool, Error> {
+    if held
+        || store
+            .next_service_job(crate::store::now_ms())
+            .await?
+            .is_some()
+    {
+        return Ok(true);
+    }
+    store
+        .call(|conn| {
+            let sql = "SELECT 1 FROM jobs WHERE kind IN ('publish', 'reconcile', 'sync') \
+                       AND state = 'running' LIMIT 1";
+            Ok(conn.query_row(sql, [], |_| Ok(())).optional()?.is_some())
+        })
+        .await
+}
+
 pub(super) async fn drive<H: Gh, G: Git>(
     session: &mut Session,
     store: &Store,

@@ -65,6 +65,8 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         paths: &config.paths,
         settings: &config.settings,
     };
+    let (tx, mut keys) = tokio::sync::mpsc::channel(16);
+    let _reader = tokio::task::spawn_blocking(move || read_keys(&tx));
     loop {
         if session.take_repaint() {
             terminal.clear().map_err(Error::io("clear the terminal"))?;
@@ -72,14 +74,25 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         terminal
             .draw(|frame| draw::screen(frame, &session))
             .map_err(Error::io("draw the terminal"))?;
-        service(&mut session, &store, &mode).await?;
-        terminal
-            .draw(|frame| draw::screen(frame, &session))
-            .map_err(Error::io("draw the terminal"))?;
-        if let Some(key) = read_key(SERVICE_TICK).await?
-            && apply(&mut session, &store, &mode, key).await?
-        {
-            return Ok(());
+        match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
+            Turn::Quit => return Ok(()),
+            Turn::Finished(queued) => {
+                terminal
+                    .draw(|frame| draw::screen(frame, &session))
+                    .map_err(Error::io("draw the terminal"))?;
+                let idle = queued.is_empty();
+                for key in queued {
+                    if apply(&mut session, &store, &mode, key).await? {
+                        return Ok(());
+                    }
+                }
+                if idle
+                    && let Some(key) = next_key(&mut keys).await?
+                    && apply(&mut session, &store, &mode, key).await?
+                {
+                    return Ok(());
+                }
+            }
         }
     }
 }
@@ -100,11 +113,7 @@ async fn service<H: crate::gh::Gh, G: crate::git::Git>(
     else {
         return Ok(());
     };
-    let due = store
-        .next_service_job(crate::store::now_ms())
-        .await?
-        .is_some();
-    if session.running() || due {
+    if runner::needs_runner(store, session.running()).await? {
         runner::drive(session, store, gh, git, paths, settings).await?;
     }
     session.reload_rows(store).await?;
@@ -224,24 +233,84 @@ impl Drop for Restore {
     }
 }
 
-async fn read_key(wait: std::time::Duration) -> Result<Option<KeyEvent>, Error> {
-    tokio::task::spawn_blocking(move || -> io::Result<Option<KeyEvent>> {
-        if !ratatui::crossterm::event::poll(wait)? {
+#[derive(Debug)]
+enum Turn {
+    Finished(Vec<KeyEvent>),
+    Quit,
+}
+
+async fn finish_or_quit<F>(
+    work: F,
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+) -> Result<Turn, Error>
+where
+    F: std::future::Future<Output = Result<(), Error>>,
+{
+    tokio::pin!(work);
+    let mut queued = Vec::new();
+    loop {
+        tokio::select! {
+            biased;
+            result = &mut work => {
+                result?;
+                return Ok(Turn::Finished(queued));
+            }
+            incoming = keys.recv() => {
+                if let Some(key) = incoming.ok_or_else(key_stopped)?? {
+                    if keys::quits(&key) {
+                        return Ok(Turn::Quit);
+                    }
+                    queued.push(key);
+                }
+            }
+        }
+    }
+}
+
+async fn next_key(
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+) -> Result<Option<KeyEvent>, Error> {
+    incoming_key(keys.recv().await)
+}
+
+fn incoming_key(
+    incoming: Option<Result<Option<KeyEvent>, Error>>,
+) -> Result<Option<KeyEvent>, Error> {
+    incoming.ok_or_else(key_stopped)?
+}
+
+fn key_stopped() -> Error {
+    Error::io("read a key")(io::Error::other("key reader stopped"))
+}
+
+// crossterm::event::poll blocks in the kernel and cannot be cancelled.
+fn read_keys(tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>) {
+    loop {
+        let event = read_one();
+        let failed = event.is_err();
+        if tx.blocking_send(event).is_err() || failed {
+            break;
+        }
+    }
+}
+
+fn read_one() -> Result<Option<KeyEvent>, Error> {
+    if !ratatui::crossterm::event::poll(SERVICE_TICK).map_err(Error::io("read a key"))? {
+        return Ok(None);
+    }
+    loop {
+        if let Event::Key(key) =
+            ratatui::crossterm::event::read().map_err(Error::io("read a key"))?
+            && key.kind == KeyEventKind::Press
+        {
+            return Ok(Some(key));
+        }
+        if !ratatui::crossterm::event::poll(std::time::Duration::ZERO)
+            .map_err(Error::io("read a key"))?
+        {
             return Ok(None);
         }
-        loop {
-            if let Event::Key(key) = ratatui::crossterm::event::read()?
-                && key.kind == KeyEventKind::Press
-            {
-                return Ok(Some(key));
-            }
-            if !ratatui::crossterm::event::poll(std::time::Duration::ZERO)? {
-                return Ok(None);
-            }
-        }
-    })
-    .await?
-    .map_err(Error::io("read a key"))
+    }
 }
 
 #[cfg(test)]

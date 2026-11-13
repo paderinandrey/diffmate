@@ -28,9 +28,18 @@ pub(super) enum Command {
     Ignored,
 }
 
-pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
+pub(super) fn quits(key: &KeyEvent) -> bool {
     if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
     {
+        return true;
+    }
+    !key.modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+        && matches!(key.code, KeyCode::Char('q'))
+}
+
+pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
+    if quits(&key) {
         return Command::Quit;
     }
     if key
@@ -41,7 +50,6 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
     }
     if session.confirming() {
         return match key.code {
-            KeyCode::Char('q') => Command::Quit,
             KeyCode::Esc => Command::Cancel,
             KeyCode::Enter => Command::Accept,
             KeyCode::Left | KeyCode::Up => Command::Safer,
@@ -50,7 +58,6 @@ pub(super) fn on_key(session: &Session, key: KeyEvent) -> Command {
         };
     }
     match key.code {
-        KeyCode::Char('q') => Command::Quit,
         KeyCode::Enter if !session.on_draft() => Command::Open,
         KeyCode::Esc if session.on_draft() => Command::Back,
         KeyCode::Down => Command::Down,

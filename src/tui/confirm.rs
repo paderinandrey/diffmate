@@ -12,6 +12,7 @@ enum Purpose {
 }
 
 pub(super) struct Offer {
+    pub draft: i64,
     pub event: String,
     pub sha: String,
     pub publication: Option<String>,
