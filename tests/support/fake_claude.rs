@@ -4,7 +4,19 @@ use super::{call_numbers, mkfifo, write_executable};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const DEFAULT_VERSION: &str = "2.1.304 (Claude Code)";
+pub const DEFAULT_VERSION: &str = "grok 1.0.77 (50ca579fa996) [stable]";
+const HELP: &str = "\
+--single
+--tools
+--disallowed-tools
+--disable-web-search
+--no-subagents
+--sandbox
+--permission-mode
+--output-format
+--json-schema
+--rules
+";
 pub const PROBE_OK: &str =
     "Error: Input must be provided either through stdin or as a prompt argument when using --print";
 
@@ -20,9 +32,10 @@ impl FakeClaude {
         };
         claude.set_version(DEFAULT_VERSION);
         claude.set_probe(PROBE_OK, 1);
+        claude.set_help(HELP, 0);
         claude.set_run(&success_envelope(&output_json(&[], None, &[])), 0);
         let script = include_str!("fake_claude.sh").replace("@STATE@", dir.to_str().unwrap());
-        write_executable(&bin.join("claude"), &script);
+        write_executable(&bin.join("grok"), &script);
         claude
     }
 
@@ -37,6 +50,11 @@ impl FakeClaude {
     pub fn set_probe(&self, stderr: &str, exit: i32) {
         self.put("probe_stderr", &format!("{stderr}\n"));
         self.put("probe_exit", &exit.to_string());
+    }
+
+    pub fn set_help(&self, text: &str, exit: i32) {
+        self.put("help", &format!("{text}\n"));
+        self.put("help_exit", &exit.to_string());
     }
 
     pub fn set_run(&self, stdout: &str, exit: i32) {

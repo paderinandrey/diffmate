@@ -29,6 +29,10 @@ impl Paths {
         &self.state_dir
     }
 
+    pub fn cache_dir(&self) -> &Path {
+        &self.cache_dir
+    }
+
     pub fn db(&self) -> PathBuf {
         self.state_dir.join("diffmate.db")
     }

@@ -61,7 +61,7 @@ async fn announcement_preserves_the_lock_and_reports_only_a_live_holder() {
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("runner.lock");
     let lock = try_acquire(&path).await.unwrap().unwrap();
-    for role in [Role::Review, Role::Watch, Role::Review] {
+    for role in [Role::Review, Role::Watch, Role::Tui] {
         lock.announce(role).await.unwrap();
         assert_eq!(holder(&path).await, Some(role));
         assert!(try_acquire(&path).await.unwrap().is_none());

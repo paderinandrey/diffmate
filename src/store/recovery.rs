@@ -1,4 +1,5 @@
 mod resolve;
+mod service;
 
 use super::records::JobOrigin;
 use super::retry::apply_job_next;
@@ -40,6 +41,7 @@ impl Store {
                     .jobs
                     .push((job.id, resolve::description(&next, &failure)));
             }
+            stopped.jobs.extend(service::settle(&tx, now)?);
             tx.commit()?;
             Ok(stopped)
         })

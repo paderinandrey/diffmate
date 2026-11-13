@@ -14,7 +14,7 @@ use tokio::sync::mpsc;
 
 mod deadline;
 #[cfg(test)]
-mod fakes;
+pub(super) mod fakes;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

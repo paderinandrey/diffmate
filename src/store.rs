@@ -1,8 +1,11 @@
+pub(crate) mod decisions;
 pub(crate) mod finish;
 pub(crate) mod jobs;
 mod migrate;
+pub(crate) use migrate::SCHEMA_VERSION;
 pub(crate) mod poll;
 pub(crate) mod previous;
+pub(crate) mod publish;
 pub(crate) mod readonly;
 pub(crate) mod records;
 pub(crate) mod recovery;

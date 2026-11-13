@@ -21,7 +21,7 @@ fn status_reports_a_failed_live_check() {
     assert!(output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stdout)
-            .ends_with("  freshness unknown: head never checked (live check failed)\n")
+            .ends_with("  freshness unknown: head never checked (live check failed)  none\n")
     );
     assert!(
         String::from_utf8_lossy(&output.stderr)
@@ -44,7 +44,7 @@ fn status_falls_back_to_the_stored_head() {
         .gh
         .replace_route_fail(&format!("pr view {URL}"), "offline", 1);
     assert!(status(&sandbox).ends_with(&format!(
-        "  current: head {}, checked just now (live check failed)\n",
+        "  current: head {}, checked just now (live check failed)  none\n",
         &head[..12]
     )));
 }

@@ -8,7 +8,7 @@ use freshness::LiveHead;
 use std::process::ExitCode;
 
 mod budget;
-mod freshness;
+pub(crate) mod freshness;
 #[cfg(test)]
 mod tests;
 mod when;
@@ -55,6 +55,7 @@ async fn lines(config: &AppConfig) -> Result<Vec<String>, Error> {
                 .map(|(head, time)| (head.as_str(), *time));
             row = line([&row, &freshness::describe(draft, &live, known, now_ms())]);
         }
+        row = line([&row, &target.publication]);
         rows.push(row);
     }
     Ok(rows)

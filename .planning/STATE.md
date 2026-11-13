@@ -1,44 +1,44 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 03
-current_phase_name: Queue
-status: Phase 03 plans implemented; Phase 02 UAT still open; live E2E blocked
-stopped_at: Phase 03 plans implemented; Phase 02 acceptance still open; resume PR review
-last_updated: "2026-11-09T13:05:00.000Z"
-last_activity: 2026-11-09
-last_activity_desc: Phase 03 plans implemented; Phase 02 UAT left open
-state_head: 807168a3157cad2037f62fd1c31c0857b22ebada
+current_phase: 05
+current_phase_name: Daily use
+status: complete
+stopped_at: Phase 03 complete. Phase 2 stays open
+last_updated: "2026-11-12T11:43:10.967Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 03 complete
+state_head: 191f926e6281ae6636401f4e72f077158c3babc8
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 30
-  completed_plans: 30
-  percent: 20
+  completed_phases: 4
+  total_plans: 43
+  completed_plans: 43
+  percent: 80
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-27)
+See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Every PR where my review is directly requested gets an honest, ready-to-read draft without manual steps, and nothing reaches GitHub under my name until I act.
-**Current focus:** Phase 03 — Queue
+**Current focus:** Phase 05 complete. Phase 2 remains open for human verification.
 **Source of truth:** SPEC.md wins over every file under .planning/
 
 ## Current Position
 
-Phase: 03 (Queue) — 8 of 8 plans implemented
-Plan: 8 of 8
-Status: Phase 03 plans implemented; Phase 02 UAT still open; live E2E blocked
-Last activity: 2026-11-09 — lock handoff tests in `117e504`. Phase 02 UAT remains 12 pending and 2 blocked. Phase 03 is not accepted.
+Phase: 05 (Daily use) — COMPLETE
+Plan: 3 of 3
+Status: Phase complete
+Last activity: 2026-11-12 — Phase 03 complete
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████████████████████] 43/43 plans (100%)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 33
 - Average duration: -
 - Total execution time: 0.0 hours
 
@@ -47,6 +47,9 @@ Progress: [██░░░░░░░░] 20%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 12 | - | - |
+| 04 | 10 | - | - |
+| 05 | 3 | - | - |
+| 03 | 8 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: -
@@ -69,6 +72,16 @@ Progress: [██░░░░░░░░] 20%
 | Phase 01 P11 | 25min | 2 tasks | 25 files |
 | Phase 01 P02 | 15 min | 2 tasks | 1 files |
 | Phase 01 P12 | 70 min | 2 tasks | 10 files |
+| Phase 04 P01 | 44min | 2 tasks | 35 files |
+| Phase 04 P02 | 57min | 2 tasks | 13 files |
+| Phase 04 P03 | 36min | 3 tasks | 24 files |
+| Phase 04 P04 | 30min | 2 tasks | 9 files |
+| Phase 04 P05 | 38min | 3 tasks | 18 files |
+| Phase 04 P06 | 41 min | 2 tasks | 28 files |
+| Phase 04 P07 | 43 min | 3 tasks | 29 files |
+| Phase 04 P08 | 53min | 3 tasks | 33 files |
+| Phase 04 P10 | 15 min | 2 tasks | 3 files |
+| Phase 04 P09 | 22 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -109,6 +122,40 @@ Recent decisions affecting current work:
 Phase 02 checkpoint answers (2026-11-01): the owner selected `additive-backup`
 for 02-01 and replied `approved` for the `toml` dependency in 02-02.
 Both Task 1 blocking-human gates are satisfied; do not ask again.
+- [Phase 04]: ratatui 0.30.2 with default features off and only the crossterm feature; crossterm is not a direct dependency
+- [Phase 04]: EDITOR is an argv split on ASCII whitespace and spawned with tokio::process, with no shell and no fallback.
+- [Phase 04]: The editor temp file is mode 0700 under the cache directory and is deleted after the read. Scripted tests do not suspend the terminal.
+- [Phase 04]: One confirm writes the snapshot, the pending publication, and the queued publish job in one Immediate transaction.
+- [Phase 04]: execute_publish commits sending before create_review and builds the review from that snapshot.
+- [Phase 04]: A second confirm returns Blocked while a publication is pending, sending, or unknown. A submitted draft returns DraftSubmitted. A unique jobs.publication_id conflict returns Blocked and rolls back.
+- [Phase 04]: Keep is the highlighted confirm choice. Enter on Keep closes the modal and does not call Store::discard.
+- [Phase 04]: Enter on Discard calls Store::discard and reloads queue rows so the target leaves the list.
+- [Phase 04]: Opening a PR spawns the platform open program with one argument, PrRef::web_url. A spawn error is drawn.
+- [Phase 04]: n calls Store::enqueue_review with JobOrigin::Manual and force false. The explanation is shown when the lock holder is not Role::Watch.
+- [Phase 04]: a sends APPROVE, r sends REQUEST_CHANGES, and c sends COMMENT. A head that differs from the run head returns without a stale question. Stale confirmation stays in 04-06.
+- [Phase 04]: tui serves publish jobs only. The next reconcile or sync job ends the loop. A queued review job stays queued. The queue shows runner: tui while this process holds the lock.
+- [Phase 04]: A second publish key while a publication is pending is Blocked. A submitted draft draws this draft is already submitted and posts nothing further.
+- [Phase 04]: u asks first. Keep queued is highlighted. The other choice abandons the publication with reason cancelled by me and cancels the queued job. A started publication stays as it is. q leaves it pending.
+- [Phase 04]: 04-06: Don't send is highlighted for a stale draft and for a head that moved. Send anyway stores the fetched head as confirmed_sha. commit_id stays the run head.
+- [Phase 04]: 04-06: Decline sets the job cancelled and the publication abandoned with reason declined in one transaction. Redelivery fails that job and does not insert a publication.
+- [Phase 04]: 04-06: A pending review matches the exact login and the exact state PENDING. 408, 429, and 500-599 retry. Any other 4xx, including 401 and 403, abandons immediately. create_review is not retried.
+- [Phase 04]: In-process crash points are an AtomicU8 and Hold. set_var is unsafe in edition 2024. DIFFMATE_CRASH_POINT still hangs a child process.
+- [Phase 04]: A running publish that is still pending is requeued. sending and unknown fail with outcome unknown. submitted succeeds the job. rejected and abandoned fail without another POST.
+- [Phase 04]: Recovery inserts one reconcile job per unknown publication and does not call gh. A second recovery does not duplicate a queued or running reconcile.
+- [Phase 04]: create_review is bounded at 30 seconds. A timeout, a network error, or HTTP 500-599 leaves unknown. Other HTTP statuses, including 401, 403, and 422, reject. The POST is not retried.
+- [Phase 04]: Reconcile submits only from unknown when a review by the current login contains the publication marker. A missing marker or a failed list leaves unknown.
+- [Phase 04]: y enqueues one reconcile and runs it. b highlights Leave unknown. Abandon writes confirmed by me.
+- [Phase 04]: Watch runs one due publish, reconcile, or sync job on the one-second lock poll while the agent future stays pending. Shutdown uses request_stop.
+- [Phase 04]: Comment sync is queued in the submitted transaction, retries the same job 60 seconds later via next_attempt_at, and never calls create_review.
+- [Phase 04]: previous.json reads isResolved for linked inline findings. A failed read writes unknown and does not fail the review. Body findings stay none.
+- [Phase 04]: Status and the queue join the latest review job, so a later publish or sync does not replace the review run. — Retry text uses that same review job. Publication state, draft freshness, and both ORDER BY clauses stay as they were.
+- [Phase 04]: tui serve runs a due sync with execute_sync and continues the loop; later() owns next_attempt_at
+- [Phase 04]: A second POST is another create_review of the same publication. The continuation fixture uses another draft only so its job id sorts after the sync.
+- [Phase 04]: The crash remote create_review check prefers a sending publication when more than one row exists.
+- [Phase 05]: doctor prints five lines and does not take the runner lock or migrate. user_version stays 5. A broken config.toml fails only the storage line.
+- [Phase 05]: Install instructions are docs/install.md. The plist stays in dotfiles. Umask is the string 0077.
+- [Phase 05]: The owner marked the reboot check pass. Phase 2 stays unaccepted.
+- [Phase 03]: The owner marked both live queue checks pass on 2026-11-12. Phase 2 stays open.
 
 ### Pending Todos
 
@@ -118,9 +165,8 @@ None yet.
 
 - [Phase 1]: Tool-level confinement (an agent Read outside the worktree or through a symlink) has no direct control; accepted in Phase 1 UAT (01-11 coverage D6)
 - [Phase 1]: Isolation is proven per Claude CLI version (last: 2.1.311); rerun `mise run test:e2e` after a CLI upgrade
-- [Phase 2]: Anthropic HTTP 403 requires account verification. The owner explicitly chose to preserve the live gate as blocked: do not repeat Claude API calls automatically or treat this as a waiver. Six non-model E2E checks passed; auth failed and four model-backed cases remain unrun.
-- [Phase 2]: Implementation is complete with no code-review findings or verification code gaps. `.planning/phases/02-reliability/02-UAT.md` preserves 12 pending acceptance/confirmation items and 2 blocked live items. The owner continued into Phase 3 on 2026-11-09 without marking those items. Do not mark any UAT item pass. Resume `/gsd-verify-work 02` when accepting Phase 2.
-- [Phase 3]: The QUE-07 discard key stays in Phase 4. This phase uses hidden `debug discard` (D-02).
+- [Phase 2]: Anthropic HTTP 403 requires account verification. On 2026-11-12 the owner chose to continue without Anthropic. LIVE-01 and LIVE-02 stay blocked. Do not call the Claude API or `mise run test:e2e`, and do not treat this as a waiver. Six non-model E2E checks passed; four model-backed cases remain unrun.
+- [Phase 2]: Implementation is complete. On 2026-11-12 the owner marked UAT tests 1–10 and 13–14 pass. Do not mark phase 2 accepted. Resume `/gsd-verify-work 02` only when the owner explicitly says Anthropic access is restored.
 - [Phase 3]: macOS notifications use `osascript` with no new crate (D-01). A give-up names the failure reason.
 
 ### Quick Tasks Completed
@@ -139,6 +185,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-11-09T13:05:00.000Z
-Stopped at: Phase 03 plans implemented; Phase 02 acceptance still open; resume PR review
-Resume file: .planning/phases/03-queue/03-06-SUMMARY.md
+Last session: 2026-11-12T11:43:10Z
+Stopped at: Phase 03 complete. Phase 2 stays open for the blocked live gate
+Resume file: None

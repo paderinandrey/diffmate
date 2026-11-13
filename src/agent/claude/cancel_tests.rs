@@ -1,5 +1,4 @@
 use super::ClaudeCli;
-use crate::agent::probe::PROBE_OK_TEXT;
 use crate::agent::{Agent, AgentOutcome, AgentRequest};
 use crate::procenv::InheritedEnv;
 use rustix::process::{Pid, test_kill_process, test_kill_process_group};
@@ -10,17 +9,18 @@ use std::process::Command;
 use tempfile::TempDir;
 use tokio::sync::{mpsc, watch};
 
-const VERSION: &str = "echo '2.1.304 (Claude Code)'; exit 0";
+const VERSION: &str = "echo 'grok 1.0.77 (test) [stable]'; exit 0";
+const HELP: &str = "--single --tools --disallowed-tools --disable-web-search --no-subagents --sandbox --permission-mode --output-format --json-schema --rules";
 
 fn install_fake(dir: &Path, version: &str) -> ClaudeCli {
     let script = format!(
         "#!/bin/sh\n[ \"$1\" = \"--version\" ] && {{ {version}; }}\n\
-         [ -z \"$(cat)\" ] && {{ echo '{PROBE_OK_TEXT}' >&2; exit 1; }}\nexec sleep 300\n"
+         [ \"$1\" = \"--help\" ] && {{ printf '%s\\n' '{HELP}'; exit 0; }}\nexec sleep 300\n"
     );
     let bin = dir.join("fake-bin");
     fs::create_dir(&bin).unwrap();
-    fs::write(bin.join("claude"), script).unwrap();
-    fs::set_permissions(bin.join("claude"), fs::Permissions::from_mode(0o755)).unwrap();
+    fs::write(bin.join("grok"), script).unwrap();
+    fs::set_permissions(bin.join("grok"), fs::Permissions::from_mode(0o755)).unwrap();
     let inherited = std::env::var_os("PATH").unwrap();
     let dirs = std::iter::once(bin).chain(std::env::split_paths(&inherited));
     let path = std::env::join_paths(dirs).unwrap();

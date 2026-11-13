@@ -72,7 +72,7 @@ pub(crate) fn classify(captured: &Captured, schemas: &Schemas) -> AgentOutcome {
     detail.terminal_reason = fields.get("terminal_reason").cloned();
     let subtype = fields.subtype().unwrap_or("none").to_string();
     if fields.logged_out() {
-        detail.message = "Claude CLI is not authenticated".into();
+        detail.message = "Grok CLI is not authenticated".into();
         return failed(FailureKind::CliError, detail, metrics);
     }
     if fields.subtype() == Some(RETRIES_EXHAUSTED) {

@@ -66,11 +66,29 @@ pub(crate) fn excerpt(bytes: &[u8], max: usize) -> String {
     String::from_utf8_lossy(&bytes[..bytes.len().min(max)]).into_owned()
 }
 
-pub(crate) async fn run_tool(
+pub(crate) async fn run_tool(program: &'static str, command: Command) -> Result<Vec<u8>, Error> {
+    run_captured(program, command, None).await
+}
+
+pub(crate) async fn run_tool_with_stdin(
+    program: &'static str,
+    command: Command,
+    stdin: Vec<u8>,
+) -> Result<Vec<u8>, Error> {
+    run_captured(program, command, Some(stdin)).await
+}
+
+async fn run_captured(
     program: &'static str,
     mut command: Command,
+    stdin: Option<Vec<u8>>,
 ) -> Result<Vec<u8>, Error> {
-    command.stdin(Stdio::null()).stdout(Stdio::piped());
+    if stdin.is_some() {
+        command.stdin(Stdio::piped());
+    } else {
+        command.stdin(Stdio::null());
+    }
+    command.stdout(Stdio::piped());
     command.stderr(Stdio::piped()).kill_on_drop(true);
     let words: Vec<_> = command.as_std().get_args().collect();
     let words: Vec<_> = words.iter().map(|word| word.to_string_lossy()).collect();
@@ -82,7 +100,7 @@ pub(crate) async fn run_tool(
         stdout: 32 << 20,
         stderr: 64 << 10,
     };
-    let done = Box::pin(finish(child, None, limits)).await;
+    let done = Box::pin(finish(child, stdin, limits)).await;
     let done = done.map_err(Error::io(format!("run {program}")))?;
     let fail = |detail: String| Error::Command {
         program,

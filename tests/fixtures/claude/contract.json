@@ -1,7 +1,7 @@
 {
-  "cli_version": "2.1.304",
-  "version_stdout": "2.1.304 (Claude Code)",
-  "production_flags": ["-p", "--safe-mode", "--restricted", "--strict-mcp-config", "--tools", "Read,Grep,Glob", "--no-session-persistence", "--permission-prompts", "none", "--disable-slash-commands", "--add-dir", "CONTEXT_DIR", "--append-system-prompt-file", "PROMPT_FILE", "--output-format", "json", "--json-schema", "CLI_SCHEMA"],
+  "cli_version": "1.0.77",
+  "version_stdout": "grok 1.0.77 (50ca579fa996) [stable]",
+  "production_flags": ["-p", "PROMPT", "--tools", "read_file,grep,list_dir", "--disallowed-tools", "run_terminal_cmd,write,search_replace,web_search,web_fetch,task,Agent,search_tool,use_tool,todo_write", "--disable-web-search", "--no-subagents", "--sandbox", "read-only", "--permission-mode", "dontAsk", "--output-format", "streaming-messages-json", "--json-schema", "CLI_SCHEMA", "--rules", "RULES"],
   "probe": {
     "ok_stderr": "Error: Input must be provided either through stdin or as a prompt argument when using --print",
     "ok_exit_code": 1,
@@ -12,7 +12,7 @@
     "flags_accepted": true
   },
   "auth_env_required": ["PATH", "HOME", "USER", "LOGNAME"],
-  "auth_env_allowlist": ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "CLAUDE_CONFIG_DIR", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE"],
+  "auth_env_allowlist": ["PATH", "HOME", "USER", "LOGNAME", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "XAI_API_KEY", "GROK_CODE_XAI_API_KEY", "GROK_HOME", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "SSL_CERT_FILE"],
   "auth_env_not_needed": ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_EXECPATH", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET", "CLAUDE_CODE_MESSAGING_TOKEN", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_EFFORT", "CLAUDE_PID"],
   "envelope": {
     "fields_success": ["duration_api_ms", "stop_reason", "session_id", "total_cost_usd", "usage", "modelUsage", "permission_denials", "terminal_reason", "fast_mode_state", "fast_mode_disabled_reason", "subagent_stats", "safety_stops", "is_error", "num_turns", "subtype", "api_error_status", "result", "structured_output", "ttft_ms", "type", "duration_ms", "uuid", "ttft_stream_ms", "time_to_request_ms", "first_content_frame_ms", "queued_turn_count", "result_index"],

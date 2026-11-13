@@ -3,11 +3,12 @@ S='@STATE@'
 n=1
 while ! mkdir "$S/calls/$n" 2>/dev/null; do n=$((n+1)); done
 d="$S/calls/$n"
-for a in "$@"; do printf '%s\n' "$a"; done > "$d/argv"
+for a in "$@"; do printf '%s\0' "$a"; done > "$d/argv"
 env | sort > "$d/env"
 pwd > "$d/cwd"
 echo $$ > "$d/pid"
 if [ "$1" = "--version" ]; then cat "$S/version"; exit 0; fi
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then cat "$S/help"; exit "$(cat "$S/help_exit")"; fi
 cat > "$d/stdin"
 if [ ! -s "$d/stdin" ]; then
   cat "$S/probe_stderr" >&2
@@ -19,6 +20,13 @@ echo "$r" > "$S/run_count"
 prev=
 for a in "$@"; do
   if [ "$prev" = "--add-dir" ]; then cp -R "$a" "$d/context"; fi
+  case "$a" in
+    *"context files are in "*)
+      rest=${a#*"context files are in "}
+      dir=${rest%%. Follow*}
+      if [ -d "$dir" ]; then cp -R "$dir" "$d/context"; fi
+      ;;
+  esac
   prev=$a
 done
 if [ -e "$S/spawn_child" ]; then

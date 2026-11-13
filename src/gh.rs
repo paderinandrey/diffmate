@@ -1,7 +1,9 @@
 mod checks;
 mod discussion;
 mod meta;
+mod reviews;
 mod search;
+mod threads;
 
 use crate::error::Error;
 use crate::pr_url::PrRef;
@@ -10,6 +12,9 @@ use crate::procenv::{InheritedEnv, Pairs};
 use std::ffi::OsStr;
 use std::future::Future;
 use tokio::process::Command;
+
+pub(crate) use reviews::{CreatedReview, InlineComment, ListedReview, ReviewRequest};
+pub(crate) use threads::{CommentLink, ThreadState};
 
 pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
@@ -37,6 +42,68 @@ pub(crate) trait Gh {
     fn search_review_requested(
         &self,
     ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send;
+    fn current_login(&self) -> impl Future<Output = Result<String, Error>> + Send
+    where
+        Self: Sized,
+    {
+        unsupported(self)
+    }
+    fn list_my_reviews(
+        &self,
+        pr: &PrRef,
+    ) -> impl Future<Output = Result<Vec<ListedReview>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = pr;
+        unsupported(self)
+    }
+    fn create_review(
+        &self,
+        pr: &PrRef,
+        review: &ReviewRequest,
+    ) -> impl Future<Output = Result<CreatedReview, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = (pr, review);
+        unsupported(self)
+    }
+    fn review_comment_threads(
+        &self,
+        pr: &PrRef,
+        review_id: &str,
+    ) -> impl Future<Output = Result<Vec<CommentLink>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = (pr, review_id);
+        unsupported(self)
+    }
+    fn thread_resolved(
+        &self,
+        pr: &PrRef,
+    ) -> impl Future<Output = Result<Vec<ThreadState>, Error>> + Send
+    where
+        Self: Sized,
+    {
+        let _ = pr;
+        unsupported(self)
+    }
+}
+
+fn publication_unavailable(source: &impl Sized) -> Error {
+    let _ = source;
+    Error::Command {
+        program: "gh",
+        args: String::new(),
+        detail: "publication is not available on this gh".into(),
+    }
+}
+
+fn unsupported<T>(source: &impl Sized) -> impl Future<Output = Result<T, Error>> + Send {
+    let error = publication_unavailable(source);
+    async move { Err(error) }
 }
 
 pub(crate) struct GhCli {
@@ -56,7 +123,7 @@ impl GhCli {
         GhCli { env: vars }
     }
 
-    fn command(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Command {
+    pub(crate) fn command(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> Command {
         let mut command = Command::new("gh");
         command.args(args).env_clear();
         command.envs(self.env.iter().map(|(name, value)| (name, value)));
@@ -91,5 +158,33 @@ impl Gh for GhCli {
             async move { run_tool("gh", command).await }
         })
         .await
+    }
+
+    async fn current_login(&self) -> Result<String, Error> {
+        reviews::current_login(self).await
+    }
+
+    async fn list_my_reviews(&self, pr: &PrRef) -> Result<Vec<ListedReview>, Error> {
+        reviews::list_my_reviews(self, pr).await
+    }
+
+    async fn create_review(
+        &self,
+        pr: &PrRef,
+        review: &ReviewRequest,
+    ) -> Result<CreatedReview, Error> {
+        reviews::create_review(self, pr, review).await
+    }
+
+    async fn review_comment_threads(
+        &self,
+        pr: &PrRef,
+        review_id: &str,
+    ) -> Result<Vec<CommentLink>, Error> {
+        threads::comments(self, pr, review_id).await
+    }
+
+    async fn thread_resolved(&self, pr: &PrRef) -> Result<Vec<ThreadState>, Error> {
+        threads::statuses(self, pr).await
     }
 }

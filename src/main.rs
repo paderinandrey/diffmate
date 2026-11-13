@@ -7,6 +7,7 @@ mod context;
 mod crash;
 mod debug;
 mod diff;
+mod doctor;
 mod error;
 mod gh;
 mod git;
@@ -17,6 +18,7 @@ mod paths;
 mod pr_url;
 mod proc;
 mod procenv;
+mod publish;
 mod recovery;
 mod render;
 mod review;
@@ -25,6 +27,7 @@ mod status;
 mod store;
 #[cfg(test)]
 mod tests;
+mod tui;
 mod watch;
 
 use clap::Parser;
@@ -41,7 +44,7 @@ fn main() -> ExitCode {
     };
     if matches!(
         cli.command,
-        cli::Command::Review { .. } | cli::Command::Watch
+        cli::Command::Review { .. } | cli::Command::Watch | cli::Command::Tui
     ) {
         match config::load(&config.config_file) {
             Ok(settings) => config.settings = settings,
@@ -66,6 +69,8 @@ fn main() -> ExitCode {
         cli::Command::Review { url, force } => runtime.block_on(review::run(&config, &url, force)),
         cli::Command::Status => runtime.block_on(status::run(&config)),
         cli::Command::Watch => runtime.block_on(watch::run(&config)),
+        cli::Command::Tui => runtime.block_on(tui::run(&config)),
+        cli::Command::Doctor => runtime.block_on(doctor::run(&config)),
         cli::Command::Debug { command } => match command {
             cli::DebugCommand::Enqueue {
                 url,

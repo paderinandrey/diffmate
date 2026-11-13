@@ -32,3 +32,17 @@ pub(super) fn describe(
     let short: String = head.chars().take(12).collect();
     format!("{state}: head {short}, checked {checked}")
 }
+
+pub(crate) fn stored(draft_head: &str, known: Option<(&str, i64)>, now_ms: i64) -> String {
+    let Some((head, checked_at)) = known else {
+        return "freshness unknown: head never checked".to_string();
+    };
+    let state = if head == draft_head {
+        "current"
+    } else {
+        "stale"
+    };
+    let short: String = head.chars().take(12).collect();
+    let checked = when::ago(now_ms.saturating_sub(checked_at));
+    format!("{state}: head {short}, checked {checked}")
+}

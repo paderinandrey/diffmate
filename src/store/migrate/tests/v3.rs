@@ -37,7 +37,8 @@ async fn version_two_keeps_tracking_and_snapshots_that_version() {
     let (_tmp, paths) = version_two();
     drop(Store::open(&paths).await.unwrap());
     let conn = Connection::open(paths.db()).unwrap();
-    assert_eq!(version(&conn), 4);
+    assert_eq!(version(&conn), 5);
+    assert!(!paths.state_dir().join("diffmate.db.v4-backup").exists());
     let row: (i64, String, Option<String>, Option<String>) = conn
         .query_row(
             "SELECT request_seen, tracking, queued_head, head_sha FROM targets",
@@ -56,7 +57,7 @@ async fn fresh_database_has_no_backup() {
     let tmp = TempDir::new().unwrap();
     let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
     drop(Store::open(&paths).await.unwrap());
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 4);
+    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 5);
     assert!(!any_backup(&paths));
 }
 
@@ -91,7 +92,8 @@ async fn version_three_snapshots_that_version_and_adds_attempt_columns() {
     ));
     drop(Store::open(&paths).await.unwrap());
     let conn = Connection::open(paths.db()).unwrap();
-    assert_eq!(version(&conn), 4);
+    assert_eq!(version(&conn), 5);
+    assert!(!paths.state_dir().join("diffmate.db.v4-backup").exists());
     let columns: i64 = conn
         .query_row(
             "SELECT count(*) FROM pragma_table_info('jobs') WHERE name IN ('head_sha', 'held')",

@@ -10,6 +10,9 @@ mod steps;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+pub(crate) use agent_run::fakes::FakeGit;
+
 use crate::agent::Agent;
 use crate::cancel::{self, CancelRx};
 use crate::config::Settings;

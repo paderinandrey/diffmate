@@ -7,10 +7,24 @@ pub(super) struct Fields(Map<String, Value>);
 
 impl Fields {
     pub fn parse(stdout: &[u8]) -> Option<Fields> {
-        match serde_json::from_slice(stdout.trim_ascii()) {
-            Ok(Value::Object(map)) => Some(Fields(map)),
-            _ => None,
+        let trimmed = stdout.trim_ascii();
+        if let Ok(Value::Object(map)) = serde_json::from_slice(trimmed) {
+            return Some(Fields(map));
         }
+        let mut result = None;
+        for line in trimmed.split(|byte| *byte == b'\n') {
+            let line = line.trim_ascii();
+            if line.is_empty() {
+                continue;
+            }
+            let Ok(Value::Object(map)) = serde_json::from_slice::<Value>(line) else {
+                return None;
+            };
+            if map.get("type").and_then(Value::as_str) == Some("result") {
+                result = Some(Fields(map));
+            }
+        }
+        result
     }
 
     pub fn get(&self, key: &str) -> Option<&Value> {
@@ -44,7 +58,9 @@ impl Fields {
 
     pub fn reason(&self) -> String {
         let first_error = self.get("errors").and_then(|errors| errors.get(0));
-        let text = first_error.or_else(|| self.get("result"));
+        let text = first_error
+            .or_else(|| self.get("result"))
+            .or_else(|| self.get("message"));
         let text = text.and_then(Value::as_str).unwrap_or("no error text");
         text.chars().take(200).collect()
     }

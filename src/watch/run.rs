@@ -7,7 +7,9 @@ use crate::gh::Gh;
 use crate::git::Git;
 use crate::review::signals::Signals;
 use crate::runner::Deps;
-use crate::store::{Store, now_ms};
+use crate::store::{Store, now_ms, retry::QueuedJob};
+use std::future::Future;
+use tokio::sync::watch;
 
 pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
     config: &AppConfig,
@@ -40,11 +42,109 @@ pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
             }
         }
         if let Some(queued) = store.next_runnable_job(now_ms()).await? {
-            if job::run(config, store, deps, signals, &queued).await? {
+            if alongside(config, store, deps, signals, &queued).await? {
                 return Ok(());
+            }
+        } else if store.next_service_job(now_ms()).await?.is_some() {
+            tokio::select! {
+                biased;
+                _ = signals.next(StopReason::Shutdown) => {
+                    stopped();
+                    return Ok(());
+                }
+                result = serve(config, store, deps) => result?,
             }
         } else if idle(store, signals, next_poll_at).await? {
             return Ok(());
+        }
+    }
+}
+
+async fn alongside<G: Git, H: Gh, A: Agent>(
+    config: &AppConfig,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+    signals: &mut Signals,
+    queued: &QueuedJob,
+) -> Result<bool, Error> {
+    let prefix = format!("job {} review {}", queued.job.job_id, queued.pr.label());
+    events::print(&format!("{prefix} started"));
+    let (stop, cancel) = watch::channel(false);
+    let review = crate::runner::execute_review_job(
+        &config.paths,
+        store,
+        deps,
+        &queued.pr,
+        &queued.job,
+        &cancel,
+    );
+    let mut review = std::pin::pin!(review);
+    let mut service: std::pin::Pin<Box<dyn Future<Output = Result<(), Error>> + '_>> =
+        Box::pin(service_slot(config, store, deps));
+    let mut review_result = None;
+    let result = loop {
+        let review_done = review_result.is_some();
+        tokio::select! {
+            biased;
+            result = &mut review, if !review_done => {
+                review_result = Some(result);
+            }
+            _ = signals.next(StopReason::Shutdown) => {
+                drop(service);
+                let job_id = queued.job.job_id;
+                crate::review::signals::request_stop(&stop, store, job_id, StopReason::Shutdown)
+                    .await;
+                break match review_result {
+                    Some(result) => result,
+                    None => review.await,
+                };
+            }
+            outcome = &mut service => {
+                outcome?;
+                if let Some(result) = review_result.take() {
+                    break result;
+                }
+                service = Box::pin(service_slot(config, store, deps));
+            }
+        }
+    };
+    job::complete(config, store, queued, &result, &stop).await
+}
+
+async fn service_slot<G: Git, H: Gh, A: Agent>(
+    config: &AppConfig,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+) -> Result<(), Error> {
+    tokio::time::sleep(super::WATCH_LOCK_POLL).await;
+    serve(config, store, deps).await
+}
+
+async fn serve<G: Git, H: Gh, A: Agent>(
+    config: &AppConfig,
+    store: &Store,
+    deps: &Deps<G, H, A>,
+) -> Result<(), Error> {
+    let Some(job) = store.next_service_job(now_ms()).await? else {
+        return Ok(());
+    };
+    match job.kind.as_str() {
+        "publish" => {
+            store.start_job(job.id).await?;
+            crate::publish::execute_publish(store, &deps.gh, job.id, config.settings.max_retries())
+                .await
+        }
+        "reconcile" => {
+            store.start_job(job.id).await?;
+            crate::publish::execute_reconcile(store, &deps.gh, job.id).await
+        }
+        "sync" => {
+            store.start_job(job.id).await?;
+            crate::publish::execute_sync(store, &deps.gh, job.id).await
+        }
+        _ => {
+            tokio::time::sleep(super::WATCH_LOCK_POLL).await;
+            Ok(())
         }
     }
 }

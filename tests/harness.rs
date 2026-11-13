@@ -24,7 +24,7 @@ fn fake_claude_answers_version_probe_and_run() {
     let context = tmp.path().join("context");
     fs::create_dir(&context).unwrap();
     fs::write(context.join("pr.md"), "pr").unwrap();
-    let program = bin.join("claude");
+    let program = bin.join("grok");
 
     let version = exec(&program, &["--version"], "");
     assert_eq!(
@@ -60,7 +60,7 @@ fn fake_claude_holds_run_and_spawns_child() {
     let claude = FakeClaude::install(&bin, &tmp.path().join("state"));
     claude.spawn_child();
     let hold = claude.hold_run(1);
-    let mut child = Command::new(bin.join("claude"))
+    let mut child = Command::new(bin.join("grok"))
         .arg("-p")
         .stdin(Stdio::piped())
         .stdout(Stdio::null())

@@ -1,42 +1,24 @@
 use super::events;
-use crate::agent::Agent;
 use crate::app::AppConfig;
-use crate::cancel::StopReason;
 use crate::error::Error;
-use crate::gh::Gh;
-use crate::git::Git;
 use crate::notify;
-use crate::review::signals::{self, Signals};
-use crate::runner::{self, Deps, Follow, ReviewResult};
+use crate::runner::{Follow, ReviewResult};
 use crate::store::records::JobOrigin;
 use crate::store::{Store, now_ms, retry::QueuedJob};
 use tokio::sync::watch;
 
-pub(super) async fn run<G: Git, H: Gh, A: Agent>(
+pub(super) async fn complete(
     config: &AppConfig,
     store: &Store,
-    deps: &Deps<G, H, A>,
-    signals: &mut Signals,
     queued: &QueuedJob,
+    result: &ReviewResult,
+    stop: &watch::Sender<bool>,
 ) -> Result<bool, Error> {
+    follow(config, store, queued, result).await?;
     let prefix = format!("job {} review {}", queued.job.job_id, queued.pr.label());
-    events::print(&format!("{prefix} started"));
-    let (stop, cancel) = watch::channel(false);
-    let review =
-        runner::execute_review_job(&config.paths, store, deps, &queued.pr, &queued.job, &cancel);
-    let result = signals::until_done(
-        stop,
-        review,
-        store,
-        queued.job.job_id,
-        StopReason::Shutdown,
-        signals,
-    )
-    .await?;
-    follow(config, store, queued, &result).await?;
-    events::print(&format!("{prefix} {}", events::outcome(&result)));
-    announce(store, queued, &result).await?;
-    let halt = *cancel.borrow();
+    events::print(&format!("{prefix} {}", events::outcome(result)));
+    announce(store, queued, result).await?;
+    let halt = *stop.borrow();
     if halt {
         super::run::stopped();
     }

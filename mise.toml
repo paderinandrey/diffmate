@@ -1,5 +1,5 @@
 [tools]
-hk = "2.11.1"
+hk = "2.12.0"
 pkl = "0.33.0"
 gitleaks = "8.30.1"
 lychee = "0.24.2"
@@ -31,7 +31,7 @@ sources = ["**/*.rs", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml"]
 run = "cargo nextest run --locked --features crash-points"
 
 [tasks."test:e2e"]
-description = "Run the local-only #[ignore] live checks that need real claude and gh auth (never run in CI)"
+description = "Run the local-only #[ignore] live checks that need real grok, claude, or gh auth (never run in CI)"
 run = "cargo nextest run --locked --run-ignored only --no-tests=warn"
 
 [tasks.coverage]

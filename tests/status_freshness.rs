@@ -24,7 +24,7 @@ fn status_shows_an_unmoved_head_as_current() {
     let (_, head) = with_pr(&sandbox);
     assert!(review(&sandbox).status.success());
     assert!(status(&sandbox).ends_with(&format!(
-        "  current: head {}, checked just now\n",
+        "  current: head {}, checked just now  none\n",
         &head[..12]
     )));
 }
@@ -37,7 +37,7 @@ fn status_shows_a_moved_head_as_stale() {
     let moved = "9f3c2a1b4e5d0000000000000000000000000000";
     let json = pr_view_json("o", "r", 1, moved, "main", false);
     sandbox.gh.replace_route(&format!("pr view {URL}"), &json);
-    assert!(status(&sandbox).ends_with("  stale: head 9f3c2a1b4e5d, checked just now\n"));
+    assert!(status(&sandbox).ends_with("  stale: head 9f3c2a1b4e5d, checked just now  none\n"));
     let db = database(&sandbox);
     let stored: String = db
         .query_row("SELECT head_sha FROM runs", [], |r| r.get(0))
@@ -58,7 +58,7 @@ fn a_moved_base_branch_keeps_the_draft_current() {
     upstream.commit(&[("base-only.txt", "base change")], "advance base");
     upstream.push_branch("main");
     assert!(status(&sandbox).ends_with(&format!(
-        "  current: head {}, checked just now\n",
+        "  current: head {}, checked just now  none\n",
         &head[..12]
     )));
 }

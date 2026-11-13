@@ -14,9 +14,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Single review** - `diffmate review <url>` and `status` with an isolated agent, validated output, runner lock, bare clone and worktree (completed 2026-10-27)
 - [ ] **Phase 2: Reliability** - idempotent runs, crash recovery, freshness, timeouts, `--force`, signal handling, job attachment
-- [ ] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications
-- [ ] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync
-- [ ] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor`
+- [x] **Phase 3: Queue** - `diffmate watch` with tracking, debounce, retries, job handoff, and macOS notifications (completed 2026-11-12)
+- [x] **Phase 4: Review and publish** - `diffmate tui`, decisions, editing, and the publication state machine with reconciliation and comment sync (completed 2026-11-11)
+- [x] **Phase 5: Daily use** - launchd agent for `watch`, install instructions, and `diffmate doctor` (completed 2026-11-11)
 
 ## Phase Details
 
@@ -140,7 +140,7 @@ Plans:
   - SPEC.md does not fix the macOS notification mechanism. Pick it in planning, with the latest stable version of whatever it uses. Candidate research item.
   - `config.toml` gains the poll interval and `debounce` (QUE-11).
 
-**Plans:** 8 plans
+**Plans:** 8/8 plans complete
 
 Plans:
 **Wave 1**
@@ -186,7 +186,33 @@ Plans:
   - Failure injection on the GitHub call (timeouts, client and server errors) needs a test seam on the `gh` boundary.
   - Thread statuses are read from GitHub GraphQL and feed `previous.json` for later re-reviews; comment links come from comment sync.
 
-**Plans**: TBD
+**Plans**: 10/10 plans complete
+**Wave 1**
+- [x] 04-01-PLAN.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 04-02-PLAN.md
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 04-03-PLAN.md
+- [x] 04-04-PLAN.md
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 04-05-PLAN.md
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 04-06-PLAN.md
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 04-07-PLAN.md
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [x] 04-08-PLAN.md
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [x] 04-09-PLAN.md
+- [x] 04-10-PLAN.md
+
 **UI hint**: yes
 
 ### Phase 5: Daily use
@@ -203,7 +229,13 @@ Plans:
   - OPS-01 and OPS-03 have no "Done when" line of their own; the two criteria exercise them. `doctor` checks `gh` auth, Claude CLI version and flag support, storage paths, the runner lock, and the SQLite schema version.
   - The reboot check is manual by nature.
 
-**Plans**: TBD
+**Plans**: 3/3 plans complete
+**Wave 1**
+- [x] 05-01-PLAN.md
+- [x] 05-03-PLAN.md
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 05-02-PLAN.md
 
 ## Progress
 
@@ -214,6 +246,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Single review | 12/12 | Complete    | 2026-10-27 |
 | 2. Reliability | 10/10 implemented | Human verification needed; live gate blocked | - |
-| 3. Queue | 8/8 implemented | Human verification needed | - |
-| 4. Review and publish | 0/TBD | Not started | - |
-| 5. Daily use | 0/TBD | Not started | - |
+| 3. Queue | 8/8 | Complete    | 2026-11-12 |
+| 4. Review and publish | 10/10 | Complete    | 2026-11-11 |
+| 5. Daily use | 3/3 | Complete    | 2026-11-11 |

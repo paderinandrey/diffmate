@@ -3,6 +3,7 @@ mod concurrency;
 mod helpers;
 mod rollback;
 mod v3;
+mod v5;
 
 use crate::error::Error;
 use crate::paths::Paths;
@@ -27,16 +28,15 @@ async fn fresh_and_upgraded_schemas_match() {
 
 #[tokio::test]
 async fn newer_version_is_refused_and_left_alone() {
-    let (_tmp, paths) = fixture(5);
+    let (_tmp, paths) = fixture(6);
     let before = fs::read(paths.db()).unwrap();
     assert!(matches!(
         Store::open(&paths).await,
-        Err(Error::SchemaVersion(5))
+        Err(Error::SchemaVersion(6))
     ));
     assert_eq!(fs::read(paths.db()).unwrap(), before);
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 5);
-    assert!(!paths.state_dir().join("diffmate.db.v1-backup").exists());
-    assert!(!paths.state_dir().join("diffmate.db.v2-backup").exists());
+    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 6);
+    assert_eq!(fs::read_dir(paths.state_dir()).unwrap().count(), 1);
 }
 
 #[tokio::test]
@@ -47,7 +47,7 @@ async fn reopening_migrated_database_changes_nothing() {
     let before = (schema(&conn), contents(&conn));
     drop(Store::open(&paths).await.unwrap());
     assert_eq!((schema(&conn), contents(&conn)), before);
-    assert_eq!(version(&conn), 4);
+    assert_eq!(version(&conn), 5);
 }
 
 #[tokio::test]

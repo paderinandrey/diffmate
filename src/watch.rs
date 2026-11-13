@@ -2,6 +2,8 @@ mod events;
 mod job;
 mod poll;
 mod run;
+#[cfg(test)]
+mod service_tests;
 mod timing;
 mod wait;
 

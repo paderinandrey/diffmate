@@ -30,15 +30,15 @@ Every PR where my review is directly requested gets an honest, ready-to-read dra
 ### Validated
 
 - ✓ Single review (REV-01 to REV-12): `diffmate review <url>` and `diffmate status`, Claude CLI and git isolation, output validation, runner lock, bare clone and worktree — Phase 1
+- ✓ Review and publish (PUB-01 to PUB-15): `diffmate tui`, decisions, editing, one publication, reconciliation, and comment sync — Phase 4
+- ✓ Daily use (OPS-01 to OPS-05): launchd install instructions and `diffmate doctor` — Phase 5
+- ✓ Queue (QUE-01 to QUE-11): `diffmate watch`, tracking, debounce, retries, macOS notifications, and job handoff — Phase 3
 
 ### Active
 
-Four remaining groups, one per SPEC delivery slice, in SPEC order. Full text and IDs are in `.planning/REQUIREMENTS.md`.
+One group remains. Full text and IDs are in `.planning/REQUIREMENTS.md`.
 
 - [ ] Reliability (REL-01 to REL-13): idempotent runs, crash recovery, draft freshness, timeouts, `--force`, signal handling, job attachment.
-- [ ] Queue (QUE-01 to QUE-11): `diffmate watch`, tracking, debounce, retries, macOS notifications, job handoff.
-- [ ] Review and publish (PUB-01 to PUB-15): `diffmate tui`, decisions, editing, publication state machine, reconciliation, comment sync.
-- [ ] Daily use (OPS-01 to OPS-05): launchd agent for `watch`, install instructions, `diffmate doctor`.
 
 ### Out of Scope
 
@@ -103,6 +103,9 @@ These are the SPEC non-goals.
 | The agent PATH gets a git wrapper forcing `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_NOSYSTEM=1`; the isolated tool set is Read, Grep, Glob, StructuredOutput, DeferredToolPlaceholder (owner decision A1) | The CLI's own git calls must not read global or system config; DeferredToolPlaceholder is inert | Good: proven by REV-08 (Phase 1) |
 | Isolation items the CLI cannot exercise directly get substitute controls: a CLAUDE.md at the add-dir root and an open control without `--tools` and `--disable-slash-commands` (owner decision 2026-10-22, option a) | `rules/CLAUDE.md` and agents/commands/skills do not load even without isolation, so a direct control would be vacuous | Good: controls fire, isolated runs show nothing |
 | `MIT-0` is an allowed license in `deny.toml` | It is MIT without the attribution clause; `borrow-or-share` (via `jsonschema`) uses it | Good |
+| Phase 4 serves sync inside `tui` and keeps the latest review run | While `tui` holds the lock it runs a due sync, then reconcile or a newer publish, with no second POST. Queue and status join `kind = 'review'`. A missing marker stays `unknown` | Good: UAT 3/3 and verification passed |
+| Phase 5 doctor is read-only and the launchd agent is documented, not committed | Five stdout lines, no lock and no migration. `docs/install.md` holds the plist example. The live plist stays in dotfiles. The reboot check is manual | Good: UAT passed |
+| Phase 3 watch tracks a direct review request and notifies | A direct request becomes one automatic review and a Notification Center line. A give-up names the reason. SIGTERM requeues and does not notify | Good: UAT 2/2 and verification passed |
 
 ## Evolution
 
@@ -122,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-10-27 after Phase 1*
+*Last updated: 2026-11-12 after Phase 3*

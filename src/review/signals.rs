@@ -49,7 +49,7 @@ pub(crate) async fn until_done<F: Future>(
     Ok(job.await)
 }
 
-async fn request_stop(
+pub(crate) async fn request_stop(
     stop: &watch::Sender<bool>,
     store: &Store,
     job_id: JobId,

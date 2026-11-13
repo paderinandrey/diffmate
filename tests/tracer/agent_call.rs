@@ -14,13 +14,14 @@ pub fn assert_agent_call(sandbox: &Sandbox) {
     let mut schema: Value =
         serde_json::from_str(include_str!("../../schemas/review.schema.json")).unwrap();
     schema.as_object_mut().unwrap().remove("$schema");
+    let prompt = format!(
+        "Review the pull request whose context files are in {}. Follow the review rules and return only the JSON document they describe.",
+        context.display()
+    );
+    let rules = include_str!("../../prompts/review.md");
     let substitute = |flag: &str| match flag {
-        "CONTEXT_DIR" => context.to_str().unwrap().to_string(),
-        "PROMPT_FILE" => run_dir
-            .join("prompt/review.md")
-            .to_str()
-            .unwrap()
-            .to_string(),
+        "PROMPT" => prompt.clone(),
+        "RULES" => rules.to_string(),
         "CLI_SCHEMA" => schema.to_string(),
         other => other.to_string(),
     };
@@ -40,7 +41,7 @@ pub fn assert_agent_call(sandbox: &Sandbox) {
     );
     assert!(copy.join("pr.md").exists());
     let stdin = String::from_utf8(call.stdin.clone()).unwrap();
-    assert!(stdin.contains(context.to_str().unwrap()));
+    assert_eq!(stdin, prompt);
     assert!(!stdin.contains("Fixture"));
     let env: BTreeMap<_, _> = call.env.iter().cloned().collect();
     assert_eq!(env["GIT_CONFIG_GLOBAL"], "/dev/null");
@@ -55,11 +56,35 @@ pub fn assert_agent_call(sandbox: &Sandbox) {
     allowed.extend([
         "GIT_CONFIG_GLOBAL",
         "GIT_CONFIG_NOSYSTEM",
+        "GROK_CLAUDE_AGENTS_ENABLED",
+        "GROK_CLAUDE_HOOKS_ENABLED",
+        "GROK_CLAUDE_MCPS_ENABLED",
+        "GROK_CLAUDE_RULES_ENABLED",
+        "GROK_CLAUDE_SKILLS_ENABLED",
+        "GROK_CURSOR_AGENTS_ENABLED",
+        "GROK_CURSOR_HOOKS_ENABLED",
+        "GROK_CURSOR_MCPS_ENABLED",
+        "GROK_CURSOR_RULES_ENABLED",
+        "GROK_CURSOR_SKILLS_ENABLED",
         "PWD",
         "SHLVL",
         "OLDPWD",
         "_",
     ]);
+    for name in [
+        "GROK_CLAUDE_AGENTS_ENABLED",
+        "GROK_CLAUDE_HOOKS_ENABLED",
+        "GROK_CLAUDE_MCPS_ENABLED",
+        "GROK_CLAUDE_RULES_ENABLED",
+        "GROK_CLAUDE_SKILLS_ENABLED",
+        "GROK_CURSOR_AGENTS_ENABLED",
+        "GROK_CURSOR_HOOKS_ENABLED",
+        "GROK_CURSOR_MCPS_ENABLED",
+        "GROK_CURSOR_RULES_ENABLED",
+        "GROK_CURSOR_SKILLS_ENABLED",
+    ] {
+        assert_eq!(env[name], "0", "{name}");
+    }
     assert!(
         env.keys().all(|key| allowed.contains(&key.as_str())),
         "{env:?}"
