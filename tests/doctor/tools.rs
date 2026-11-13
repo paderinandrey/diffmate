@@ -11,9 +11,12 @@ fn failed_lines(sandbox: &Sandbox) -> Vec<String> {
 #[test]
 fn missing_gh_and_claude_name_path_without_a_sixth_line() {
     let sandbox = Sandbox::new();
+    let empty = sandbox.root.join("empty-bin");
+    std::fs::create_dir(&empty).unwrap();
+    let path = empty.display().to_string();
     let output = sandbox
         .diffmate()
-        .env("PATH", "/usr/bin:/bin")
+        .env("PATH", &empty)
         .args(["doctor"])
         .output()
         .unwrap();
@@ -21,8 +24,8 @@ fn missing_gh_and_claude_name_path_without_a_sixth_line() {
     let lines: Vec<_> = stdout.lines().collect();
     assert_eq!(output.status.code(), Some(1), "{stdout}");
     assert_eq!(lines.len(), 5, "{stdout}");
-    assert!(lines[0].contains("/usr/bin:/bin"), "{stdout}");
-    assert!(lines[1].contains("/usr/bin:/bin"), "{stdout}");
+    assert!(lines[0].contains(&path), "{stdout}");
+    assert!(lines[1].contains(&path), "{stdout}");
 }
 
 #[test]
