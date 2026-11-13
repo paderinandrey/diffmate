@@ -182,3 +182,57 @@ async fn a_moved_head_is_shown_without_resetting_the_choice() {
     assert!(session.confirming());
     assert!(session.confirm_modal().unwrap().highlighted_safe);
 }
+
+#[tokio::test]
+async fn an_open_draft_shows_a_moved_head() {
+    let (tmp, store) = open().await;
+    queue::seed(&store, 1).await;
+    let paths = paths(&tmp);
+    let mut session = Session::load(&store).await.unwrap();
+    session.bind_runner(
+        crate::app::ProcessInfo {
+            pid: 7,
+            started_at_ms: 8,
+        },
+        paths.lock(),
+    );
+    let gh = Fake::new(HEAD);
+    let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
+    let settings = Settings::default();
+    let mode = Mode::On {
+        gh: &gh,
+        git: &git,
+        paths: &paths,
+        settings: &settings,
+    };
+    store
+        .call(|conn| {
+            conn.execute(
+                "INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body)
+                 VALUES ('extra', 1, 1, 2, 'low', 'src/b.rs', 8, 'RIGHT', 'Other', 'more')",
+                [],
+            )
+        })
+        .await
+        .unwrap();
+    session.open_draft(&store).await.unwrap();
+    session.move_down();
+    let before = session.draft().unwrap().0.freshness.clone();
+    assert!(before.contains("current:"), "{before}");
+    let moved = "b".repeat(40);
+    store
+        .call(move |conn| conn.execute("UPDATE targets SET head_sha = ?1 WHERE id = 1", [moved]))
+        .await
+        .unwrap();
+    super::super::service(&mut session, &store, &mode)
+        .await
+        .unwrap();
+    let (draft, focus) = session.draft().unwrap();
+    assert!(draft.freshness.starts_with("stale:"), "{}", draft.freshness);
+    assert!(
+        draft.freshness.contains("bbbbbbbbbbbb"),
+        "{}",
+        draft.freshness
+    );
+    assert_eq!(focus, 1);
+}

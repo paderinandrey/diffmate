@@ -49,6 +49,7 @@ async fn enter_opens_the_draft_and_esc_restores_the_queue() {
     let anchored = text.find("src/a.rs:4").unwrap();
     let loose = text.find("(no file)").unwrap();
     assert!(anchored < loose, "{text}");
+    assert!(text.contains("current: head 0123456789ab"), "{text}");
     assert!(text.contains("anchored body"), "{text}");
     assert!(text.contains("Limitation: missing CI"), "{text}");
     assert!(

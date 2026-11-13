@@ -108,7 +108,8 @@ async fn service<H: crate::gh::Gh, G: crate::git::Git>(
         runner::drive(session, store, gh, git, paths, settings).await?;
     }
     session.reload_rows(store).await?;
-    post::poll_moved(session, store).await
+    post::poll_moved(session, store).await?;
+    session.reload(store).await
 }
 
 async fn apply<H: crate::gh::Gh, G: crate::git::Git>(

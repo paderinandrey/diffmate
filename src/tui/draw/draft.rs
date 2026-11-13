@@ -18,6 +18,12 @@ pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize, not
         area.height -= 1;
         frame.render_widget(Paragraph::new(sanitize(notice)), bar);
     }
+    if area.height > 0 {
+        let bar = Rect { height: 1, ..area };
+        frame.render_widget(Paragraph::new(sanitize(&draft.freshness)), bar);
+        area.y = area.y.saturating_add(1);
+        area.height = area.height.saturating_sub(1);
+    }
     let width = usize::from(area.width);
     let mut rows = Vec::new();
     let mut selected = 0..0;

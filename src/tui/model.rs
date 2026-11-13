@@ -458,7 +458,7 @@ impl Session {
         })
     }
 
-    async fn reload(&mut self, store: &Store) -> Result<(), Error> {
+    pub(super) async fn reload(&mut self, store: &Store) -> Result<(), Error> {
         let Screen::Draft(_) = &self.screen else {
             return Ok(());
         };
