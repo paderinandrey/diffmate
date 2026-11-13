@@ -11,5 +11,7 @@ mod sync;
 mod tests;
 
 pub(crate) use post::execute_publish;
+#[cfg(test)]
+pub(crate) use post::execute_publish_at;
 pub(crate) use reconcile::execute_reconcile;
 pub(crate) use sync::execute_sync;

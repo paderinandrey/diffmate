@@ -5,20 +5,22 @@ use crate::crash::Hold;
 
 #[tokio::test]
 async fn crash_before_sending_posts_once() {
-    let hold = Hold::point("publish-before-sending").await;
+    let hold = Arc::new(Hold::point("publish-before-sending"));
     let (tmp, store, remote, job) = ready().await;
     let gh = Arc::clone(&remote);
     let running = store.clone();
+    let probe = Arc::clone(&hold);
     let hung = tokio::spawn(async move {
-        let _ = crate::publish::execute_publish(&running, gh.as_ref(), job, 0).await;
+        let _ =
+            crate::publish::execute_publish_at(&running, gh.as_ref(), job, 0, probe.as_ref()).await;
     });
     for _ in 0..1_000 {
-        if crate::crash::parked("publish-before-sending") {
+        if hold.parked("publish-before-sending") {
             break;
         }
         tokio::task::yield_now().await;
     }
-    assert!(crate::crash::parked("publish-before-sending"));
+    assert!(hold.parked("publish-before-sending"));
     harness::recover(&harness::paths(&tmp), &store).await;
     assert_eq!(
         harness::text(&store, "SELECT state FROM publications").await,

@@ -206,33 +206,21 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
             session.ask_cancel(store).await?;
             Ok(false)
         }
-        keys::Command::Reconcile => {
-            post::reconcile(session, store, mode).await?;
-            Ok(false)
-        }
+        keys::Command::Reconcile => post::reconcile(session, store, mode, reader).await,
         keys::Command::Abandon => {
             session.ask_abandon(store).await?;
             Ok(false)
         }
-        keys::Command::Approve => {
-            post::send(session, store, mode, "APPROVE").await?;
-            Ok(false)
-        }
-        keys::Command::Request => {
-            post::send(session, store, mode, "REQUEST_CHANGES").await?;
-            Ok(false)
-        }
-        keys::Command::Comment => {
-            post::send(session, store, mode, "COMMENT").await?;
-            Ok(false)
-        }
+        keys::Command::Approve => post::send(session, store, mode, "APPROVE", reader).await,
+        keys::Command::Request => post::send(session, store, mode, "REQUEST_CHANGES", reader).await,
+        keys::Command::Comment => post::send(session, store, mode, "COMMENT", reader).await,
         keys::Command::Cancel => {
             session.cancel_confirm();
             Ok(false)
         }
         keys::Command::Accept => {
             if let Some(offer) = session.accept_confirm(store).await? {
-                post::commit(session, store, mode, &offer).await?;
+                return post::commit(session, store, mode, &offer, reader).await;
             }
             Ok(false)
         }
@@ -362,6 +350,7 @@ async fn pause_for_editor<T>(
     keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
     edit: impl std::future::Future<Output = T>,
 ) -> T {
+    let mut stop = StopGate(Some(gate));
     let waiting = std::sync::Arc::clone(gate);
     let pause = tokio::task::spawn_blocking(move || waiting.suspend_and_wait());
     tokio::pin!(pause);
@@ -379,8 +368,19 @@ async fn pause_for_editor<T>(
         }
     }
     while keys.try_recv().is_ok() {}
+    stop.0 = None;
     let _resume = Resume(gate);
     edit.await
+}
+
+struct StopGate<'a>(Option<&'a reader::KeyGate>);
+
+impl Drop for StopGate<'_> {
+    fn drop(&mut self) {
+        if let Some(gate) = self.0.take() {
+            gate.stop();
+        }
+    }
 }
 
 struct Resume<'a>(&'a reader::KeyGate);

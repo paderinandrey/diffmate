@@ -4,6 +4,10 @@ mod lock_line;
 #[cfg(test)]
 mod proc_locks;
 mod schema;
+mod seam;
+#[cfg(test)]
+#[path = "doctor/seam_tests.rs"]
+mod seam_tests;
 mod storage;
 mod which;
 
@@ -38,9 +42,11 @@ fn print_line(text: &str) {
 }
 
 pub(crate) async fn run(config: &AppConfig) -> ExitCode {
+    let auth = gh_auth::Live::new(config);
+    let agent = grok::Live::new(config);
     let checks = [
-        gh_auth::check(config).await,
-        grok::check(config).await,
+        gh_auth::check(&auth).await,
+        grok::check(&agent).await,
         storage::check(config).await,
         lock_line::check(config).await,
         schema::check(config).await,

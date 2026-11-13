@@ -26,6 +26,7 @@ async fn a_confirmation_for_another_draft_is_refused() {
         &store,
         &fixture::mode(&gh, &git, &paths, &settings),
         &offer,
+        None,
     )
     .await
     .unwrap();

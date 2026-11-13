@@ -1,6 +1,5 @@
 use super::body::from_snapshot;
 use super::load::load_job;
-use crate::crash::crash_point;
 use crate::error::Error;
 use crate::gh::{Gh, ReviewRequest};
 use crate::pr_url::PrRef;
@@ -13,13 +12,34 @@ pub(crate) async fn execute_publish(
     job_id: i64,
     max_retries: u32,
 ) -> Result<(), Error> {
+    execute(store, gh, job_id, max_retries, &crate::crash::Off).await
+}
+
+#[cfg(test)]
+pub(crate) async fn execute_publish_at(
+    store: &Store,
+    gh: &impl Gh,
+    job_id: i64,
+    max_retries: u32,
+    probe: &dyn crate::crash::Probe,
+) -> Result<(), Error> {
+    execute(store, gh, job_id, max_retries, probe).await
+}
+
+async fn execute(
+    store: &Store,
+    gh: &impl Gh,
+    job_id: i64,
+    max_retries: u32,
+    probe: &dyn crate::crash::Probe,
+) -> Result<(), Error> {
     let job = load_job(store, job_id).await?;
     if !super::gate::before_send(store, gh, &job, job_id, max_retries).await? {
         return Ok(());
     }
-    crash_point!("publish-before-sending");
+    crate::crash::at("publish-before-sending", probe).await;
     mark_sending(store, &job.publication_id).await?;
-    crash_point!("publish-after-sending");
+    crate::crash::at("publish-after-sending", probe).await;
     let (body, comments) = from_snapshot(&job.snapshot, &job.publication_id)?;
     let request = ReviewRequest {
         commit_id: job.head_sha,

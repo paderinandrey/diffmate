@@ -27,23 +27,24 @@ pub(super) async fn send<H: Gh, G: Git>(
     store: &Store,
     mode: &Mode<'_, H, G>,
     event: &str,
-) -> Result<(), Error> {
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
     let Mode::On { gh, .. } = *mode else {
-        return Ok(());
+        return Ok(false);
     };
     let Some(intent) = session.intent() else {
-        return Ok(());
+        return Ok(false);
     };
     if !intent.undecided.is_empty() {
         let ids = intent.undecided.join(" ");
         session.set_notice(format!("undecided findings: {ids}"));
-        return Ok(());
+        return Ok(false);
     }
     let head = match gh.pr_view(&intent.pr).await {
         Ok(meta) => meta.head_sha,
         Err(error) => {
             session.set_notice(error.to_string());
-            return Ok(());
+            return Ok(false);
         }
     };
     store.set_known_head(intent.target, &head).await?;
@@ -52,9 +53,9 @@ pub(super) async fn send<H: Gh, G: Git>(
         let now = crate::store::now_ms();
         let line = crate::status::freshness::stored(&run, Some((head.as_str(), now)), now);
         session.ask_stale(intent.draft, event, &head, line);
-        return Ok(());
+        return Ok(false);
     }
-    publish_now(session, store, mode, intent.draft, event, &head).await
+    publish_now(session, store, mode, intent.draft, event, &head, reader).await
 }
 
 pub(super) async fn commit<H: Gh, G: Git>(
@@ -62,11 +63,21 @@ pub(super) async fn commit<H: Gh, G: Git>(
     store: &Store,
     mode: &Mode<'_, H, G>,
     offer: &super::confirm::Offer,
-) -> Result<(), Error> {
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
     if offer.publication.is_some() {
-        return resume(session, store, mode, offer).await;
+        return resume(session, store, mode, offer, reader).await;
     }
-    publish_now(session, store, mode, offer.draft, &offer.event, &offer.sha).await
+    publish_now(
+        session,
+        store,
+        mode,
+        offer.draft,
+        &offer.event,
+        &offer.sha,
+        reader,
+    )
+    .await
 }
 
 async fn publish_now<H: Gh, G: Git>(
@@ -76,7 +87,8 @@ async fn publish_now<H: Gh, G: Git>(
     draft: i64,
     event: &str,
     sha: &str,
-) -> Result<(), Error> {
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
     let Mode::On {
         gh,
         git,
@@ -84,13 +96,13 @@ async fn publish_now<H: Gh, G: Git>(
         settings,
     } = *mode
     else {
-        return Ok(());
+        return Ok(false);
     };
     if replaced(session, store, draft).await? {
-        return Ok(());
+        return Ok(false);
     }
     let Some(intent) = session.intent() else {
-        return Ok(());
+        return Ok(false);
     };
     let process = ProcessInfo {
         pid: intent.pid,
@@ -98,13 +110,16 @@ async fn publish_now<H: Gh, G: Git>(
     };
     match store.confirm_publication(draft, event, sha, &process).await {
         Ok(_) => {
-            runner::drive(session, store, gh, git, paths, settings).await?;
+            if drive_until_quit(session, store, gh, git, paths, settings, reader).await? {
+                return Ok(true);
+            }
             surface(session, store, draft).await?;
-            session.reload_rows(store).await
+            session.reload_rows(store).await?;
+            Ok(false)
         }
         Err(error) => {
             session.set_notice(refusal(&error));
-            Ok(())
+            Ok(false)
         }
     }
 }
@@ -114,7 +129,8 @@ async fn resume<H: Gh, G: Git>(
     store: &Store,
     mode: &Mode<'_, H, G>,
     offer: &super::confirm::Offer,
-) -> Result<(), Error> {
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
     let Mode::On {
         gh,
         git,
@@ -122,27 +138,31 @@ async fn resume<H: Gh, G: Git>(
         settings,
     } = *mode
     else {
-        return Ok(());
+        return Ok(false);
     };
     if replaced(session, store, offer.draft).await? {
-        return Ok(());
+        return Ok(false);
     }
     let Some(id) = offer.publication.clone() else {
-        return Ok(());
+        return Ok(false);
     };
     let sha = offer.sha.clone();
     let draft = offer.draft;
     store.reconfirm(&id, &sha).await?;
-    runner::drive(session, store, gh, git, paths, settings).await?;
+    if drive_until_quit(session, store, gh, git, paths, settings, reader).await? {
+        return Ok(true);
+    }
     surface(session, store, draft).await?;
-    session.reload_rows(store).await
+    session.reload_rows(store).await?;
+    Ok(false)
 }
 
 pub(super) async fn reconcile<H: Gh, G: Git>(
     session: &mut Session,
     store: &Store,
     mode: &Mode<'_, H, G>,
-) -> Result<(), Error> {
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
     let Mode::On {
         gh,
         git,
@@ -150,23 +170,49 @@ pub(super) async fn reconcile<H: Gh, G: Git>(
         settings,
     } = *mode
     else {
-        return Ok(());
+        return Ok(false);
     };
     let Some(target) = session.selected_target() else {
-        return Ok(());
+        return Ok(false);
     };
     let Some(id) = store.unknown_publication(target).await? else {
-        return Ok(());
+        return Ok(false);
     };
     let process = session.process_info();
     store.enqueue_reconcile(&id, &process).await?;
-    runner::drive(session, store, gh, git, paths, settings).await?;
-    session.reload_rows(store).await
+    if drive_until_quit(session, store, gh, git, paths, settings, reader).await? {
+        return Ok(true);
+    }
+    session.reload_rows(store).await?;
+    Ok(false)
+}
+
+async fn drive_until_quit<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    gh: &H,
+    git: &G,
+    paths: &Paths,
+    settings: &Settings,
+    reader: Option<super::LiveReader<'_>>,
+) -> Result<bool, Error> {
+    let drive = runner::drive(session, store, gh, git, paths, settings);
+    let Some((_, keys)) = reader else {
+        drive.await?;
+        return Ok(false);
+    };
+    match super::finish_or_quit(drive, keys).await? {
+        super::Turn::Quit => Ok(true),
+        super::Turn::Finished(_) => Ok(false),
+    }
 }
 
 pub(super) async fn poll_moved(session: &mut Session, store: &Store) -> Result<(), Error> {
     if session.confirming() {
         return Ok(());
+    }
+    if let Some(draft) = waiting_draft(session, store).await? {
+        return surface(session, store, draft).await;
     }
     let draft = if let Some(id) = session.draft_id() {
         id
@@ -179,6 +225,22 @@ pub(super) async fn poll_moved(session: &mut Session, store: &Store) -> Result<(
         return Ok(());
     };
     surface(session, store, draft).await
+}
+
+async fn waiting_draft(session: &Session, store: &Store) -> Result<Option<i64>, Error> {
+    let Some(target) = session.selected_target() else {
+        return Ok(None);
+    };
+    store
+        .call(move |conn| {
+            let sql = "SELECT p.draft_id FROM publications p \
+                       JOIN jobs j ON j.publication_id = p.id AND j.kind = 'publish' \
+                       WHERE p.target_id = ?1 AND p.state = 'pending' \
+                       AND j.state = 'needs_confirmation' \
+                       ORDER BY j.id DESC LIMIT 1";
+            conn.query_row(sql, [target], |row| row.get(0)).optional()
+        })
+        .await
 }
 
 struct Follow {

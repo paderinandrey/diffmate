@@ -1,107 +1,98 @@
 macro_rules! crash_point {
     ($name:literal) => {
         #[cfg(feature = "crash-points")]
-        crate::crash::reached($name).await;
+        crate::crash::env_point($name).await;
     };
 }
 
 pub(crate) use crash_point;
 
+pub(crate) trait Probe: Send + Sync {
+    fn matches(&self, point: &str) -> bool {
+        let _ = (self, point);
+        false
+    }
+
+    fn park(&self, point: &str) {
+        let _ = (self, point);
+    }
+}
+
+pub(crate) struct Off;
+
+impl Probe for Off {}
+
+pub(crate) async fn at(point: &'static str, probe: &dyn Probe) {
+    if !armed(point, probe) {
+        return;
+    }
+    report(point);
+    probe.park(point);
+    std::future::pending::<()>().await;
+}
+
 #[cfg(feature = "crash-points")]
-mod points {
-    use std::sync::atomic::{AtomicU8, Ordering};
-    #[cfg(test)]
-    use std::sync::{Mutex, PoisonError};
+pub(crate) async fn env_point(point: &'static str) {
+    at(point, &Off).await;
+}
 
-    static CODE: AtomicU8 = AtomicU8::new(0);
-    #[cfg(test)]
-    static PARKED: AtomicU8 = AtomicU8::new(0);
-    #[cfg(test)]
-    static TURN: Mutex<()> = Mutex::new(());
-
-    pub(super) fn matches(point: &str) -> bool {
-        let code = CODE.load(Ordering::SeqCst);
-        code != 0 && code == code_of(point)
+fn armed(point: &str, probe: &dyn Probe) -> bool {
+    #[cfg(feature = "crash-points")]
+    {
+        env_hit(point) || probe.matches(point)
     }
-
-    #[cfg(test)]
-    pub(super) fn arm(point: &str) {
-        CODE.store(code_of(point), Ordering::SeqCst);
-    }
-
-    #[cfg(test)]
-    pub(super) fn disarm() {
-        CODE.store(0, Ordering::SeqCst);
-        PARKED.store(0, Ordering::SeqCst);
-    }
-
-    #[cfg(test)]
-    pub(super) fn park(point: &str) {
-        PARKED.store(code_of(point), Ordering::SeqCst);
-    }
-
-    #[cfg(test)]
-    pub(super) fn parked(point: &str) -> bool {
-        let code = code_of(point);
-        code != 0 && PARKED.load(Ordering::SeqCst) == code
-    }
-
-    #[cfg(test)]
-    pub(super) fn lock_turn() -> std::sync::MutexGuard<'static, ()> {
-        TURN.lock().unwrap_or_else(PoisonError::into_inner)
-    }
-
-    fn code_of(point: &str) -> u8 {
-        match point {
-            "publish-before-sending" => 1,
-            "publish-after-sending" => 2,
-            _ => 0,
-        }
+    #[cfg(not(feature = "crash-points"))]
+    {
+        let _ = (point, probe);
+        false
     }
 }
 
 #[cfg(feature = "crash-points")]
-pub(crate) async fn reached(point: &'static str) {
+fn env_hit(point: &str) -> bool {
+    std::env::var_os("DIFFMATE_CRASH_POINT").as_deref() == Some(std::ffi::OsStr::new(point))
+}
+
+fn report(point: &str) {
     use std::io::Write;
 
-    let from_env =
-        std::env::var_os("DIFFMATE_CRASH_POINT").as_deref() == Some(std::ffi::OsStr::new(point));
-    if from_env || points::matches(point) {
-        {
-            let mut stderr = std::io::stderr().lock();
-            let _ = writeln!(stderr, "crash point reached: {point}");
-            let _ = stderr.flush();
-        }
-        #[cfg(test)]
-        points::park(point);
-        std::future::pending::<()>().await;
-    }
-}
-
-#[cfg(all(feature = "crash-points", test))]
-pub(crate) fn parked(point: &str) -> bool {
-    points::parked(point)
+    let mut stderr = std::io::stderr().lock();
+    let _ = writeln!(stderr, "crash point reached: {point}");
+    let _ = stderr.flush();
 }
 
 #[cfg(all(feature = "crash-points", test))]
 pub(crate) struct Hold {
-    done: Option<tokio::sync::oneshot::Sender<()>>,
+    code: std::sync::atomic::AtomicU8,
+    parked: std::sync::atomic::AtomicU8,
 }
 
 #[cfg(all(feature = "crash-points", test))]
 impl Hold {
-    pub(crate) async fn point(name: &'static str) -> Self {
-        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
-        let (done_tx, done_rx) = tokio::sync::oneshot::channel();
-        tokio::task::spawn_blocking(move || {
-            let _turn = points::lock_turn();
-            let _ = ready_tx.send(());
-            let _ = done_rx.blocking_recv();
-        });
-        ready_rx.await.expect("crash point lock");
-        points::arm(name);
+    pub(crate) fn point(name: &str) -> Self {
         Self {
-            done: Some(done_tx),
+            code: std::sync::atomic::AtomicU8::new(code_of(name)),
+            parked: std::sync::atomic::AtomicU8::new(0),
+        }
+    }
+
+    pub(crate) fn parked(&self, name: &str) -> bool {
+        let code = code_of(name);
+        code != 0 && self.parked.load(std::sync::atomic::Ordering::SeqCst) == code
+    }
+}
+
+#[cfg(all(feature = "crash-points", test))]
+impl Probe for Hold {
+    fn matches(&self, point: &str) -> bool {
+        let code = self.code.load(std::sync::atomic::Ordering::SeqCst);
+        code != 0 && code == code_of(point)
+    }
+
+    fn park(&self, point: &str) {
+        let code = code_of(point);
+        if code != 0 {
+            self.parked.store(code, std::sync::atomic::Ordering::SeqCst);
         }
     }
 }
@@ -109,9 +100,15 @@ impl Hold {
 #[cfg(all(feature = "crash-points", test))]
 impl Drop for Hold {
     fn drop(&mut self) {
-        points::disarm();
-        if let Some(done) = self.done.take() {
-            let _ = done.send(());
-        }
+        self.code.store(0, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+#[cfg(all(feature = "crash-points", test))]
+fn code_of(point: &str) -> u8 {
+    match point {
+        "publish-before-sending" => 1,
+        "publish-after-sending" => 2,
+        _ => 0,
     }
 }

@@ -80,3 +80,50 @@ async fn a_full_key_channel_still_opens_the_editor() {
     reader.join().unwrap();
     assert!(opened, "editor did not open");
 }
+
+#[tokio::test]
+async fn cancelled_editor_pause_wakes_the_reader() {
+    let (tx, mut keys) = tokio::sync::mpsc::channel(4);
+    let gate = Arc::new(super::super::reader::KeyGate::new());
+    let (slot_tx, slot_rx) = mpsc::channel();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let reader_gate = Arc::clone(&gate);
+    let reader = std::thread::spawn(move || {
+        super::super::pump(&tx, &reader_gate, move || {
+            let _ = entered_tx.send(());
+            slot_rx.recv().unwrap()
+        });
+    });
+    entered_rx.recv().unwrap();
+    {
+        let edit = super::super::pause_for_editor(&gate, &mut keys, std::future::pending::<()>());
+        let mut edit = std::pin::pin!(edit);
+        for _ in 0..2_000 {
+            if gate.suspend_requested() {
+                break;
+            }
+            tokio::select! {
+                biased;
+                () = &mut edit => panic!("pending edit ended"),
+                () = tokio::task::yield_now() => {}
+            }
+        }
+        assert!(gate.suspend_requested());
+    }
+    slot_tx.send(Ok(None)).unwrap();
+    let mut finished = false;
+    for _ in 0..2_000 {
+        if reader.is_finished() {
+            finished = true;
+            break;
+        }
+        std::thread::yield_now();
+        tokio::task::yield_now().await;
+    }
+    if !finished {
+        gate.stop();
+        let _ = slot_tx.send(Ok(None));
+    }
+    reader.join().unwrap();
+    assert!(finished);
+}

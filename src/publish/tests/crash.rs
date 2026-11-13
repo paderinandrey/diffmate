@@ -16,7 +16,7 @@ use crate::store::Store;
 
 #[tokio::test]
 async fn crash_after_sending_is_unknown() {
-    let _hold = Hold::point("publish-after-sending").await;
+    let hold = std::sync::Arc::new(Hold::point("publish-after-sending"));
     let (tmp, store) = open().await;
     batch(&store, support::KEPT).await;
     let script = Arc::new(Script::new(store.clone()));
@@ -27,8 +27,10 @@ async fn crash_after_sending_is_unknown() {
     store.start_job(job).await.unwrap();
     let running = store.clone();
     let gh = Arc::clone(&script);
+    let probe = std::sync::Arc::clone(&hold);
     let hung = tokio::spawn(async move {
-        let _ = crate::publish::execute_publish(&running, gh.as_ref(), job, 2).await;
+        let _ =
+            crate::publish::execute_publish_at(&running, gh.as_ref(), job, 2, probe.as_ref()).await;
     });
     wait_sending(&store).await;
     let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
