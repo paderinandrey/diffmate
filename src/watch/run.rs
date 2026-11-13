@@ -46,7 +46,14 @@ pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
                 return Ok(());
             }
         } else if store.next_service_job(now_ms()).await?.is_some() {
-            serve(config, store, deps).await?;
+            tokio::select! {
+                biased;
+                _ = signals.next(StopReason::Shutdown) => {
+                    stopped();
+                    return Ok(());
+                }
+                result = serve(config, store, deps) => result?,
+            }
         } else if idle(store, signals, next_poll_at).await? {
             return Ok(());
         }
@@ -83,6 +90,7 @@ async fn alongside<G: Git, H: Gh, A: Agent>(
                 review_result = Some(result);
             }
             _ = signals.next(StopReason::Shutdown) => {
+                drop(service);
                 let job_id = queued.job.job_id;
                 crate::review::signals::request_stop(&stop, store, job_id, StopReason::Shutdown)
                     .await;
