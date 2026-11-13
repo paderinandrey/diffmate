@@ -324,14 +324,18 @@ async fn drive_queued<H: crate::gh::Gh, G: crate::git::Git>(
     mut reader: Option<LiveReader<'_>>,
 ) -> Result<bool, Error> {
     let idle = queued.is_empty();
-    let changed = seen.is_some() && session.draft_id() != seen;
+    let mut replaced = seen.is_some() && session.draft_id() != seen;
     for key in queued {
-        if changed && keys::follows_draft(&key) {
+        if replaced && keys::follows_draft(&key) {
             session.set_notice("the open draft changed".to_string());
             continue;
         }
+        let before = session.draft_id();
         if apply(session, store, mode, key, live(&mut reader)).await? {
             return Ok(true);
+        }
+        if before.is_some() && session.draft_id() != before {
+            replaced = true;
         }
     }
     if idle

@@ -4,6 +4,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
+use unicode_width::UnicodeWidthChar;
 
 pub(super) fn screen(
     frame: &mut Frame<'_>,
@@ -175,12 +176,18 @@ fn push(rows: &mut Vec<Line<'static>>, text: &str, width: usize) {
         return;
     }
     while !rest.is_empty() {
+        let mut cols = 0;
         let mut end = 0;
-        for (count, ch) in rest.chars().enumerate() {
-            if count == width {
+        for ch in rest.chars() {
+            let ch_width = ch.width().unwrap_or(0);
+            if cols > 0 && cols + ch_width > width {
                 break;
             }
+            cols += ch_width;
             end += ch.len_utf8();
+            if cols >= width {
+                break;
+            }
         }
         rows.push(Line::from(rest[..end].to_string()));
         rest = &rest[end..];

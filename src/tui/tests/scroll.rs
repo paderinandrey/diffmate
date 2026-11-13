@@ -62,3 +62,33 @@ async fn down_scrolls_a_finding_taller_than_the_screen() {
     assert!(!back.contains("TAIL"), "{back}");
     assert!(back.contains("Long"), "{back}");
 }
+
+#[tokio::test]
+async fn down_reaches_the_end_of_a_double_width_explanation() {
+    let (_tmp, store) = open().await;
+    let now = crate::store::now_ms();
+    let head = queue::HEAD;
+    let body = "一二三四五六七八九尾";
+    let sql = format!(
+        "INSERT INTO targets (id, owner, repo, number, tracking, created_at, head_sha, head_checked_at) VALUES (1, 'o', 'r', 1, 'tracked', 1, '{head}', {now});
+         INSERT INTO jobs (id, kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at) VALUES (1, 'review', 1, 'succeeded', 1, 0, 0, 0);
+         INSERT INTO runs (id, target_id, job_id, state, result, head_sha, merge_base_sha, base_tip_sha, base_ref, created_at) VALUES (1, 1, 1, 'succeeded', 'findings', '{head}', 'base', 'base', 'main', 0);
+         INSERT INTO drafts (id, run_id, original_output, created_at) VALUES (1, 1, '{{}}', 0);
+         INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body) VALUES ('wide', 1, 1, 1, 'high', 'a.rs', 1, 'RIGHT', 'Wide', '{body}');"
+    );
+    store
+        .call(move |conn| conn.execute_batch(&sql))
+        .await
+        .unwrap();
+    let (first, _) = shown(&store, 0, &[]).await;
+    assert!(!first.contains('尾'), "{first}");
+    let mut seen = false;
+    for downs in 1..8 {
+        let (text, _) = shown(&store, downs, &[]).await;
+        if text.contains('尾') {
+            seen = true;
+            break;
+        }
+    }
+    assert!(seen, "the last double-width character stayed clipped");
+}
