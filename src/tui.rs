@@ -7,6 +7,7 @@ mod open;
 mod post;
 mod reader;
 mod runner;
+mod spawn;
 
 #[cfg(test)]
 mod tests;
@@ -40,10 +41,22 @@ pub(crate) async fn run(config: &AppConfig) -> ExitCode {
     }
 }
 
+async fn until_shutdown(
+    signals: &mut crate::review::signals::Signals,
+    work: impl std::future::Future<Output = Result<(), Error>>,
+) -> Result<(), Error> {
+    tokio::select! {
+        biased;
+        _ = signals.next(crate::cancel::StopReason::Shutdown) => Ok(()),
+        result = work => result,
+    }
+}
+
 async fn show(config: &AppConfig) -> Result<(), Error> {
     let store = Store::open(&config.paths).await?;
     let mut terminal = ratatui::try_init().map_err(Error::io("open the terminal"))?;
     let _restore = Restore;
+    let mut signals = crate::review::signals::Signals::new()?;
     let mut session = Session::load(&store).await?;
     let editor = config
         .env
@@ -70,34 +83,38 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
     let gate = std::sync::Arc::new(reader::KeyGate::new());
     let reader_gate = std::sync::Arc::clone(&gate);
     let _reader = tokio::task::spawn_blocking(move || read_keys(&tx, &reader_gate));
-    loop {
-        if session.take_repaint() {
-            terminal.clear().map_err(Error::io("clear the terminal"))?;
-        }
-        terminal
-            .draw(|frame| draw::screen(frame, &session))
-            .map_err(Error::io("draw the terminal"))?;
-        match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
-            Turn::Quit => return Ok(()),
-            Turn::Finished(queued) => {
-                terminal
-                    .draw(|frame| draw::screen(frame, &session))
-                    .map_err(Error::io("draw the terminal"))?;
-                let idle = queued.is_empty();
-                for key in queued {
-                    if apply(&mut session, &store, &mode, key, Some((&gate, &mut keys))).await? {
-                        return Ok(());
+    until_shutdown(&mut signals, async {
+        loop {
+            if session.take_repaint() {
+                terminal.clear().map_err(Error::io("clear the terminal"))?;
+            }
+            terminal
+                .draw(|frame| draw::screen(frame, &session))
+                .map_err(Error::io("draw the terminal"))?;
+            match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
+                Turn::Quit => return Ok(()),
+                Turn::Finished(queued) => {
+                    terminal
+                        .draw(|frame| draw::screen(frame, &session))
+                        .map_err(Error::io("draw the terminal"))?;
+                    let idle = queued.is_empty();
+                    for key in queued {
+                        if apply(&mut session, &store, &mode, key, Some((&gate, &mut keys))).await?
+                        {
+                            return Ok(());
+                        }
                     }
-                }
-                if idle && let Some(key) = next_key(&mut keys).await? {
-                    let live = Some((&gate, &mut keys));
-                    if apply(&mut session, &store, &mode, key, live).await? {
-                        return Ok(());
+                    if idle && let Some(key) = next_key(&mut keys).await? {
+                        let live = Some((&gate, &mut keys));
+                        if apply(&mut session, &store, &mode, key, live).await? {
+                            return Ok(());
+                        }
                     }
                 }
             }
         }
-    }
+    })
+    .await
 }
 
 const SERVICE_TICK: std::time::Duration = std::time::Duration::from_secs(1);

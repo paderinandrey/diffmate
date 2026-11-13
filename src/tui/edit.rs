@@ -2,11 +2,10 @@
 mod body {
 use crate::error::Error;
 use crate::paths::create_private_dir_async;
+use super::super::spawn::Editor;
 use std::io::{self, stdout};
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
-use tokio::process::Command;
 
 pub enum Piece {
     Finding { id: String, title: String, body: String },
@@ -21,7 +20,7 @@ pub enum Edited {
 const FAILED: &str = "the editor could not be started";
 const SHAPE: &str = "the editor file must be a title, a blank line, and a body";
 
-pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool, file_seq: &mut u64) -> Result<Edited, Error> {
+pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool, file_seq: &mut u64, spawn: &dyn Editor) -> Result<Edited, Error> {
     let Some(editor) = editor.filter(|value| value.bytes().any(|byte| !byte.is_ascii_whitespace())) else {
         return Ok(Edited::Message("EDITOR is not set"));
     };
@@ -32,7 +31,7 @@ pub async fn run(editor: Option<&str>, cache: &Path, piece: &Piece, live: bool, 
         return Err(Error::io("write the editor file")(error));
     }
     let held = live.then(Hold::suspend);
-    let outcome = spawned(&argv, &path).await;
+    let outcome = spawn.launch(&argv, &path).await;
     drop(held);
     let saved = match outcome.as_ref() {
         Ok(status) if status.success() => tokio::fs::read(&path).await.ok(),
@@ -78,10 +77,6 @@ async fn write_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     let mut file = tokio::fs::OpenOptions::new().write(true).create_new(true).mode(0o700).open(path).await?;
     file.write_all(bytes).await?;
     file.flush().await
-}
-async fn spawned(argv: &[String], path: &Path) -> io::Result<std::process::ExitStatus> {
-    let Some((program, rest)) = argv.split_first() else { return Err(io::Error::other("editor")); };
-    Command::new(program).args(rest).arg(path).stdin(Stdio::inherit()).stdout(Stdio::inherit()).stderr(Stdio::inherit()).spawn()?.wait().await
 }
 struct Hold;
 impl Hold { fn suspend() -> Self { ratatui::restore(); Self } }

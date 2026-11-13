@@ -1,3 +1,4 @@
+use super::spawn::{Browser, BrowserCommand, Editor, EditorCommand};
 use crate::app::ProcessInfo;
 use crate::error::Error;
 use crate::pr_url::PrRef;
@@ -20,6 +21,8 @@ pub(super) struct Session {
     notice: Option<String>,
     editor: Option<String>,
     file_seq: u64,
+    editor_launch: Box<dyn Editor>,
+    browser_launch: Box<dyn Browser>,
     cache: PathBuf,
     live: bool,
     repaint: bool,
@@ -50,6 +53,8 @@ impl Session {
             notice: None,
             editor: None,
             file_seq: 0,
+            editor_launch: Box::new(EditorCommand),
+            browser_launch: Box::new(BrowserCommand),
             cache: PathBuf::new(),
             live: false,
             repaint: false,
@@ -138,10 +143,21 @@ impl Session {
             return Ok(());
         };
         let url = pr.web_url();
-        if let Err(error) = super::open::open_pr(self.browser(), &url).await {
+        let program = self.browser().to_owned();
+        if let Err(error) = self.browser_launch.launch(&program, &url).await {
             self.notice = Some(format!("could not open the pull request: {error}"));
         }
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(super) fn use_editor(&mut self, editor: Box<dyn Editor>) {
+        self.editor_launch = editor;
+    }
+
+    #[cfg(test)]
+    pub(super) fn use_browser(&mut self, browser: Box<dyn Browser>) {
+        self.browser_launch = browser;
     }
 
     pub(super) async fn rerun(&mut self, store: &Store) -> Result<(), Error> {
@@ -408,6 +424,7 @@ impl Session {
             &piece,
             self.live,
             &mut self.file_seq,
+            &*self.editor_launch,
         )
         .await?;
         if self.live {
