@@ -1,4 +1,4 @@
-use super::spawn::{Browser, BrowserCommand, Editor, EditorCommand};
+use super::spawn::{Browser, BrowserCommand, Editor, EditorCommand, ReapGate};
 use crate::app::ProcessInfo;
 use crate::error::Error;
 use crate::pr_url::PrRef;
@@ -7,6 +7,7 @@ use crate::store::jobs::EnqueueRequest;
 use crate::store::records::JobOrigin;
 use crate::store::status::{DraftView, QueueRow};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 enum Screen {
     Queue,
@@ -25,6 +26,7 @@ pub(super) struct Session {
     editor: Option<String>,
     file_seq: u64,
     editor_launch: Box<dyn Editor>,
+    pub(super) reap: Arc<ReapGate>,
     browser_launch: Box<dyn Browser>,
     cache: PathBuf,
     live: bool,
@@ -48,6 +50,7 @@ pub(super) struct Intent {
 
 impl Session {
     pub async fn load(store: &Store) -> Result<Self, Error> {
+        let reap = Arc::new(ReapGate::new());
         Ok(Self {
             rows: store.queue_rows().await?,
             selected: 0,
@@ -59,7 +62,8 @@ impl Session {
             notice: None,
             editor: None,
             file_seq: 0,
-            editor_launch: Box::new(EditorCommand),
+            editor_launch: Box::new(EditorCommand::new(Arc::clone(&reap))),
+            reap,
             browser_launch: Box::new(BrowserCommand),
             cache: PathBuf::new(),
             live: false,

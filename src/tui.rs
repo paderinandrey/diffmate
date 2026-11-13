@@ -44,10 +44,14 @@ pub(crate) async fn run(config: &AppConfig) -> ExitCode {
 async fn until_shutdown(
     signals: &mut crate::review::signals::Signals,
     work: impl std::future::Future<Output = Result<(), Error>>,
+    reap: &spawn::ReapGate,
 ) -> Result<(), Error> {
     tokio::select! {
         biased;
-        _ = signals.next(crate::cancel::StopReason::Shutdown) => Ok(()),
+        _ = signals.next(crate::cancel::StopReason::Shutdown) => {
+            reap.drain().await;
+            Ok(())
+        }
         result = work => result,
     }
 }
@@ -83,33 +87,39 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
     let gate = std::sync::Arc::new(reader::KeyGate::new());
     let reader_gate = std::sync::Arc::clone(&gate);
     let _reader = tokio::task::spawn_blocking(move || read_keys(&tx, &reader_gate));
-    until_shutdown(&mut signals, async {
-        loop {
-            if session.take_repaint() {
-                terminal.clear().map_err(Error::io("clear the terminal"))?;
-            }
-            draw_session(&mut terminal, &mut session)?;
-            match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
-                Turn::Quit => return Ok(()),
-                Turn::Finished(queued) => {
-                    draw_session(&mut terminal, &mut session)?;
-                    let idle = queued.is_empty();
-                    for key in queued {
-                        if apply(&mut session, &store, &mode, key, Some((&gate, &mut keys))).await?
+    let reap = std::sync::Arc::clone(&session.reap);
+    until_shutdown(
+        &mut signals,
+        async {
+            loop {
+                if session.take_repaint() {
+                    terminal.clear().map_err(Error::io("clear the terminal"))?;
+                }
+                draw_session(&mut terminal, &mut session)?;
+                let seen = session.draft_id();
+                match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
+                    Turn::Quit => return Ok(()),
+                    Turn::Finished(mut queued) => {
+                        take_ready(&mut keys, &mut queued)?;
+                        draw_session(&mut terminal, &mut session)?;
+                        if drive_queued(
+                            &mut session,
+                            &store,
+                            &mode,
+                            seen,
+                            queued,
+                            Some((&gate, &mut keys)),
+                        )
+                        .await?
                         {
-                            return Ok(());
-                        }
-                    }
-                    if idle && let Some(key) = next_key(&mut keys).await? {
-                        let live = Some((&gate, &mut keys));
-                        if apply(&mut session, &store, &mode, key, live).await? {
                             return Ok(());
                         }
                     }
                 }
             }
-        }
-    })
+        },
+        &reap,
+    )
     .await
 }
 
@@ -300,6 +310,64 @@ where
                     }
                     queued.push(key);
                 }
+            }
+        }
+    }
+}
+
+async fn drive_queued<H: crate::gh::Gh, G: crate::git::Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &post::Mode<'_, H, G>,
+    seen: Option<i64>,
+    queued: Vec<KeyEvent>,
+    mut reader: Option<LiveReader<'_>>,
+) -> Result<bool, Error> {
+    let idle = queued.is_empty();
+    let changed = seen.is_some() && session.draft_id() != seen;
+    for key in queued {
+        if changed && keys::publishes(&key) {
+            session.set_notice("the open draft changed".to_string());
+            continue;
+        }
+        if apply(session, store, mode, key, live(&mut reader)).await? {
+            return Ok(true);
+        }
+    }
+    if idle
+        && let Some(key) = next_ready(&mut reader).await?
+        && apply(session, store, mode, key, live(&mut reader)).await?
+    {
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+fn live<'short, 'long: 'short>(
+    reader: &'short mut Option<LiveReader<'long>>,
+) -> Option<LiveReader<'short>> {
+    reader.as_mut().map(|(gate, keys)| (*gate, &mut **keys))
+}
+
+async fn next_ready(reader: &mut Option<LiveReader<'_>>) -> Result<Option<KeyEvent>, Error> {
+    let Some((_, keys)) = reader.as_mut() else {
+        return Ok(None);
+    };
+    next_key(keys).await
+}
+
+fn take_ready(
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+    queued: &mut Vec<KeyEvent>,
+) -> Result<(), Error> {
+    loop {
+        match keys.try_recv() {
+            Ok(Ok(Some(key))) => queued.push(key),
+            Ok(Ok(None)) => {}
+            Ok(Err(error)) => return Err(error),
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => return Ok(()),
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                return Err(key_stopped());
             }
         }
     }

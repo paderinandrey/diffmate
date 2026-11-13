@@ -28,6 +28,12 @@ pub(super) enum Command {
     Ignored,
 }
 
+pub(super) fn publishes(key: &KeyEvent) -> bool {
+    !key.modifiers
+        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
+        && matches!(key.code, KeyCode::Char('a' | 'r' | 'c'))
+}
+
 pub(super) fn quits(key: &KeyEvent) -> bool {
     if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
     {

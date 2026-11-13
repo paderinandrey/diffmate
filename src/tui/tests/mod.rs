@@ -24,5 +24,6 @@ mod refusals;
 mod scroll;
 mod service;
 mod signals;
+mod stale_key;
 mod stall;
 mod tick;

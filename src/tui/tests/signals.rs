@@ -17,7 +17,8 @@ async fn sigterm_drops_in_flight_work_and_returns() {
         let _guard = Guard(flag);
         std::future::pending::<Result<(), crate::error::Error>>().await
     };
-    let mut task = std::pin::pin!(super::super::until_shutdown(&mut signals, work));
+    let reap = crate::tui::spawn::ReapGate::new();
+    let mut task = std::pin::pin!(super::super::until_shutdown(&mut signals, work, &reap));
     tokio::select! {
         biased;
         result = &mut task => panic!("stopped before the signal: {result:?}"),

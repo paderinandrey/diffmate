@@ -3,7 +3,9 @@ use std::io;
 use std::path::Path;
 use std::pin::Pin;
 use std::process::{ExitStatus, Stdio};
+use std::sync::{Arc, Mutex, PoisonError};
 use tokio::process::{Child, Command};
+use tokio::sync::oneshot;
 
 pub(super) type ExitFuture<'a> = Pin<Box<dyn Future<Output = io::Result<ExitStatus>> + Send + 'a>>;
 pub(super) type OpenFuture<'a> = Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>;
@@ -16,11 +18,55 @@ pub(super) trait Browser: Send {
     fn launch<'a>(&'a self, program: &'a str, url: &'a str) -> OpenFuture<'a>;
 }
 
-pub(super) struct EditorCommand;
+pub(super) struct ReapGate {
+    pending: Mutex<Vec<oneshot::Receiver<()>>>,
+}
+
+impl ReapGate {
+    pub(super) fn new() -> Self {
+        Self {
+            pending: Mutex::new(Vec::new()),
+        }
+    }
+
+    fn track(&self) -> oneshot::Sender<()> {
+        let (tx, rx) = oneshot::channel();
+        self.pending
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(rx);
+        tx
+    }
+
+    pub(super) async fn drain(&self) {
+        let waiting = {
+            let mut guard = self.pending.lock().unwrap_or_else(PoisonError::into_inner);
+            std::mem::take(&mut *guard)
+        };
+        for waiter in waiting {
+            let _ = waiter.await;
+        }
+    }
+}
+
+pub(super) struct EditorCommand {
+    reap: Arc<ReapGate>,
+}
+
+impl EditorCommand {
+    pub(super) fn new(reap: Arc<ReapGate>) -> Self {
+        Self { reap }
+    }
+
+    #[cfg(test)]
+    pub(super) async fn wait_reaped(&self) {
+        self.reap.drain().await;
+    }
+}
 
 impl Editor for EditorCommand {
     fn launch<'a>(&'a self, argv: &'a [String], path: &'a Path) -> ExitFuture<'a> {
-        let _ = self;
+        let reap = Arc::clone(&self.reap);
         Box::pin(async move {
             let Some((program, rest)) = argv.split_first() else {
                 return Err(io::Error::other("editor"));
@@ -33,13 +79,19 @@ impl Editor for EditorCommand {
                 .stderr(Stdio::inherit())
                 .kill_on_drop(true)
                 .spawn()?;
-            EditorProc { child: Some(child) }.wait().await
+            EditorProc {
+                child: Some(child),
+                reap,
+            }
+            .wait()
+            .await
         })
     }
 }
 
 struct EditorProc {
     child: Option<Child>,
+    reap: Arc<ReapGate>,
 }
 
 impl EditorProc {
@@ -60,10 +112,11 @@ impl Drop for EditorProc {
         let Some(mut child) = self.child.take() else {
             return;
         };
-        // Tokio Child has no blocking wait, and Drop cannot await. Reap on a
-        // dedicated thread before this guard returns: the terminal is restored
-        // only after the cancelled editor future drops.
-        let reaped = std::thread::spawn(move || {
+        // Tokio Child has no blocking wait, and Drop cannot await. The reaper
+        // thread signals `ReapGate`; shutdown awaits that gate before restoring
+        // the terminal.
+        let done = self.reap.track();
+        std::thread::spawn(move || {
             if child.start_kill().is_ok() {
                 while matches!(child.try_wait(), Ok(None)) {
                     std::thread::yield_now();
@@ -71,8 +124,8 @@ impl Drop for EditorProc {
             } else {
                 let _ = child.try_wait();
             }
+            let _ = done.send(());
         });
-        let _ = reaped.join();
     }
 }
 
