@@ -8,6 +8,7 @@ use crate::git::Git;
 use crate::review::signals::Signals;
 use crate::runner::Deps;
 use crate::store::{Store, now_ms, retry::QueuedJob};
+use std::future::Future;
 use tokio::sync::watch;
 
 pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
@@ -71,17 +72,32 @@ async fn alongside<G: Git, H: Gh, A: Agent>(
         &cancel,
     );
     let mut review = std::pin::pin!(review);
+    let mut service: std::pin::Pin<Box<dyn Future<Output = Result<(), Error>> + '_>> =
+        Box::pin(service_slot(config, store, deps));
+    let mut review_result = None;
     let result = loop {
+        let review_done = review_result.is_some();
         tokio::select! {
             biased;
-            result = &mut review => break result,
+            result = &mut review, if !review_done => {
+                review_result = Some(result);
+            }
             _ = signals.next(StopReason::Shutdown) => {
                 let job_id = queued.job.job_id;
                 crate::review::signals::request_stop(&stop, store, job_id, StopReason::Shutdown)
                     .await;
-                break review.await;
+                break match review_result {
+                    Some(result) => result,
+                    None => review.await,
+                };
             }
-            outcome = service_slot(config, store, deps) => outcome?,
+            outcome = &mut service => {
+                outcome?;
+                if let Some(result) = review_result.take() {
+                    break result;
+                }
+                service = Box::pin(service_slot(config, store, deps));
+            }
         }
     };
     job::complete(config, store, queued, &result, &stop).await

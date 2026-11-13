@@ -17,8 +17,12 @@ type Done<T> = Ready<Result<T, Error>>;
 pub(super) struct Remote {
     pub posts: Arc<AtomicUsize>,
     pub hang: bool,
+    pub resume: Option<watch::Receiver<bool>>,
 }
-pub(super) struct Bot(pub Option<watch::Sender<bool>>);
+pub(super) struct Bot {
+    pub entered: Option<watch::Sender<bool>>,
+    pub release: Option<watch::Receiver<bool>>,
+}
 
 fn gone<T>() -> Done<T> {
     ready(Err(Error::Command {
@@ -76,8 +80,13 @@ impl Gh for Remote {
     ) -> impl Future<Output = Result<CreatedReview, Error>> + Send {
         self.posts.fetch_add(1, Ordering::Relaxed);
         let hang = self.hang;
+        let resume = self.resume.clone();
         async move {
-            if hang {
+            if let Some(mut resume) = resume {
+                if resume.wait_for(|go| *go).await.is_err() {
+                    std::future::pending::<()>().await;
+                }
+            } else if hang {
                 std::future::pending::<()>().await;
             }
             Ok(CreatedReview { id: "9".into() })
@@ -87,15 +96,30 @@ impl Gh for Remote {
 
 impl Agent for Bot {
     async fn run(&self, request: &AgentRequest) -> AgentOutcome {
-        let Some(gate) = &self.0 else {
+        let Some(gate) = &self.entered else {
             return finished();
         };
         gate.send_replace(true);
         let mut cancel = request.cancel_receiver().unwrap();
-        crate::cancel::cancelled(&mut cancel).await;
-        AgentOutcome::Cancelled {
-            metrics: Metrics::default(),
+        let Some(release) = &self.release else {
+            crate::cancel::cancelled(&mut cancel).await;
+            return AgentOutcome::Cancelled {
+                metrics: Metrics::default(),
+            };
+        };
+        let mut release = release.clone();
+        tokio::select! {
+            biased;
+            () = crate::cancel::cancelled(&mut cancel) => {
+                return AgentOutcome::Cancelled { metrics: Metrics::default() };
+            }
+            ready = release.wait_for(|go| *go) => {
+                if ready.is_err() {
+                    return AgentOutcome::Cancelled { metrics: Metrics::default() };
+                }
+            }
         }
+        finished()
     }
 }
 fn finished() -> AgentOutcome {

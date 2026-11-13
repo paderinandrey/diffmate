@@ -29,6 +29,8 @@ pub(super) struct Rig {
     pub posts: Arc<AtomicUsize>,
     gate: watch::Sender<bool>,
     pub seen: watch::Receiver<bool>,
+    pub agent_go: watch::Sender<bool>,
+    pub publish_go: watch::Sender<bool>,
     pub review: i64,
 }
 
@@ -63,6 +65,8 @@ impl Rig {
             .await
             .unwrap();
         let (gate, seen) = watch::channel(false);
+        let (agent_go, _) = watch::channel(false);
+        let (publish_go, _) = watch::channel(false);
         let config = AppConfig {
             paths,
             env: InheritedEnv::from_pairs(Vec::new()),
@@ -77,6 +81,8 @@ impl Rig {
             posts: Arc::new(AtomicUsize::new(0)),
             gate,
             seen,
+            agent_go,
+            publish_go,
             review: queued.job.job_id,
         }
     }
@@ -87,8 +93,12 @@ impl Rig {
             gh: Remote {
                 posts: Arc::clone(&self.posts),
                 hang: false,
+                resume: None,
             },
-            agent: Bot(hold.then(|| self.gate.clone())),
+            agent: Bot {
+                entered: hold.then(|| self.gate.clone()),
+                release: None,
+            },
             settings: self.config.settings.clone(),
         }
     }
@@ -96,6 +106,13 @@ impl Rig {
     pub fn deps_hanging(&self) -> Deps<FakeGit, Remote, Bot> {
         let mut deps = self.deps(true);
         deps.gh.hang = true;
+        deps
+    }
+
+    pub fn deps_pausing(&self) -> Deps<FakeGit, Remote, Bot> {
+        let mut deps = self.deps(true);
+        deps.gh.resume = Some(self.publish_go.subscribe());
+        deps.agent.release = Some(self.agent_go.subscribe());
         deps
     }
 }
