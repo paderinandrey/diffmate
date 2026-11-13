@@ -72,9 +72,19 @@ fn http_status_classifies_retries() {
         ("HTTP 422", false),
         ("HTTP 401", false),
         ("HTTP 403", false),
+        ("HTTP 4220", true),
         ("connection reset", true),
+        (
+            "Post \"https://api.github.com/repos/o/r/pulls/422/reviews\": unexpected EOF",
+            true,
+        ),
     ] {
         assert_eq!(transient(&cmd(detail)), retry, "{detail}");
     }
     assert!(!transient(&Error::NoHome));
+    let rejected = super::super::super::checks::client_rejected;
+    assert!(rejected(&cmd("exit status: 1: HTTP 422")));
+    assert!(!rejected(&cmd(
+        "Post \"https://api.github.com/repos/o/r/pulls/422/reviews\": unexpected EOF"
+    )));
 }

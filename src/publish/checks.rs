@@ -93,15 +93,19 @@ pub(super) fn client_rejected(error: &Error) -> bool {
 }
 
 fn status_token(detail: &str) -> Option<u16> {
-    detail
-        .split(|ch: char| !ch.is_ascii_digit())
-        .find_map(|token| {
-            if token.len() != 3 {
-                return None;
-            }
-            let code = token.parse::<u16>().ok()?;
-            (100..600).contains(&code).then_some(code)
-        })
+    let mut rest = detail;
+    while let Some(at) = rest.find("HTTP ") {
+        rest = &rest[at + "HTTP ".len()..];
+        let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+        if digits == 3
+            && let Some(token) = rest.get(..digits)
+            && let Ok(code) = token.parse::<u16>()
+            && (100..600).contains(&code)
+        {
+            return Some(code);
+        }
+    }
+    None
 }
 
 fn line_err(_: std::num::TryFromIntError) -> Error {
