@@ -162,6 +162,23 @@ pub(super) async fn reconcile<H: Gh, G: Git>(
     session.reload_rows(store).await
 }
 
+pub(super) async fn poll_moved(session: &mut Session, store: &Store) -> Result<(), Error> {
+    if session.confirming() {
+        return Ok(());
+    }
+    let draft = if let Some(id) = session.draft_id() {
+        id
+    } else if let Some(target) = session.selected_target() {
+        let Some(draft) = store.latest_draft(target).await? else {
+            return Ok(());
+        };
+        draft.id
+    } else {
+        return Ok(());
+    };
+    surface(session, store, draft).await
+}
+
 struct Follow {
     id: String,
     state: String,

@@ -16,19 +16,9 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
         draft::screen(frame, draft, focus, session.notice());
         return;
     }
-    let mut lines = if session.rows.is_empty() {
-        vec![Line::from("No targets.")]
-    } else {
-        session
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(index, row)| {
-                let mark = if index == session.selected { ">" } else { " " };
-                Line::from(format!("{mark} {}", row_text(row)))
-            })
-            .collect()
-    };
+    let height = usize::from(frame.area().height);
+    let extra = usize::from(session.running()) + usize::from(session.notice().is_some());
+    let mut lines = queue_lines(session, height.saturating_sub(extra));
     if session.running() {
         lines.push(Line::from("runner: tui"));
     }
@@ -36,6 +26,32 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
         lines.push(Line::from(sanitize(notice)));
     }
     frame.render_widget(Paragraph::new(lines), frame.area());
+}
+
+fn queue_lines(session: &Session, room: usize) -> Vec<Line<'static>> {
+    if session.rows.is_empty() {
+        return vec![Line::from("No targets.")];
+    }
+    let start = queue_start(session.rows.len(), room, session.selected);
+    session
+        .rows
+        .iter()
+        .enumerate()
+        .skip(start)
+        .take(room)
+        .map(|(index, row)| {
+            let mark = if index == session.selected { ">" } else { " " };
+            Line::from(format!("{mark} {}", row_text(row)))
+        })
+        .collect()
+}
+
+fn queue_start(total: usize, room: usize, selected: usize) -> usize {
+    if room == 0 || total <= room || selected < room {
+        0
+    } else {
+        selected + 1 - room
+    }
 }
 
 fn row_text(row: &QueueRow) -> String {

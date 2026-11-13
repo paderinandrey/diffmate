@@ -1,4 +1,5 @@
 use crate::store::Store;
+use crate::tui::model::Session;
 use crate::tui::run_scripted;
 use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -140,5 +141,50 @@ async fn queue_frame_keeps_the_review_run_after_sync() {
     assert_eq!(
         count(&store, "SELECT count(*) FROM jobs").await,
         jobs_before
+    );
+}
+
+#[tokio::test]
+async fn reload_keeps_the_selected_target() {
+    let (_tmp, store) = open().await;
+    seed(&store, 1).await;
+    seed(&store, 2).await;
+    let mut session = Session::load(&store).await.unwrap();
+    session.move_down();
+    assert_eq!(session.selected_target(), Some(1));
+    seed(&store, 3).await;
+    session.reload_rows(&store).await.unwrap();
+    assert_eq!(session.selected_target(), Some(1));
+    assert_eq!(session.rows[0].target_id, 3);
+}
+
+#[tokio::test]
+async fn the_queue_scrolls_the_selected_target_into_view() {
+    let (_tmp, store) = open().await;
+    for number in 1..=6 {
+        seed(&store, number).await;
+    }
+    let drawn = run_scripted(
+        &store,
+        &[key(KeyCode::Down), key(KeyCode::Down), key(KeyCode::Down)],
+        TestBackend::new(160, 3),
+    )
+    .await
+    .unwrap();
+    let lines: Vec<_> = text_of(&drawn)
+        .lines()
+        .map(|line| line.trim_matches('"').trim().to_string())
+        .filter(|line| !line.is_empty())
+        .collect();
+    assert!(lines[0].contains("o/r#5"), "{lines:?}");
+    assert!(
+        lines
+            .last()
+            .is_some_and(|line| line.starts_with('>') && line.contains("o/r#3")),
+        "{lines:?}"
+    );
+    assert!(
+        lines.iter().all(|line| !line.contains("o/r#6")),
+        "{lines:?}"
     );
 }

@@ -66,6 +66,9 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         settings: &config.settings,
     };
     loop {
+        if session.take_repaint() {
+            terminal.clear().map_err(Error::io("clear the terminal"))?;
+        }
         terminal
             .draw(|frame| draw::screen(frame, &session))
             .map_err(Error::io("draw the terminal"))?;
@@ -101,11 +104,11 @@ async fn service<H: crate::gh::Gh, G: crate::git::Git>(
         .next_service_job(crate::store::now_ms())
         .await?
         .is_some();
-    if !session.running() && !due {
-        return Ok(());
+    if session.running() || due {
+        runner::drive(session, store, gh, git, paths, settings).await?;
     }
-    runner::drive(session, store, gh, git, paths, settings).await?;
-    session.reload_rows(store).await
+    session.reload_rows(store).await?;
+    post::poll_moved(session, store).await
 }
 
 async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
@@ -119,6 +122,7 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
         keys::Command::Quit => Ok(true),
         keys::Command::Open => {
             session.open_draft(store).await?;
+            post::poll_moved(session, store).await?;
             Ok(false)
         }
         keys::Command::Back => {

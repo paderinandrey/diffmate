@@ -21,6 +21,7 @@ pub(super) struct Session {
     editor: Option<String>,
     cache: PathBuf,
     live: bool,
+    repaint: bool,
     confirm: Option<super::confirm::Confirm>,
     offer: Option<super::confirm::Offer>,
     lock_path: PathBuf,
@@ -49,6 +50,7 @@ impl Session {
             editor: None,
             cache: PathBuf::new(),
             live: false,
+            repaint: false,
             confirm: None,
             offer: None,
             lock_path: PathBuf::new(),
@@ -104,8 +106,16 @@ impl Session {
     }
 
     pub(super) async fn reload_rows(&mut self, store: &Store) -> Result<(), Error> {
+        let kept = self.rows.get(self.selected).map(|row| row.target_id);
         self.rows = store.queue_rows().await?;
+        self.selected = kept
+            .and_then(|id| self.rows.iter().position(|row| row.target_id == id))
+            .unwrap_or_else(|| self.rows.len().saturating_sub(1).min(self.selected));
         Ok(())
+    }
+
+    pub(super) fn take_repaint(&mut self) -> bool {
+        std::mem::take(&mut self.repaint)
     }
 
     pub(super) fn bind_runner(&mut self, process: ProcessInfo, lock: PathBuf) {
@@ -390,6 +400,9 @@ impl Session {
         };
         let edited =
             super::edit::run(self.editor.as_deref(), &self.cache, &piece, self.live).await?;
+        if self.live {
+            self.repaint = true;
+        }
         match edited {
             super::edit::Edited::Same => Ok(()),
             super::edit::Edited::Message(text) => {
@@ -463,7 +476,7 @@ impl Session {
         Some(draft.findings.get(focus)?.id.clone())
     }
 
-    fn draft_id(&self) -> Option<i64> {
+    pub(super) fn draft_id(&self) -> Option<i64> {
         self.draft().map(|(draft, _)| draft.id)
     }
 }
