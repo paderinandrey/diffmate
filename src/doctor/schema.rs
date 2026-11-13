@@ -38,16 +38,26 @@ async fn read_version(db: &Path) -> Result<i64, Error> {
     tokio::task::spawn_blocking(move || query_version(&db)).await?
 }
 
-// A read-only open of a WAL database creates -shm unless the URI is immutable.
+// immutable=1 ignores a committed WAL and is the only read-only open that does not create -shm.
 fn query_version(db: &Path) -> Result<i64, Error> {
     let flags = OpenFlags::SQLITE_OPEN_READ_ONLY
         | OpenFlags::SQLITE_OPEN_URI
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-    let conn = Connection::open_with_flags(immutable_uri(db), flags)?;
+    let conn = Connection::open_with_flags(sqlite_uri(db, !wal_present(db)?), flags)?;
     Ok(conn.pragma_query_value(None, "user_version", |row| row.get(0))?)
 }
 
-fn immutable_uri(path: &Path) -> String {
+fn wal_present(db: &Path) -> Result<bool, Error> {
+    let mut name = db.as_os_str().to_os_string();
+    name.push("-wal");
+    match std::fs::metadata(name) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(Error::io("read the database wal")(error)),
+    }
+}
+
+fn sqlite_uri(path: &Path, immutable: bool) -> String {
     let mut uri = String::from("file:");
     for &byte in path.as_os_str().as_bytes() {
         match byte {
@@ -62,7 +72,10 @@ fn immutable_uri(path: &Path) -> String {
             }
         }
     }
-    uri.push_str("?mode=ro&immutable=1");
+    uri.push_str("?mode=ro");
+    if immutable {
+        uri.push_str("&immutable=1");
+    }
     uri
 }
 
