@@ -88,15 +88,11 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
             if session.take_repaint() {
                 terminal.clear().map_err(Error::io("clear the terminal"))?;
             }
-            terminal
-                .draw(|frame| draw::screen(frame, &session))
-                .map_err(Error::io("draw the terminal"))?;
+            draw_session(&mut terminal, &mut session)?;
             match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
                 Turn::Quit => return Ok(()),
                 Turn::Finished(queued) => {
-                    terminal
-                        .draw(|frame| draw::screen(frame, &session))
-                        .map_err(Error::io("draw the terminal"))?;
+                    draw_session(&mut terminal, &mut session)?;
                     let idle = queued.is_empty();
                     for key in queued {
                         if apply(&mut session, &store, &mode, key, Some((&gate, &mut keys))).await?
@@ -118,6 +114,19 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
 }
 
 const SERVICE_TICK: std::time::Duration = std::time::Duration::from_secs(1);
+
+fn draw_session<B>(terminal: &mut ratatui::Terminal<B>, session: &mut Session) -> Result<(), Error>
+where
+    B: ratatui::backend::Backend<Error = io::Error>,
+{
+    let window = std::cell::Cell::new(draw::Window::empty());
+    terminal
+        .draw(|frame| window.set(draw::screen(frame, session)))
+        .map_err(Error::io("draw the terminal"))?;
+    let window = window.into_inner();
+    session.note_window(window.width, window.height);
+    Ok(())
+}
 
 async fn service<H: crate::gh::Gh, G: crate::git::Git>(
     session: &mut Session,
@@ -442,12 +451,12 @@ pub(crate) async fn run_scripted_with(
     if let Some(dir) = cache {
         session.prepare(editor.map(str::to_owned), dir.to_path_buf(), false);
     }
-    draw_scripted(&mut terminal, &session);
+    draw_scripted(&mut terminal, &mut session);
     for key in keys {
         if apply(&mut session, store, &idle(), *key, None).await? {
             break;
         }
-        draw_scripted(&mut terminal, &session);
+        draw_scripted(&mut terminal, &mut session);
     }
     Ok(terminal.backend().clone())
 }
@@ -466,12 +475,12 @@ pub(crate) async fn run_scripted_actions(
         lock.map(std::path::Path::to_path_buf),
         opener.map(str::to_owned),
     );
-    draw_scripted(&mut terminal, &session);
+    draw_scripted(&mut terminal, &mut session);
     for key in keys {
         if apply(&mut session, store, &idle(), *key, None).await? {
             break;
         }
-        draw_scripted(&mut terminal, &session);
+        draw_scripted(&mut terminal, &mut session);
     }
     Ok(terminal.backend().clone())
 }
@@ -501,12 +510,12 @@ pub(crate) async fn run_scripted_publish<H: crate::gh::Gh, G: crate::git::Git>(
         paths,
         settings,
     };
-    draw_scripted(&mut terminal, &session);
+    draw_scripted(&mut terminal, &mut session);
     for key in keys {
         if apply(&mut session, store, &mode, *key, None).await? {
             break;
         }
-        draw_scripted(&mut terminal, &session);
+        draw_scripted(&mut terminal, &mut session);
     }
     Ok(terminal.backend().clone())
 }
@@ -517,8 +526,11 @@ fn idle() -> post::Mode<'static, crate::gh::GhCli, crate::git::GitCli> {
 }
 
 #[cfg(test)]
-fn draw_scripted(terminal: &mut Terminal<TestBackend>, session: &Session) {
-    if let Err(error) = terminal.draw(|frame| draw::screen(frame, session)) {
+fn draw_scripted(terminal: &mut Terminal<TestBackend>, session: &mut Session) {
+    let window = std::cell::Cell::new(draw::Window::empty());
+    if let Err(error) = terminal.draw(|frame| window.set(draw::screen(frame, session))) {
         match error {}
     }
+    let window = window.into_inner();
+    session.note_window(window.width, window.height);
 }

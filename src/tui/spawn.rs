@@ -3,7 +3,7 @@ use std::io;
 use std::path::Path;
 use std::pin::Pin;
 use std::process::{ExitStatus, Stdio};
-use tokio::process::Command;
+use tokio::process::{Child, Command};
 
 pub(super) type ExitFuture<'a> = Pin<Box<dyn Future<Output = io::Result<ExitStatus>> + Send + 'a>>;
 pub(super) type OpenFuture<'a> = Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>;
@@ -25,16 +25,54 @@ impl Editor for EditorCommand {
             let Some((program, rest)) = argv.split_first() else {
                 return Err(io::Error::other("editor"));
             };
-            Command::new(program)
+            let child = Command::new(program)
                 .args(rest)
                 .arg(path)
                 .stdin(Stdio::inherit())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
-                .spawn()?
-                .wait()
-                .await
+                .kill_on_drop(true)
+                .spawn()?;
+            EditorProc { child: Some(child) }.wait().await
         })
+    }
+}
+
+struct EditorProc {
+    child: Option<Child>,
+}
+
+impl EditorProc {
+    async fn wait(&mut self) -> io::Result<ExitStatus> {
+        let status = {
+            let Some(child) = self.child.as_mut() else {
+                return Err(io::Error::other("editor"));
+            };
+            child.wait().await?
+        };
+        self.child = None;
+        Ok(status)
+    }
+}
+
+impl Drop for EditorProc {
+    fn drop(&mut self) {
+        let Some(mut child) = self.child.take() else {
+            return;
+        };
+        // Tokio Child has no blocking wait, and Drop cannot await. Reap on a
+        // dedicated thread before this guard returns: the terminal is restored
+        // only after the cancelled editor future drops.
+        let reaped = std::thread::spawn(move || {
+            if child.start_kill().is_ok() {
+                while matches!(child.try_wait(), Ok(None)) {
+                    std::thread::yield_now();
+                }
+            } else {
+                let _ = child.try_wait();
+            }
+        });
+        let _ = reaped.join();
     }
 }
 

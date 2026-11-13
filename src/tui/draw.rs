@@ -1,5 +1,13 @@
 mod draft;
 
+pub(super) fn item_rows(
+    draft: &crate::store::status::DraftView,
+    focus: usize,
+    width: usize,
+) -> usize {
+    draft::item_rows(draft, focus, width)
+}
+
 use super::model::Session;
 use crate::render::sanitize;
 use crate::store::status::QueueRow;
@@ -7,14 +15,27 @@ use ratatui::Frame;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
-pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
+pub(super) struct Window {
+    pub width: usize,
+    pub height: usize,
+}
+
+impl Window {
+    pub(super) const fn empty() -> Self {
+        Self {
+            width: 0,
+            height: 0,
+        }
+    }
+}
+
+pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) -> Window {
     if let Some(confirm) = session.confirm_modal() {
         super::confirm::draw(frame, confirm);
-        return;
+        return Window::empty();
     }
     if let Some((draft, focus)) = session.draft() {
-        draft::screen(frame, draft, focus, session.notice());
-        return;
+        return draft::screen(frame, draft, focus, session.notice(), session.scroll());
     }
     let height = usize::from(frame.area().height);
     let extra = usize::from(session.running()) + usize::from(session.notice().is_some());
@@ -26,6 +47,7 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) {
         lines.push(Line::from(sanitize(notice)));
     }
     frame.render_widget(Paragraph::new(lines), frame.area());
+    Window::empty()
 }
 
 fn queue_lines(session: &Session, room: usize) -> Vec<Line<'static>> {

@@ -27,7 +27,7 @@ pub(super) async fn send<H: Gh, G: Git>(
     store: &Store,
     mode: &Mode<'_, H, G>,
     event: &str,
-    reader: Option<super::LiveReader<'_>>,
+    mut reader: Option<super::LiveReader<'_>>,
 ) -> Result<bool, Error> {
     let Mode::On { gh, .. } = *mode else {
         return Ok(false);
@@ -40,12 +40,13 @@ pub(super) async fn send<H: Gh, G: Git>(
         session.set_notice(format!("undecided findings: {ids}"));
         return Ok(false);
     }
-    let head = match gh.pr_view(&intent.pr).await {
-        Ok(meta) => meta.head_sha,
-        Err(error) => {
+    let head = match read_head(gh, &intent.pr, &mut reader).await? {
+        Head::Quit => return Ok(true),
+        Head::Failed(error) => {
             session.set_notice(error.to_string());
             return Ok(false);
         }
+        Head::Sha(sha) => sha,
     };
     store.set_known_head(intent.target, &head).await?;
     let run = run_head(store, intent.draft).await?;
@@ -185,6 +186,46 @@ pub(super) async fn reconcile<H: Gh, G: Git>(
     }
     session.reload_rows(store).await?;
     Ok(false)
+}
+
+enum Head {
+    Sha(String),
+    Failed(Error),
+    Quit,
+}
+
+async fn read_head<H: Gh>(
+    gh: &H,
+    pr: &crate::pr_url::PrRef,
+    reader: &mut Option<super::LiveReader<'_>>,
+) -> Result<Head, Error> {
+    let view = gh.pr_view(pr);
+    let Some((_, keys)) = reader.as_mut() else {
+        return match view.await {
+            Ok(meta) => Ok(Head::Sha(meta.head_sha)),
+            Err(error) => Ok(Head::Failed(error)),
+        };
+    };
+    tokio::pin!(view);
+    loop {
+        tokio::select! {
+            biased;
+            result = &mut view => {
+                return match result {
+                    Ok(meta) => Ok(Head::Sha(meta.head_sha)),
+                    Err(error) => Ok(Head::Failed(error)),
+                };
+            }
+            incoming = keys.recv() => {
+                let Some(key) = incoming.ok_or_else(super::key_stopped)?? else {
+                    continue;
+                };
+                if super::keys::quits(&key) {
+                    return Ok(Head::Quit);
+                }
+            }
+        }
+    }
 }
 
 async fn drive_until_quit<H: Gh, G: Git>(

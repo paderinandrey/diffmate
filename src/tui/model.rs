@@ -18,6 +18,9 @@ pub(super) struct Session {
     pub selected: usize,
     screen: Screen,
     focus: usize,
+    scroll: usize,
+    view_width: usize,
+    view_height: usize,
     notice: Option<String>,
     editor: Option<String>,
     file_seq: u64,
@@ -50,6 +53,9 @@ impl Session {
             selected: 0,
             screen: Screen::Queue,
             focus: 0,
+            scroll: 0,
+            view_width: 0,
+            view_height: 0,
             notice: None,
             editor: None,
             file_seq: 0,
@@ -359,6 +365,7 @@ impl Session {
         if let Some(draft) = store.latest_draft(target).await? {
             self.screen = Screen::Draft(draft);
             self.focus = 0;
+            self.scroll = 0;
         }
         Ok(())
     }
@@ -366,6 +373,7 @@ impl Session {
     pub fn close_draft(&mut self) {
         self.screen = Screen::Queue;
         self.focus = 0;
+        self.scroll = 0;
     }
 
     fn span(&self) -> usize {
@@ -375,27 +383,88 @@ impl Session {
         }
     }
 
+    pub(super) fn note_window(&mut self, width: usize, height: usize) {
+        self.view_width = width;
+        self.view_height = height;
+    }
+
+    pub(super) fn scroll(&self) -> usize {
+        self.scroll
+    }
+
     pub fn move_down(&mut self) {
+        if self.scroll_by(1) {
+            return;
+        }
         let Some(last) = self.span().checked_sub(1) else {
             return;
         };
-        let cursor = if self.on_draft() {
-            &mut self.focus
-        } else {
-            &mut self.selected
+        let on_draft = self.on_draft();
+        let moved = {
+            let cursor = if on_draft {
+                &mut self.focus
+            } else {
+                &mut self.selected
+            };
+            if *cursor < last {
+                *cursor += 1;
+                true
+            } else {
+                false
+            }
         };
-        if *cursor < last {
-            *cursor += 1;
+        if moved && on_draft {
+            self.scroll = 0;
         }
     }
 
     pub fn move_up(&mut self) {
-        let cursor = if self.on_draft() {
-            &mut self.focus
-        } else {
-            &mut self.selected
+        if self.scroll_by(-1) {
+            return;
+        }
+        let on_draft = self.on_draft();
+        let moved = {
+            let cursor = if on_draft {
+                &mut self.focus
+            } else {
+                &mut self.selected
+            };
+            let before = *cursor;
+            *cursor = cursor.saturating_sub(1);
+            *cursor != before
         };
-        *cursor = cursor.saturating_sub(1);
+        if moved && on_draft {
+            self.scroll = 0;
+        }
+    }
+
+    fn scroll_by(&mut self, step: i32) -> bool {
+        let Some(limit) = self.scroll_limit() else {
+            return false;
+        };
+        if self.scroll > limit {
+            self.scroll = limit;
+        }
+        if step > 0 && self.scroll < limit {
+            self.scroll += 1;
+            return true;
+        }
+        if step < 0 && self.scroll > 0 {
+            self.scroll -= 1;
+            return true;
+        }
+        false
+    }
+
+    fn scroll_limit(&self) -> Option<usize> {
+        if !self.on_draft() || self.view_width == 0 || self.view_height == 0 {
+            return None;
+        }
+        let Screen::Draft(draft) = &self.screen else {
+            return None;
+        };
+        let rows = super::draw::item_rows(draft, self.focus, self.view_width);
+        Some(rows.saturating_sub(self.view_height))
     }
 
     pub async fn decide(&mut self, store: &Store, decision: &str) -> Result<(), Error> {

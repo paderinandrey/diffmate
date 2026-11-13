@@ -5,7 +5,13 @@ use ratatui::layout::Rect;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
-pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize, notice: Option<&str>) {
+pub(super) fn screen(
+    frame: &mut Frame<'_>,
+    draft: &DraftView,
+    focus: usize,
+    notice: Option<&str>,
+    scroll: usize,
+) -> super::Window {
     let mut area = frame.area();
     if let Some(notice) = notice.filter(|text| !text.is_empty())
         && area.height > 1
@@ -68,9 +74,42 @@ pub(super) fn screen(frame: &mut Frame<'_>, draft: &DraftView, focus: usize, not
         }
     }
     let height = usize::from(area.height);
-    let offset = viewport(rows.len(), height, &selected);
+    let offset = viewport(rows.len(), height, &selected, scroll);
     let visible: Vec<_> = rows.into_iter().skip(offset).take(height).collect();
     frame.render_widget(Paragraph::new(visible), area);
+    super::Window { width, height }
+}
+
+pub(super) fn item_rows(draft: &DraftView, focus: usize, width: usize) -> usize {
+    let mut rows = Vec::new();
+    if let Some(finding) = draft.findings.get(focus) {
+        push(
+            &mut rows,
+            &header(
+                &finding.anchor,
+                &finding.severity,
+                &finding.title,
+                &finding.decision,
+                finding.hint.as_deref(),
+                true,
+            ),
+            width,
+        );
+        push(&mut rows, &sanitize(&finding.body), width);
+        return rows.len();
+    }
+    let Some(index) = focus.checked_sub(draft.findings.len()) else {
+        return 0;
+    };
+    let Some(note) = draft.future.get(index) else {
+        return 0;
+    };
+    push(
+        &mut rows,
+        &format!("{} {}", mark(true), sanitize(note)),
+        width,
+    );
+    rows.len()
 }
 
 fn header(
@@ -116,12 +155,20 @@ fn push(rows: &mut Vec<Line<'static>>, text: &str, width: usize) {
     }
 }
 
-fn viewport(total: usize, height: usize, selected: &std::ops::Range<usize>) -> usize {
+fn viewport(
+    total: usize,
+    height: usize,
+    selected: &std::ops::Range<usize>,
+    scroll: usize,
+) -> usize {
     if height == 0 || total <= height || selected.is_empty() {
         return 0;
     }
-    if selected.end.saturating_sub(selected.start) >= height {
-        return selected.start.min(total.saturating_sub(height));
+    let span = selected.end.saturating_sub(selected.start);
+    if span >= height {
+        let max = span.saturating_sub(height);
+        let start = selected.start.saturating_add(scroll.min(max));
+        return start.min(total.saturating_sub(height));
     }
     selected.end.saturating_sub(height)
 }
