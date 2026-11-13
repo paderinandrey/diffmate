@@ -70,6 +70,25 @@ fn pull(stdout: &[u8]) -> Result<Value, Error> {
         })
 }
 
+pub(super) fn page_after(stdout: &[u8]) -> Result<Option<String>, Error> {
+    let value: Value = serde_json::from_slice(stdout)?;
+    let Some(page) = value.pointer("/data/repository/pullRequest/reviewThreads/pageInfo") else {
+        return Ok(None);
+    };
+    if !page["hasNextPage"].as_bool().unwrap_or(false) {
+        return Ok(None);
+    }
+    let cursor = page["endCursor"]
+        .as_str()
+        .filter(|cursor| !cursor.is_empty())
+        .ok_or_else(|| Error::Command {
+            program: "gh",
+            args: "api graphql".into(),
+            detail: "reviewThreads has another page but no endCursor".into(),
+        })?;
+    Ok(Some(cursor.to_string()))
+}
+
 fn nodes(value: &Value, field: &str) -> Vec<Value> {
     value[field]["nodes"]
         .as_array()
@@ -79,7 +98,7 @@ fn nodes(value: &Value, field: &str) -> Vec<Value> {
 
 #[cfg(test)]
 mod tests {
-    use super::{comments, statuses};
+    use super::{comments, page_after, statuses};
 
     #[test]
     fn comments_keep_the_submitted_review() {
@@ -97,5 +116,26 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert!(!rows[0].resolved);
         assert_eq!(rows[0].thread_id, "t1");
+    }
+
+    #[test]
+    fn a_missing_page_info_is_the_last_page() {
+        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[]}}}}}"#;
+        assert_eq!(page_after(raw.as_bytes()).unwrap(), None);
+    }
+
+    #[test]
+    fn the_next_page_needs_an_end_cursor() {
+        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":true}}}}}}"#;
+        let error = page_after(raw.as_bytes()).unwrap_err();
+        assert!(error.to_string().contains("no endCursor"), "{error}");
+    }
+
+    #[test]
+    fn a_finished_page_returns_no_cursor() {
+        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}}"#;
+        assert_eq!(page_after(raw.as_bytes()).unwrap(), None);
+        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"pageInfo":{"hasNextPage":true,"endCursor":"abc"}}}}}}"#;
+        assert_eq!(page_after(raw.as_bytes()).unwrap().as_deref(), Some("abc"));
     }
 }
