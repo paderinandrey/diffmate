@@ -2,7 +2,7 @@ use super::support::{load_live_prs, review_url};
 use tokio::process::Command;
 
 #[tokio::test]
-#[ignore = "needs the real claude CLI, gh login and the owner's fixture PRs; makes one model call"]
+#[ignore = "needs the real grok CLI, gh login and the owner's fixture PRs; makes one model call"]
 async fn live_clean_pr_has_no_findings() {
     let url = load_live_prs()["clean"]["url"]
         .as_str()
@@ -17,7 +17,7 @@ async fn live_clean_pr_has_no_findings() {
 }
 
 #[tokio::test]
-#[ignore = "needs the real claude CLI, gh login and the owner's fixture PRs; makes one model call"]
+#[ignore = "needs the real grok CLI, gh login and the owner's fixture PRs; makes one model call"]
 async fn live_obvious_bug_is_anchored_to_line_7() {
     let prs = load_live_prs();
     let url = prs["obvious_bug"]["url"].as_str().unwrap();
@@ -34,7 +34,7 @@ async fn live_obvious_bug_is_anchored_to_line_7() {
 }
 
 #[tokio::test]
-#[ignore = "needs the real claude CLI, gh login and the owner's fixture PRs; makes one model call"]
+#[ignore = "needs the real grok CLI, gh login and the owner's fixture PRs; makes one model call"]
 async fn live_fork_pr_is_reviewed_the_same_way() {
     let prs = load_live_prs();
     let url = prs["fork"]["url"].as_str().unwrap();

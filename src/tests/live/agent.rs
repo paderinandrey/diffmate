@@ -5,7 +5,6 @@ use std::fs;
 use std::path::Path;
 
 const PROMPT: &str = include_str!("../../../prompts/review.md");
-const CONTRACT: &str = include_str!("../../../tests/fixtures/claude/contract.json");
 const DIFF: &str = "diff --git a/calc.py b/calc.py\nnew file mode 100644\n--- /dev/null\n+++ b/calc.py\n@@ -0,0 +1,2 @@\n+def last_item(items):\n+    return items[len(items)]\n";
 
 fn put(path: &Path, text: &str) {
@@ -14,7 +13,7 @@ fn put(path: &Path, text: &str) {
 }
 
 #[tokio::test]
-#[ignore = "needs the real claude CLI and a logged-in owner; makes one model call"]
+#[ignore = "needs the real grok CLI and a logged-in owner; makes one model call"]
 async fn live_max_turns_one_is_failed_not_no_findings() {
     let dir = tempfile::tempdir().unwrap();
     let base = dir.path().canonicalize().unwrap();
@@ -45,13 +44,11 @@ async fn live_max_turns_one_is_failed_not_no_findings() {
 
     let outcome = cli.run(&AgentRequest::new(worktree, context, prompt)).await;
 
-    let contract: serde_json::Value = serde_json::from_str(CONTRACT).unwrap();
-    let expected = contract["max_turns"]["subtype"].as_str().unwrap();
     match outcome {
         AgentOutcome::Failed { kind, detail, .. } => {
             println!("failed ({}): {detail:?}", kind.as_str());
             assert!(matches!(kind, FailureKind::AgentError));
-            assert_eq!(detail.subtype.as_deref(), Some(expected));
+            assert_eq!(detail.subtype.as_deref(), Some("error_max_turns"));
         }
         AgentOutcome::Succeeded { raw, .. } => panic!("recorded as succeeded: {raw}"),
         AgentOutcome::Cancelled { .. } => panic!("cancelled"),
