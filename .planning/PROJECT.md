@@ -29,16 +29,23 @@ Every PR where my review is directly requested gets an honest, ready-to-read dra
 
 ### Validated
 
-- ✓ Single review (REV-01 to REV-12): `diffmate review <url>` and `diffmate status`, Claude CLI and git isolation, output validation, runner lock, bare clone and worktree — Phase 1
-- ✓ Review and publish (PUB-01 to PUB-15): `diffmate tui`, decisions, editing, one publication, reconciliation, and comment sync — Phase 4
-- ✓ Daily use (OPS-01 to OPS-05): launchd install instructions and `diffmate doctor` — Phase 5
-- ✓ Queue (QUE-01 to QUE-11): `diffmate watch`, tracking, debounce, retries, macOS notifications, and job handoff — Phase 3
+- ✓ Single review (REV-01 to REV-12): `diffmate review <url>` and `diffmate status`, isolated review, output validation, runner lock, bare clone and worktree — Phase 1, v1.0
+- ✓ Review and publish (PUB-01 to PUB-15): `diffmate tui`, decisions, editing, one publication, reconciliation, and comment sync — Phase 4, v1.0
+- ✓ Daily use (OPS-01 to OPS-05): launchd install instructions and `diffmate doctor` — Phase 5, v1.0
+- ✓ Queue (QUE-01 to QUE-11): `diffmate watch`, tracking, debounce, retries, macOS notifications, and job handoff — Phase 3, v1.0
+- ✓ Reliability (REL-01 to REL-13): idempotent runs, crash recovery, draft freshness, timeouts, `--force`, signal handling, job attachment — Phase 2, v1.0
 
 ### Active
 
-One group remains. Full text and IDs are in `.planning/REQUIREMENTS.md`.
+None. v1.0 shipped all five SPEC slices. The next milestone has no requirements until one is named.
 
-- [ ] Reliability (REL-01 to REL-13): idempotent runs, crash recovery, draft freshness, timeouts, `--force`, signal handling, job attachment.
+## Current State
+
+v1.0 SPEC shipped on 2026-11-14. Five phases, 43 plans. The review agent is the grok CLI. Archive: `.planning/milestones/v1.0-ROADMAP.md` and `.planning/milestones/v1.0-REQUIREMENTS.md`. The crate version in `Cargo.toml` stays `0.1.0`.
+
+## Next Milestone Goals
+
+None named.
 
 ### Out of Scope
 
@@ -59,7 +66,7 @@ These are the SPEC non-goals.
 - Accepted residual risk from Phase 1: tool-level confinement (an agent Read of a file outside the worktree or through a symlink) and `rules/CLAUDE.md` as an add-dir memory file have no direct control (01-11 coverage D6, accepted in Phase 1 UAT).
 - How it works, in brief (SPEC.md governs every detail):
   - Every process (`review`, `watch`, `tui`) enqueues a job in SQLite (WAL mode). The one process holding the exclusive `flock` on `~/Library/Application Support/diffmate/runner.lock` is the runner: it performs recovery first, then executes the jobs it is responsible for.
-  - A review run fetches the PR head and base into a diffmate-owned bare clone, makes a detached worktree under `~/Library/Caches/diffmate/runs/<run-id>/`, writes the agent's input files, and runs `claude -p` with isolation flags and a scrubbed environment. Output is validated against the full schema, normalized, and stored as the run and its draft.
+  - A review run fetches the PR head and base into a diffmate-owned bare clone, makes a detached worktree under `~/Library/Caches/diffmate/runs/<run-id>/`, writes the agent's input files, and runs `grok -p` with isolation flags and a scrubbed environment. Output is validated against the full schema, normalized, and stored as the run and its draft.
   - Git is run by diffmate with a controlled environment: no global or system config, no inherited `GIT_*` variables, diffs with `--no-ext-diff --no-textconv`.
   - The agent never calls GitHub. Publication is a `publish` job with a stable publication ID, an immutable snapshot, markers in the review, a `sending` commit before the POST, reconciliation for `unknown` outcomes, and never an automatic second POST.
 - Accepted MVP limitations (from SPEC.md): a review request that is removed and re-added between two polls is missed; processes that create their own process group are not guaranteed to be stopped; managed (policy) settings of the Claude CLI still apply, so isolation is proven by the slice 1 checks and not assumed.
@@ -69,7 +76,7 @@ These are the SPEC non-goals.
 - **Tech stack (locked, DEC-stack)**: Rust; Ratatui for the TUI; tokio for the queue and subprocesses; rusqlite with bundled SQLite for state; the `jsonschema` crate for output validation; GitHub access only through the `gh` CLI - fixed by SPEC.md "Stack" and the project owner.
 - **Latest stable everywhere**: always the latest stable version of every crate, bundled SQLite, the Rust toolchain and edition, and all other tooling (`gh`, the Claude CLI, CI actions if any are ever added). Look the version up at the time of use. Never write a version from memory, and do not pin a version in planning documents - the scaffold `Cargo.toml` is only a `cargo init` placeholder to be re-checked when real work starts.
 - **Platform**: macOS only, one user, launchd for the daily-use agent.
-- **Required properties 1-9**: SPEC.md "Required properties" are hard invariants: revision per run, freshness check before publication, crash safety without duplicates, failures never reported as "no findings", publication only by my action, agent isolation, an existing pending review is never touched, a single mutating process, bounded retries after crashes. `.planning/REQUIREMENTS.md` maps each to the phase that first proves it.
+- **Required properties 1-9**: SPEC.md "Required properties" are hard invariants: revision per run, freshness check before publication, crash safety without duplicates, failures never reported as "no findings", publication only by my action, agent isolation, an existing pending review is never touched, a single mutating process, bounded retries after crashes. The v1.0 mapping is in `.planning/milestones/v1.0-REQUIREMENTS.md`.
 - **Isolation**: the agent has Read, Grep, and Glob only, no network, no MCP servers, no instructions, imports, hooks, or plugins from the PR, no GitHub credentials. Whether the Claude CLI flags actually hold is established by checks in Phase 1.
 - **Storage**: diffmate data lives only in its own directories; my working copies are never used (SPEC.md "Storage").
 - **Output contract**: `schemas/review.schema.json` is validated locally with the full schema and JSON Schema draft 2020-12 whether or not the CLI accepts it; the `$schema` key is removed before the schema goes to `--json-schema`.
@@ -106,6 +113,7 @@ These are the SPEC non-goals.
 | Phase 4 serves sync inside `tui` and keeps the latest review run | While `tui` holds the lock it runs a due sync, then reconcile or a newer publish, with no second POST. Queue and status join `kind = 'review'`. A missing marker stays `unknown` | Good: UAT 3/3 and verification passed |
 | Phase 5 doctor is read-only and the launchd agent is documented, not committed | Five stdout lines, no lock and no migration. `docs/install.md` holds the plist example. The live plist stays in dotfiles. The reboot check is manual | Good: UAT passed |
 | Phase 3 watch tracks a direct review request and notifies | A direct request becomes one automatic review and a Notification Center line. A give-up names the reason. SIGTERM requeues and does not notify | Good: UAT 2/2 and verification passed |
+| Phase 2 live gate is the grok CLI | The owner replaced the leftover Claude LIVE-01 and LIVE-02 rows with five Grok checks. They passed on 2026-11-14 (nextest c3965e45). The ignored Claude isolation checks stay the slice 1 record | Good: phase 2 accepted 2026-11-14 |
 
 ## Evolution
 
@@ -125,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with the current state.
 
 ---
-*Last updated: 2026-11-12 after Phase 3*
+*Last updated: 2026-11-14 after v1.0 milestone*

@@ -194,7 +194,7 @@ Observed results:
 - All three task commits passed mandatory hk hooks. Hooks reused successful source caches when current and ran secrets and large-file checks; Task 3 Markdown checking reported zero errors. No hook was bypassed.
 - Diff inspection, `git diff --check`, commit deletion checks and source lengths passed. Every one of the 32 changed Rust files is at most 100 lines. GSD evaluation-scope resolved all three reachable task commits. No unfinished stub, dependency addition, schema change or unplanned external endpoint was found.
 
-Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final gates belong to 02-10. The two release/live hand checks remain deferred to end-of-phase UAT in [WINDOWS entries 7 and 8](../../WINDOWS.md). No owner database or configuration was accessed.
+Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final gates belong to 02-10. The two release/live hand checks remain deferred to end-of-phase UAT in [WINDOWS entries 7 and 8](../../../WINDOWS.md). No owner database or configuration was accessed.
 
 ## RED / GREEN Evidence
 
@@ -206,7 +206,7 @@ Each record preserves the unchanged JUnit report from an actual failing Nextest 
 
 ## Deviations from Plan
 
-1. **[Rule 2 — SPEC precedence, assigned 02-08 follow-up] Persist signal causes before cancellation.** The inherited signal handler warned and cancelled after a failed SQLite write. It now follows the same durable-first rule as timeout handling, retaining work and retrying with one warning. [WINDOWS entry 6](../../WINDOWS.md) was marked fixed after the signal, SQLite and process-group checks passed. SPEC was not edited.
+1. **[Rule 2 — SPEC precedence, assigned 02-08 follow-up] Persist signal causes before cancellation.** The inherited signal handler warned and cancelled after a failed SQLite write. It now follows the same durable-first rule as timeout handling, retaining work and retrying with one warning. [WINDOWS entry 6](../../../WINDOWS.md) was marked fixed after the signal, SQLite and process-group checks passed. SPEC was not edited.
 2. **[Rule 2 — Assigned 02-06 follow-up] Preserve retry backoff on manual attachment.** Added `Store::job_delayed` and gates before lock acquisition and after recovery. Tests cover equality at the deadline, an available lock while delayed, eventual execution, both waiting signals, and a retry delay created by recovery. Origin, budget, pinned revision, result and freshness semantics remain intact.
 3. **[Rule 3 — File limit] Split implementation and tests.** UTC arithmetic, event outcome checks, role I/O, lock waiting, Store due reads and black-box cases use small submodules. Temporary dead-code expectations were removed from queue seams now used by watch; the old generic lock-acquire helper remains test-only.
 4. **[Rule 1 — Stale role metadata] Verify a live holder when reading its role.** The lock file persists after exit. Its role is returned only when a separate nonblocking lock attempt confirms that the lock is still held. A regression checks role replacement, continued exclusion and absence after release.

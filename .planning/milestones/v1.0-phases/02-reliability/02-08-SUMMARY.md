@@ -150,7 +150,7 @@ Observed results:
 - Both task commits passed mandatory hk hooks, using only the immediately preceding successful full-suite and lint source caches. Hooks ran secrets and large-file checks; Markdown checks reported zero errors. No hook was bypassed.
 - Diff inspection, `git diff --check`, file-existence and source-length checks passed. No task commit deleted a tracked file. GSD evaluation-scope resolved both reachable task commits. Stub and threat-surface scans found no unfinished implementation or unplanned trust boundary.
 
-Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final coverage and release acceptance remain with 02-10. The real Claude one-minute hand check is deferred to end-of-phase UAT and recorded in [WINDOWS entry 5](../../WINDOWS.md). No live owner database or configuration was accessed.
+Not run in this plan: coverage, release build, live `test:e2e`, dependency freshness or advisory checks. Final coverage and release acceptance remain with 02-10. The real Claude one-minute hand check is deferred to end-of-phase UAT and recorded in [WINDOWS entry 5](../../../WINDOWS.md). No live owner database or configuration was accessed.
 
 ## RED / GREEN Evidence
 
@@ -168,7 +168,7 @@ Task 2's cases confirmed behavior already implemented by Task 1. They were GREEN
 ## Issues and Limits
 
 - **Permanent database unavailability prevents safe timeout completion.** The owned work future remains retained while writes are retried; no cancellation signal is emitted without a durable cause, and no terminal result is invented. This is the consequence of SPEC's ordering requirement, rather than a guarantee that an unavailable SQLite store can still enforce a completed stop at the deadline.
-- **02-09 follow-up:** the pre-existing `src/review/signals.rs` path logs persistence failure and then cancels anyway. That conflicts with the same SPEC ordering rule, lies outside this plan's ownership, and is recorded in [WINDOWS entry 6](../../WINDOWS.md). The orchestrator accepted the mandatory 02-09 follow-up. Timeout persistence itself follows the corrected rule.
+- **02-09 follow-up:** the pre-existing `src/review/signals.rs` path logs persistence failure and then cancels anyway. That conflicts with the same SPEC ordering rule, lies outside this plan's ownership, and is recorded in [WINDOWS entry 6](../../../WINDOWS.md). The orchestrator accepted the mandatory 02-09 follow-up. Timeout persistence itself follows the corrected rule.
 - The existing dirty shared planning files and untracked milestone/runtime state were preserved and never staged.
 
 ## Next Phase Readiness

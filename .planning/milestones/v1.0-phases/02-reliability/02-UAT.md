@@ -1,9 +1,9 @@
 ---
-status: partial
+status: complete
 phase: 02-reliability
 source: [02-VERIFICATION.md]
 started: 2026-11-03T15:35:56.260Z
-updated: 2026-11-12T15:04:12Z
+updated: 2026-11-14T18:27:19Z
 ---
 
 ## Current Test
@@ -62,18 +62,14 @@ expected: Прежние target/job/run/draft/finding значения сохр�
 result: pass
 source: 02-01 Task 3 human-check
 
-### 11. LIVE-01: После восстановления доступа к Anthropic по отдельному указанию владельца повторить isolation_flags_keep_authentication.
-expected: Настоящий Claude работает с production isolation flags, без HTTP 403.
-result: blocked
-blocked_by: third-party
-reason: Внешний account-verification барьер. 2026-11-12 владелец решил идти дальше без Anthropic. Live gate остаётся заблокированным; это не waiver и не разрешение вызывать Claude или mise run test:e2e.
+### 11. LIVE-01: На grok CLI с боевыми флагами проверить канарейку недоверенного worktree и что запуск аутентифицируется.
+expected: `untrusted_worktree_canary_is_not_loaded` — `grok inspect` пишет `Project trusted: no`, не показывает `AGENTS.md` и `CLAUDE.md` worktree, claude и cursor rules стоят OFF (env), а боевой запуск доходит до модели.
+result: pass
 source: WINDOWS-11
 
-### 12. LIVE-02: После восстановления account access выполнить четыре оставшихся model-backed случая через mise run test:e2e.
-expected: Max-turns даёт failed, clean PR — no_findings, bug и fork PR — ожидаемую находку calc.py:7.
-result: blocked
-blocked_by: third-party
-reason: Четыре проверки не запускались после fail-fast на auth. 2026-11-12 владелец решил идти дальше без Anthropic. Локальные fakes не доказывают модельный результат. Не запускать mise run test:e2e, пока владелец явно не восстановит доступ.
+### 12. LIVE-02: Четыре модельных случая на grok: лимит ходов, чистый PR, PR с багом и PR из форка.
+expected: `live_max_turns_one_is_failed_not_no_findings` даёт `failed` (`agent_error`, subtype `error_max_turns`), не `no_findings`. Чистый PR даёт `no_findings`. Баг и fork дают находку на ожидаемой строке `calc.py:7`.
+result: pass
 source: WINDOWS-12
 
 ### 13. JUDGMENT-01: При итоговом UAT подтвердить проверенную границу сигналов: только group текущего локально порождённого agent child, никогда PID/PGID из SQLite.
@@ -89,12 +85,12 @@ source: 02-09 prohibition
 ## Summary
 
 total: 14
-passed: 12
+passed: 14
 issues: 0
 pending: 0
 skipped: 0
-blocked: 2
+blocked: 0
 
 ## Gaps
 
-None identified in implementation. External authentication and incomplete acceptance are preserved above; no code gap-closure plan is required.
+None. On 2026-11-14 the five Grok checks passed under `cargo nextest run --locked --features crash-points --run-ignored only --test-threads=1`: `untrusted_worktree_canary_is_not_loaded` 31.285s, `live_max_turns_one_is_failed_not_no_findings` 8.036s, `live_clean_pr_has_no_findings` 37.360s, `live_fork_pr_is_reviewed_the_same_way` 63.677s, `live_obvious_bug_is_anchored_to_line_7` 64.126s. Summary: 5 passed, exit 0. The ignored Claude isolation checks remain the slice 1 record and were not part of this run.

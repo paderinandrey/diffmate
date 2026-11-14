@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 17
+open_count: 15
 waived_count: 0
-fixed_count: 1
+fixed_count: 3
 total_count: 18
-last_updated: 2026-11-11T08:48:40.537Z
+last_updated: 2026-11-14T18:27:19.000Z
 ---
 
 # Broken Windows Ledger
@@ -25,8 +25,8 @@ last_updated: 2026-11-11T08:48:40.537Z
 | 8 | 02 | unrun-verify | .planning/phases/02-reliability/02-09-PLAN.md |  | Release-binary real CLI attach-to-rerun and unrelated automatic backlog hand check is deferred to end-of-phase UAT; isolated attachment, backoff, cancellation and backlog checks pass. | open |  | 2026-11-03T14:30:17.602Z |  |
 | 9 | 02 | unrun-verify | .planning/phases/02-reliability/02-10-PLAN.md |  | Release-binary live SIGKILL retry-budget hand check is deferred to end-of-phase UAT; the feature-build crash-every-time test proves three attempts across watch restarts and persisted status budgets. | open |  | 2026-11-03T15:01:08.016Z |  |
 | 10 | 02 | unrun-verify | .planning/phases/02-reliability/02-10-PLAN.md |  | Release-binary live SIGKILL during preparation and agent execution is deferred to end-of-phase UAT; all named crash points pass isolated restart, database, directory and worktree-metadata checks. | open |  | 2026-11-03T15:01:08.489Z |  |
-| 11 | 02 | unmet-truth | src/tests/isolation/auth.rs |  | The full test:e2e gate is blocked: isolation_flags_keep_authentication receives Anthropic HTTP 403 api_error requiring account verification on Claude 2.1.314. Local CLI probes and isolation controls pass. On 2026-11-03 the owner chose to keep the live gate blocked; do not automatically retry Claude API. | open |  | 2026-11-03T15:07:44.575Z |  |
-| 12 | 02 | unrun-verify | src/tests/live |  | The four model-backed checks live_max_turns_one_is_failed_not_no_findings, live_clean_pr_has_no_findings, live_obvious_bug_is_anchored_to_line_7 and live_fork_pr_is_reviewed_the_same_way did not run after the Anthropic 403 fail-fast; they remain required after account recovery. | open |  | 2026-11-03T15:07:45.151Z |  |
+| 11 | 02 | unrun-verify | src/tests/isolation/auth.rs |  | Grok live check: untrusted_worktree_canary_is_not_loaded. grok inspect on an untrusted worktree must omit its AGENTS.md and CLAUDE.md, report Project trusted: no, and show claude and cursor rules OFF via the production env. The production run must still reach the model. Passed 2026-11-14 in 31.285s. | fixed |  | 2026-11-14T16:00:00.000Z | 2026-11-14T18:27:19.000Z |
+| 12 | 02 | unrun-verify | src/tests/live |  | Grok live check: live_max_turns_one_is_failed_not_no_findings is failed agent_error with subtype error_max_turns, live_clean_pr_has_no_findings is no_findings, and the bug and fork PR tests find the expected calc.py line. Passed 2026-11-14. | fixed |  | 2026-11-14T16:00:00.000Z | 2026-11-14T18:27:19.000Z |
 | 13 | 04 | deviation | src/tui/tests/edit.rs |  | Editor tests live in src/tui/tests/edit.rs because decisions.rs exceeded the 100-insertion hook. | open |  | 2026-11-10T15:46:56.770Z |  |
 | 14 | 04 | deviation | src/tui/model.rs |  | Accepting Discard reloads queue rows after Store::discard so the latched target leaves the list. | open |  | 2026-11-10T17:10:18.894Z |  |
 | 15 | 04 | deviation | src/tui/tests/actions.rs |  | Task 2 has no separate test(04-04) RED commit. hk runs the full suite, so the failing tests and the implementation landed together in 9f1a62a. | open |  | 2026-11-10T17:10:19.312Z |  |
@@ -168,15 +168,15 @@ last_updated: 2026-11-11T08:48:40.537Z
   },
   {
     "id": 11,
-    "kind": "unmet-truth",
+    "kind": "unrun-verify",
     "phase": "02",
     "file": "src/tests/isolation/auth.rs",
     "line": null,
-    "description": "The full test:e2e gate is blocked: isolation_flags_keep_authentication receives Anthropic HTTP 403 api_error requiring account verification on Claude 2.1.314. Local CLI probes and isolation controls pass. On 2026-11-03 the owner chose to keep the live gate blocked; do not automatically retry Claude API.",
-    "status": "open",
+    "description": "Grok live check: untrusted_worktree_canary_is_not_loaded. grok inspect on an untrusted worktree must omit its AGENTS.md and CLAUDE.md, report Project trusted: no, and show claude and cursor rules OFF via the production env. The production run must still reach the model. Passed 2026-11-14 in 31.285s.",
+    "status": "fixed",
     "reason": "",
-    "recorded_at": "2026-11-03T15:07:44.575Z",
-    "resolved_at": null,
+    "recorded_at": "2026-11-14T16:00:00.000Z",
+    "resolved_at": "2026-11-14T18:27:19.000Z",
     "milestone": null
   },
   {
@@ -185,11 +185,11 @@ last_updated: 2026-11-11T08:48:40.537Z
     "phase": "02",
     "file": "src/tests/live",
     "line": null,
-    "description": "The four model-backed checks live_max_turns_one_is_failed_not_no_findings, live_clean_pr_has_no_findings, live_obvious_bug_is_anchored_to_line_7 and live_fork_pr_is_reviewed_the_same_way did not run after the Anthropic 403 fail-fast; they remain required after account recovery.",
-    "status": "open",
+    "description": "Grok live check: live_max_turns_one_is_failed_not_no_findings is failed agent_error with subtype error_max_turns, live_clean_pr_has_no_findings is no_findings, and the bug and fork PR tests find the expected calc.py line. Passed 2026-11-14.",
+    "status": "fixed",
     "reason": "",
-    "recorded_at": "2026-11-03T15:07:45.151Z",
-    "resolved_at": null,
+    "recorded_at": "2026-11-14T16:00:00.000Z",
+    "resolved_at": "2026-11-14T18:27:19.000Z",
     "milestone": null
   },
   {

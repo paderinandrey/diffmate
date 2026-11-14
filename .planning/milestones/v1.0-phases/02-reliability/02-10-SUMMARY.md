@@ -204,7 +204,7 @@ The first run passed all three CLI probes and the worktree CLAUDE.md isolation c
 
 Read-only `gh pr view` of the existing clean fixture succeeded and returned the recorded fixture head, so GitHub fixture access is available. No further Claude model calls were made after the 403. The owner's diffmate database and configuration were not modified. No test was weakened, ignored anew or waived.
 
-The external failure and four unrun checks are recorded in [WINDOWS entries 11 and 12](../../WINDOWS.md). On 2026-11-03 the owner explicitly chose **“Сохранить live gate как заблокированный”** (keep the live gate blocked). No automatic Claude API retry is authorized by this handoff. A later owner-directed continuation can restore account access and rerun `NEXTEST_TEST_THREADS=2 mise run test:e2e`. Phase completion remains pending that gate, end-of-phase UAT and the orchestrator's code review/verifier.
+The external failure and four unrun checks are recorded in [WINDOWS entries 11 and 12](../../../WINDOWS.md). On 2026-11-03 the owner explicitly chose **“Сохранить live gate как заблокированный”** (keep the live gate blocked). No automatic Claude API retry is authorized by this handoff. A later owner-directed continuation can restore account access and rerun `NEXTEST_TEST_THREADS=2 mise run test:e2e`. Phase completion remains pending that gate, end-of-phase UAT and the orchestrator's code review/verifier.
 
 ## RED / GREEN Evidence
 
@@ -225,7 +225,7 @@ Each file retains the unchanged JUnit report from the actual failing command, ti
 
 ## Remaining Hand Checks
 
-The release-binary live SIGKILL budget check and kills during preparation/agent execution were not performed. They remain in [WINDOWS entries 9 and 10](../../WINDOWS.md), in addition to earlier phase UAT entries. The feature-build matrix and existing isolated tests are automated evidence, not claims that those live hand checks occurred.
+The release-binary live SIGKILL budget check and kills during preparation/agent execution were not performed. They remain in [WINDOWS entries 9 and 10](../../../WINDOWS.md), in addition to earlier phase UAT entries. The feature-build matrix and existing isolated tests are automated evidence, not claims that those live hand checks occurred.
 
 ## PR Handoff
 
