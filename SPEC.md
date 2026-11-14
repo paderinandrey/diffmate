@@ -334,6 +334,7 @@ Done when:
   - a `CLAUDE.md` with an `@` import of a file outside the worktree containing the canary does not leak it;
   - `.claude/settings.json` with a hook, a plugin, and `.mcp.json` from the PR do not run or load.
 - Those Claude checks record what slice 1 verified. They are not evidence that the Grok invocation in "Agent contract" holds.
+- Grok live acceptance uses the production flags. An untrusted worktree's `AGENTS.md` and `CLAUDE.md` canary is not loaded, and the run still authenticates. A turn limit is `failed`, not `no_findings`. A clean PR is `no_findings`. A PR with an obvious bug and a fork PR each produce a finding on the expected line.
 - Git isolation: a smudge filter and a `core.fsmonitor` command defined in a test global git config, and a `.gitattributes` that selects the filter, do not run during fetch, worktree checkout, or diff.
 - A PR from a fork is reviewed the same way.
 - A missing CLI flag fails the run before the agent starts.
