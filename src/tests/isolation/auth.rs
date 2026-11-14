@@ -78,7 +78,10 @@ async fn untrusted_worktree_canary_is_not_loaded() {
 
     let outcome = cli.run(&AgentRequest::new(worktree, context, prompt)).await;
     match outcome {
-        AgentOutcome::Succeeded { .. } => {}
+        AgentOutcome::Succeeded { raw, .. } => {
+            let rendered = raw.to_string();
+            assert!(!rendered.contains(CANARY), "{rendered}");
+        }
         AgentOutcome::Failed { kind, detail, .. } => panic!("{}: {detail:?}", kind.as_str()),
         AgentOutcome::Cancelled { .. } => panic!("cancelled"),
     }
