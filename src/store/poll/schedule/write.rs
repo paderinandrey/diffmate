@@ -26,14 +26,25 @@ pub(super) fn reset(
     when: &When,
 ) -> rusqlite::Result<()> {
     let at = when.now.saturating_add(when.debounce);
-    tx.execute(
-        "UPDATE jobs SET retry_count = 0, next_attempt_at = ?1, updated_at = ?2, head_sha = ?3
-         WHERE id = ?4",
-        params![at, when.now, head, job],
-    )?;
+    retarget(tx, job, head, when.now, at)?;
     tx.execute(
         "UPDATE targets SET queued_head = ?1 WHERE id = ?2",
         params![head, target],
+    )
+    .map(drop)
+}
+
+pub(in crate::store::poll) fn retarget(
+    tx: &Transaction,
+    job: JobId,
+    head: &str,
+    now: i64,
+    due: i64,
+) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE jobs SET state = 'queued', retry_count = 0, max_retries = NULL,
+         next_attempt_at = ?1, updated_at = ?2, head_sha = ?3 WHERE id = ?4",
+        params![due, now, head, job],
     )
     .map(drop)
 }

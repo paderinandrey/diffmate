@@ -54,6 +54,7 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
         lock = acquire => lock?,
     };
     runner_lock.announce(crate::lock::Role::Watch).await?;
+    let store = store.under_lock(runner_lock);
     crash_point!("locked");
     let report = recovery::run(&config.paths, &store, &deps.git, &config.settings).await?;
     crash_point!("recovered");
@@ -65,5 +66,5 @@ async fn execute(config: &AppConfig) -> Result<(), Error> {
             events::print(&format!("notification-failed: {error}"));
         }
     }
-    run::jobs(config, &store, &deps, &mut signals).await
+    Box::pin(run::jobs(config, &store, &deps, &mut signals)).await
 }

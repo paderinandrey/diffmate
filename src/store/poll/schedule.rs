@@ -6,7 +6,9 @@ use rusqlite::Transaction;
 
 mod rows;
 mod write;
+pub(super) use rows::attempted;
 use rows::{consider, tracked};
+pub(super) use write::retarget;
 use write::{hold, release};
 
 struct When {

@@ -38,6 +38,11 @@ pub(crate) trait Git {
         number: u64,
         base_ref: &str,
     ) -> impl Future<Output = Result<(), Error>> + Send;
+    fn delete_pull_refs(
+        &self,
+        repo: &Path,
+        number: u64,
+    ) -> impl Future<Output = Result<(), Error>> + Send;
     fn rev_parse(
         &self,
         repo: &Path,

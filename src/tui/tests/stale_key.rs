@@ -11,16 +11,11 @@ use ratatui::crossterm::event::KeyCode;
 async fn shown(store: &Store, lock: &std::path::Path) -> Session {
     let mut session = open_session(store, lock).await;
     session.open_draft(store).await.unwrap();
+    session.note_window(80, 8);
     session
 }
 
-async fn press(
-    session: &mut Session,
-    store: &Store,
-    paths: &Paths,
-    seen: Option<i64>,
-    codes: &[KeyCode],
-) -> bool {
+async fn press(session: &mut Session, store: &Store, paths: &Paths, codes: &[KeyCode]) -> bool {
     let gh = Fake::new(HEAD);
     let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
     let settings = Settings::default();
@@ -31,8 +26,7 @@ async fn press(
         session,
         store,
         &mode,
-        seen,
-        codes.iter().copied().map(key).collect(),
+        codes.iter().copied().map(key).map(Into::into).collect(),
         Some((&gate, &mut keys)),
     )
     .await
@@ -58,7 +52,7 @@ async fn queued_approve_drops_when_the_draft_changes() {
         .unwrap();
     session.reload(&store).await.unwrap();
     assert_eq!(session.draft_id(), Some(2));
-    assert!(!press(&mut session, &store, &paths, Some(1), &[KeyCode::Char('a')]).await);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('a')]).await);
     assert_eq!(
         queue::count(&store, "SELECT count(*) FROM publications").await,
         0
@@ -73,7 +67,7 @@ async fn queued_approve_posts_when_the_draft_stays() {
     let paths = paths(&tmp);
     let mut session = shown(&store, &paths.lock()).await;
     assert_eq!(session.draft_id(), Some(1));
-    assert!(!press(&mut session, &store, &paths, Some(1), &[KeyCode::Char('a')]).await);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('a')]).await);
     assert_eq!(
         queue::count(&store, "SELECT count(*) FROM publications").await,
         1
@@ -99,7 +93,7 @@ async fn queued_keep_drops_when_the_draft_changes() {
         .await
         .unwrap();
     session.reload(&store).await.unwrap();
-    assert!(!press(&mut session, &store, &paths, Some(1), &[KeyCode::Char('K')]).await);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('K')]).await);
     let kept = "SELECT count(*) FROM findings WHERE id = 'f2' AND decision = 'kept'";
     assert_eq!(queue::count(&store, kept).await, 0);
     assert_eq!(session.notice(), Some("the open draft changed"));
@@ -111,7 +105,7 @@ async fn queued_drop_writes_when_the_draft_stays() {
     publish::seed(&store).await;
     let paths = paths(&tmp);
     let mut session = shown(&store, &paths.lock()).await;
-    assert!(!press(&mut session, &store, &paths, Some(1), &[KeyCode::Char('d')]).await);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('d')]).await);
     let dropped = "SELECT count(*) FROM findings WHERE id = 'f1' AND decision = 'dropped'";
     assert_eq!(queue::count(&store, dropped).await, 1);
 }
@@ -135,7 +129,7 @@ async fn queued_keep_then_approve_stops_when_reload_replaces_the_draft() {
         .unwrap();
     assert_eq!(session.draft_id(), Some(1));
     let keys = [KeyCode::Char('k'), KeyCode::Char('a')];
-    assert!(!press(&mut session, &store, &paths, Some(1), &keys).await);
+    assert!(!press(&mut session, &store, &paths, &keys).await);
     assert_eq!(
         queue::count(&store, "SELECT count(*) FROM publications").await,
         0
@@ -150,7 +144,50 @@ async fn queued_keep_then_approve_posts_when_the_draft_stays() {
     let paths = paths(&tmp);
     let mut session = shown(&store, &paths.lock()).await;
     let keys = [KeyCode::Char('k'), KeyCode::Char('a')];
-    assert!(!press(&mut session, &store, &paths, Some(1), &keys).await);
+    assert!(!press(&mut session, &store, &paths, &keys).await);
+    assert_eq!(
+        queue::count(&store, "SELECT count(*) FROM publications").await,
+        1
+    );
+}
+
+#[tokio::test]
+async fn buffered_navigation_cannot_resolve_a_new_confirmation() {
+    let (tmp, store) = open().await;
+    publish::seed(&store).await;
+    let paths = paths(&tmp);
+    let mut session = shown(&store, &paths.lock()).await;
+    let keys = [KeyCode::Char('x'), KeyCode::Down, KeyCode::Enter];
+    assert!(!press(&mut session, &store, &paths, &keys).await);
+    assert!(session.confirm_modal().unwrap().highlighted_safe);
+    assert_eq!(
+        fixture::cell(&store, "SELECT tracking FROM targets").await,
+        "tracked"
+    );
+    session.note_window(80, 8);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Down]).await);
+    assert!(!session.confirm_modal().unwrap().highlighted_safe);
+}
+
+#[tokio::test]
+async fn queued_approve_needs_a_redraw_after_a_concurrent_edit_to_the_same_draft() {
+    let (tmp, store) = open().await;
+    publish::seed(&store).await;
+    let paths = paths(&tmp);
+    let mut session = shown(&store, &paths.lock()).await;
+    store
+        .save_finding_text("f1", "another title", "another body")
+        .await
+        .unwrap();
+    session.reload(&store).await.unwrap();
+    assert_eq!(session.draft_id(), Some(1));
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('a')]).await);
+    assert_eq!(
+        queue::count(&store, "SELECT count(*) FROM publications").await,
+        0
+    );
+    session.note_window(80, 8);
+    assert!(!press(&mut session, &store, &paths, &[KeyCode::Char('a')]).await);
     assert_eq!(
         queue::count(&store, "SELECT count(*) FROM publications").await,
         1

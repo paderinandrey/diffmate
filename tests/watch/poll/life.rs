@@ -56,6 +56,12 @@ fn a_draft_seen_at_the_end_of_a_run_holds_the_follow_up() {
 fn a_close_seen_at_the_end_of_a_run_untracks_and_queues_nothing() {
     let sandbox = Sandbox::new();
     let moved = watch_one(&sandbox, "CLOSED", false);
+    let refs = crate::support::git_in(
+        &sandbox.state_dir().join("repos/o/r.git"),
+        &sandbox.home,
+        &["for-each-ref", "--format=%(refname)", "refs/diffmate/"],
+    );
+    assert_eq!(refs, "refs/diffmate/base/main");
     assert_eq!(
         super::sync::query(&sandbox, "SELECT count(*) FROM jobs WHERE state = 'queued'"),
         0

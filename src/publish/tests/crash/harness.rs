@@ -12,7 +12,12 @@ pub(super) async fn ready() -> (tempfile::TempDir, Store, Arc<Remote>, i64) {
     batch(&store, support::KEPT).await;
     let remote = Arc::new(Remote::new(store.clone()));
     let job = store
-        .confirm_publication(1, "COMMENT", "abc123", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "abc123",
+            &process(),
+        )
         .await
         .unwrap();
     store.start_job(job).await.unwrap();

@@ -1,7 +1,10 @@
 mod confirm;
 mod draw;
 mod edit;
+mod follow;
+mod input;
 mod keys;
+use input::Captured;
 mod model;
 mod open;
 mod post;
@@ -58,7 +61,8 @@ async fn until_shutdown(
 
 async fn show(config: &AppConfig) -> Result<(), Error> {
     let store = Store::open(&config.paths).await?;
-    let mut terminal = ratatui::try_init().map_err(Error::io("open the terminal"))?;
+    let terminal =
+        std::cell::RefCell::new(ratatui::try_init().map_err(Error::io("open the terminal"))?);
     let _restore = Restore;
     let mut signals = crate::review::signals::Signals::new()?;
     let mut session = Session::load(&store).await?;
@@ -77,11 +81,14 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
     );
     let gh = crate::gh::GhCli::new(&config.env);
     let git = crate::git::GitCli::new(&config.env);
+    let paint =
+        |session: &mut Session, running| draw_session(&mut terminal.borrow_mut(), session, running);
     let mode = post::Mode::On {
         gh: &gh,
         git: &git,
         paths: &config.paths,
         settings: &config.settings,
+        paint_runner: Some(&paint),
     };
     let (tx, mut keys) = tokio::sync::mpsc::channel(16);
     let gate = std::sync::Arc::new(reader::KeyGate::new());
@@ -93,20 +100,21 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
         async {
             loop {
                 if session.take_repaint() {
-                    terminal.clear().map_err(Error::io("clear the terminal"))?;
+                    terminal
+                        .borrow_mut()
+                        .clear()
+                        .map_err(Error::io("clear the terminal"))?;
                 }
-                draw_session(&mut terminal, &mut session)?;
-                let seen = session.draft_id();
+                paint(&mut session, false)?;
                 match finish_or_quit(service(&mut session, &store, &mode), &mut keys).await? {
                     Turn::Quit => return Ok(()),
                     Turn::Finished(mut queued) => {
                         take_ready(&mut keys, &mut queued)?;
-                        draw_session(&mut terminal, &mut session)?;
+                        paint(&mut session, false)?;
                         if drive_queued(
                             &mut session,
                             &store,
                             &mode,
-                            seen,
                             queued,
                             Some((&gate, &mut keys)),
                         )
@@ -125,13 +133,17 @@ async fn show(config: &AppConfig) -> Result<(), Error> {
 
 const SERVICE_TICK: std::time::Duration = std::time::Duration::from_secs(1);
 
-fn draw_session<B>(terminal: &mut ratatui::Terminal<B>, session: &mut Session) -> Result<(), Error>
+fn draw_session<B>(
+    terminal: &mut ratatui::Terminal<B>,
+    session: &mut Session,
+    running: bool,
+) -> Result<(), Error>
 where
     B: ratatui::backend::Backend<Error = io::Error>,
 {
     let window = std::cell::Cell::new(draw::Window::empty());
     terminal
-        .draw(|frame| window.set(draw::screen(frame, session)))
+        .draw(|frame| window.set(draw::screen(frame, session, running)))
         .map_err(Error::io("draw the terminal"))?;
     let window = window.into_inner();
     session.note_window(window.width, window.height);
@@ -143,26 +155,18 @@ async fn service<H: crate::gh::Gh, G: crate::git::Git>(
     store: &Store,
     mode: &post::Mode<'_, H, G>,
 ) -> Result<(), Error> {
-    let post::Mode::On {
-        gh,
-        git,
-        paths,
-        settings,
-    } = *mode
-    else {
+    if matches!(mode, post::Mode::Off) {
         return Ok(());
-    };
-    if runner::needs_runner(store, session.running()).await? {
-        runner::drive(session, store, gh, git, paths, settings).await?;
     }
+    runner::drive(session, store, mode).await?;
     session.reload_rows(store).await?;
-    post::poll_moved(session, store).await?;
-    session.reload(store).await
+    session.reload(store).await?;
+    follow::refresh(session, store).await
 }
 
 type LiveReader<'a> = (
     &'a std::sync::Arc<reader::KeyGate>,
-    &'a mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+    &'a mut tokio::sync::mpsc::Receiver<Result<Option<Captured>, Error>>,
 );
 
 async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
@@ -177,7 +181,7 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
         keys::Command::Quit => Ok(true),
         keys::Command::Open => {
             session.open_draft(store).await?;
-            post::poll_moved(session, store).await?;
+            follow::refresh(session, store).await?;
             Ok(false)
         }
         keys::Command::Back => {
@@ -239,7 +243,7 @@ async fn apply<H: crate::gh::Gh, G: crate::git::Git>(
         }
         keys::Command::Accept => {
             if let Some(offer) = session.accept_confirm(store).await? {
-                return post::commit(session, store, mode, &offer, reader).await;
+                return post::commit(session, store, mode, offer, reader).await;
             }
             Ok(false)
         }
@@ -283,13 +287,13 @@ impl Drop for Restore {
 
 #[derive(Debug)]
 enum Turn {
-    Finished(Vec<KeyEvent>),
+    Finished(Vec<Captured>),
     Quit,
 }
 
 async fn finish_or_quit<F>(
     work: F,
-    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<Captured>, Error>>,
 ) -> Result<Turn, Error>
 where
     F: std::future::Future<Output = Result<(), Error>>,
@@ -305,7 +309,7 @@ where
             }
             incoming = keys.recv() => {
                 if let Some(key) = incoming.ok_or_else(key_stopped)?? {
-                    if keys::quits(&key) {
+                    if keys::quits(&key.key) {
                         return Ok(Turn::Quit);
                     }
                     queued.push(key);
@@ -319,32 +323,49 @@ async fn drive_queued<H: crate::gh::Gh, G: crate::git::Git>(
     session: &mut Session,
     store: &Store,
     mode: &post::Mode<'_, H, G>,
-    seen: Option<i64>,
-    queued: Vec<KeyEvent>,
+    queued: Vec<Captured>,
     mut reader: Option<LiveReader<'_>>,
 ) -> Result<bool, Error> {
-    let idle = queued.is_empty();
-    let mut replaced = seen.is_some() && session.draft_id() != seen;
-    for key in queued {
-        if replaced && keys::follows_draft(&key) {
-            session.set_notice("the open draft changed".to_string());
-            continue;
+    if queued.is_empty() {
+        if let Some(key) = next_ready(&mut reader).await? {
+            return dispatch(session, store, mode, key, reader).await;
         }
-        let before = session.draft_id();
-        if apply(session, store, mode, key, live(&mut reader)).await? {
+        return Ok(false);
+    }
+    for key in queued {
+        if dispatch(session, store, mode, key, live(&mut reader)).await? {
             return Ok(true);
         }
-        if before.is_some() && session.draft_id() != before {
-            replaced = true;
-        }
-    }
-    if idle
-        && let Some(key) = next_ready(&mut reader).await?
-        && apply(session, store, mode, key, live(&mut reader)).await?
-    {
-        return Ok(true);
     }
     Ok(false)
+}
+
+async fn dispatch<H: crate::gh::Gh, G: crate::git::Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &post::Mode<'_, H, G>,
+    key: Captured,
+    reader: Option<LiveReader<'_>>,
+) -> Result<bool, Error> {
+    if keys::quits(&key.key) {
+        return Ok(true);
+    }
+    if !session
+        .presented
+        .as_ref()
+        .is_some_and(|shown| shown.accepts(session, &key))
+    {
+        let message = if session.confirming() {
+            "the confirmation changed; choose again"
+        } else if session.on_draft() {
+            "the open draft changed"
+        } else {
+            "the queue changed; choose again"
+        };
+        session.set_notice(message.into());
+        return Ok(false);
+    }
+    apply(session, store, mode, key.key, reader).await
 }
 
 fn live<'short, 'long: 'short>(
@@ -353,7 +374,7 @@ fn live<'short, 'long: 'short>(
     reader.as_mut().map(|(gate, keys)| (*gate, &mut **keys))
 }
 
-async fn next_ready(reader: &mut Option<LiveReader<'_>>) -> Result<Option<KeyEvent>, Error> {
+async fn next_ready(reader: &mut Option<LiveReader<'_>>) -> Result<Option<Captured>, Error> {
     let Some((_, keys)) = reader.as_mut() else {
         return Ok(None);
     };
@@ -361,8 +382,8 @@ async fn next_ready(reader: &mut Option<LiveReader<'_>>) -> Result<Option<KeyEve
 }
 
 fn take_ready(
-    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
-    queued: &mut Vec<KeyEvent>,
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<Captured>, Error>>,
+    queued: &mut Vec<Captured>,
 ) -> Result<(), Error> {
     loop {
         match keys.try_recv() {
@@ -378,14 +399,14 @@ fn take_ready(
 }
 
 async fn next_key(
-    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
-) -> Result<Option<KeyEvent>, Error> {
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<Captured>, Error>>,
+) -> Result<Option<Captured>, Error> {
     incoming_key(keys.recv().await)
 }
 
 fn incoming_key(
-    incoming: Option<Result<Option<KeyEvent>, Error>>,
-) -> Result<Option<KeyEvent>, Error> {
+    incoming: Option<Result<Option<Captured>, Error>>,
+) -> Result<Option<Captured>, Error> {
     incoming.ok_or_else(key_stopped)?
 }
 
@@ -395,14 +416,14 @@ fn key_stopped() -> Error {
 
 // crossterm::event::poll blocks in the kernel and cannot be cancelled.
 fn read_keys(
-    tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>,
+    tx: &tokio::sync::mpsc::Sender<Result<Option<Captured>, Error>>,
     gate: &reader::KeyGate,
 ) {
     pump(tx, gate, read_one);
 }
 
 fn pump(
-    tx: &tokio::sync::mpsc::Sender<Result<Option<KeyEvent>, Error>>,
+    tx: &tokio::sync::mpsc::Sender<Result<Option<Captured>, Error>>,
     gate: &reader::KeyGate,
     mut read_one: impl FnMut() -> Result<Option<KeyEvent>, Error>,
 ) {
@@ -412,7 +433,7 @@ fn pump(
             reader::Step::Skip => continue,
             reader::Step::Run => {}
         }
-        let event = read_one();
+        let event = read_one().map(|key| key.map(Captured::from));
         match gate.checkpoint() {
             reader::Step::Stop => break,
             reader::Step::Skip => continue,
@@ -428,7 +449,7 @@ fn pump(
 
 async fn pause_for_editor<T>(
     gate: &std::sync::Arc<reader::KeyGate>,
-    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<KeyEvent>, Error>>,
+    keys: &mut tokio::sync::mpsc::Receiver<Result<Option<Captured>, Error>>,
     edit: impl std::future::Future<Output = T>,
 ) -> T {
     let mut stop = StopGate(Some(gate));
@@ -525,7 +546,7 @@ pub(crate) async fn run_scripted_with(
     }
     draw_scripted(&mut terminal, &mut session);
     for key in keys {
-        if apply(&mut session, store, &idle(), *key, None).await? {
+        if dispatch(&mut session, store, &idle(), (*key).into(), None).await? {
             break;
         }
         draw_scripted(&mut terminal, &mut session);
@@ -549,7 +570,7 @@ pub(crate) async fn run_scripted_actions(
     );
     draw_scripted(&mut terminal, &mut session);
     for key in keys {
-        if apply(&mut session, store, &idle(), *key, None).await? {
+        if dispatch(&mut session, store, &idle(), (*key).into(), None).await? {
             break;
         }
         draw_scripted(&mut terminal, &mut session);
@@ -581,12 +602,15 @@ pub(crate) async fn run_scripted_publish<H: crate::gh::Gh, G: crate::git::Git>(
         git,
         paths,
         settings,
+        paint_runner: None,
     };
+    service(&mut session, store, &mode).await?;
     draw_scripted(&mut terminal, &mut session);
     for key in keys {
-        if apply(&mut session, store, &mode, *key, None).await? {
+        if dispatch(&mut session, store, &mode, (*key).into(), None).await? {
             break;
         }
+        service(&mut session, store, &mode).await?;
         draw_scripted(&mut terminal, &mut session);
     }
     Ok(terminal.backend().clone())
@@ -600,7 +624,7 @@ fn idle() -> post::Mode<'static, crate::gh::GhCli, crate::git::GitCli> {
 #[cfg(test)]
 fn draw_scripted(terminal: &mut Terminal<TestBackend>, session: &mut Session) {
     let window = std::cell::Cell::new(draw::Window::empty());
-    if let Err(error) = terminal.draw(|frame| window.set(draw::screen(frame, session))) {
+    if let Err(error) = terminal.draw(|frame| window.set(draw::screen(frame, session, false))) {
         match error {}
     }
     let window = window.into_inner();

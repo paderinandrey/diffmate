@@ -8,6 +8,7 @@ macro_rules! crash_point {
 pub(crate) use crash_point;
 
 pub(crate) trait Probe: Send + Sync {
+    #[cfg(feature = "crash-points")]
     fn matches(&self, point: &str) -> bool {
         let _ = (self, point);
         false

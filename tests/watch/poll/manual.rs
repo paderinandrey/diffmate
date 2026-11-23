@@ -37,7 +37,13 @@ fn a_manual_review_stays_untracked_until_search_contains_it() {
         &pr_view_json("o", "r", 1, &moved, "main", false),
     );
     let searches = sync::calls(&sandbox, "search");
+    let views = sync::calls(&sandbox, "pr");
     watch.wait_until(|_| sync::calls(&sandbox, "search") >= searches + 2);
+    assert_eq!(
+        sync::calls(&sandbox, "pr"),
+        views,
+        "an absent manual PR needs no view"
+    );
     assert_eq!(
         sync::query(
             &sandbox,

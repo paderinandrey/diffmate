@@ -35,8 +35,13 @@ pub(super) async fn cancelled_before_run(stop: Option<StopReason>, automatic: bo
             .unwrap();
     }
     if let Some(reason) = stop {
-        store.start_job(job.job_id).await.unwrap();
-        assert!(store.set_stop_reason(job.job_id, reason).await.unwrap());
+        store
+            .call(move |conn| {
+                conn.execute("UPDATE jobs SET stop_reason = ?1", [reason.as_str()])
+                    .map(drop)
+            })
+            .await
+            .unwrap();
     }
     let env = InheritedEnv::from_pairs(vec![("PATH".into(), std::env::var_os("PATH").unwrap())]);
     let deps = Deps {

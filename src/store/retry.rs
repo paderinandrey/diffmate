@@ -18,10 +18,23 @@ pub(crate) struct QueuedJob {
 pub(super) fn apply_job_next(
     tx: &Transaction,
     job: JobId,
-    next: &JobNext,
+    mut next: JobNext,
     now: i64,
-) -> rusqlite::Result<()> {
-    match next {
+) -> rusqlite::Result<JobNext> {
+    if matches!(next, JobNext::Requeue { .. }) {
+        let reason: Option<String> = tx.query_row(
+            "SELECT failure_reason FROM jobs WHERE id = ?1",
+            [job],
+            |row| row.get(0),
+        )?;
+        if let Some(reason) = reason {
+            next = JobNext::Fail {
+                reason,
+                max_retries: None,
+            };
+        }
+    }
+    match &next {
         JobNext::Requeue {
             retry_count,
             max_retries,
@@ -44,7 +57,7 @@ pub(super) fn apply_job_next(
             )?;
         }
     }
-    Ok(())
+    Ok(next)
 }
 
 impl Store {
@@ -67,12 +80,12 @@ impl Store {
         .await
     }
 
-    pub async fn resolve_job(&self, job: JobId, next: &JobNext) -> Result<(), Error> {
-        let next = next.clone();
+    pub async fn resolve_job(&self, job: JobId, next: JobNext) -> Result<JobNext, Error> {
         self.call(move |conn| {
             let tx = conn.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-            apply_job_next(&tx, job, &next, super::now_ms())?;
-            tx.commit()
+            let next = apply_job_next(&tx, job, next, super::now_ms())?;
+            tx.commit()?;
+            Ok(next)
         })
         .await
     }

@@ -15,6 +15,10 @@ pub(crate) enum Follow {
 
 #[expect(dead_code)]
 pub(crate) enum ReviewResult {
+    Deferred,
+    JobCancelled {
+        reason: String,
+    },
     Succeeded {
         reused: bool,
         run_id: RunId,
@@ -39,6 +43,15 @@ pub(crate) enum ReviewResult {
         run_id: Option<RunId>,
         job_end: JobEnd,
     },
+}
+
+pub(super) async fn stored(store: &Store, job: &EnqueuedJob) -> ReviewResult {
+    match store.stored_result(job.job_id).await {
+        Ok(stored) => ReviewResult::from_stored(stored, false),
+        Err(error) => ReviewResult::JobFailed {
+            reason: error.to_string(),
+        },
+    }
 }
 
 pub(super) async fn job_failed(store: &Store, job: &EnqueuedJob, reason: String) -> ReviewResult {

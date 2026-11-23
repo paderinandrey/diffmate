@@ -8,12 +8,12 @@ use unicode_width::UnicodeWidthChar;
 
 pub(super) fn screen(
     frame: &mut Frame<'_>,
+    mut area: Rect,
     draft: &DraftView,
     focus: usize,
     notice: Option<&str>,
     scroll: usize,
 ) -> super::Window {
-    let mut area = frame.area();
     if let Some(notice) = notice.filter(|text| !text.is_empty())
         && area.height > 1
     {
@@ -39,7 +39,7 @@ pub(super) fn screen(
         push(
             &mut rows,
             &header(
-                &finding.anchor,
+                &finding.anchor(),
                 &finding.severity,
                 &finding.title,
                 &finding.decision,
@@ -91,7 +91,7 @@ pub(super) fn item_rows(draft: &DraftView, focus: usize, width: usize) -> usize 
         push(
             &mut rows,
             &header(
-                &finding.anchor,
+                &finding.anchor(),
                 &finding.severity,
                 &finding.title,
                 &finding.decision,

@@ -6,12 +6,12 @@ use crate::pr_url::PrRef;
 use crate::runner::{Deps, ReviewResult, execute_review_job};
 use crate::store::{Store, jobs::EnqueuedJob};
 
-struct UncalledAgent;
+pub(super) struct UncalledAgent;
 
 #[allow(refining_impl_trait)]
 impl Agent for UncalledAgent {
     fn run(&self, _: &AgentRequest) -> std::future::Ready<AgentOutcome> {
-        unreachable!("a reused run must not call the agent")
+        unreachable!("no agent should start")
     }
 }
 
@@ -32,7 +32,7 @@ async fn dedup_uses_the_pinned_retry_head_instead_of_the_current_github_head() {
     };
     let deps = Deps {
         git: FakeGit::default(),
-        gh: FakeGh,
+        gh: FakeGh::default(),
         agent: UncalledAgent,
         settings: crate::config::Settings::default(),
     };
@@ -57,4 +57,46 @@ async fn dedup_uses_the_pinned_retry_head_instead_of_the_current_github_head() {
     let stored = store.stored_result(job.job_id).await.unwrap();
     assert_eq!(stored.state, "succeeded");
     assert!(stored.reused);
+}
+
+#[tokio::test]
+async fn manual_review_still_resolves_a_draft_or_closed_pr() {
+    for (state, draft) in [("OPEN", true), ("CLOSED", false)] {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
+        let store = Store::open(&paths).await.unwrap();
+        seed::runs(&store).await;
+        store
+            .call(|conn| {
+                conn.execute("UPDATE jobs SET origin = 'manual' WHERE id = 1", [])
+                    .map(drop)
+            })
+            .await
+            .unwrap();
+        let pr = crate::pr_url::parse("https://github.com/o/r/pull/1").unwrap();
+        let deps = Deps {
+            git: FakeGit::default(),
+            gh: FakeGh {
+                state,
+                draft,
+                ..FakeGh::default()
+            },
+            agent: UncalledAgent,
+            settings: crate::config::Settings::default(),
+        };
+        let (_tx, cancel) = tokio::sync::watch::channel(false);
+        let job = EnqueuedJob {
+            job_id: 1,
+            target_id: 1,
+        };
+        let result = execute_review_job(&paths, &store, &deps, &pr, &job, &cancel).await;
+        assert!(matches!(
+            result,
+            ReviewResult::Succeeded {
+                reused: true,
+                run_id: 3,
+                ..
+            }
+        ));
+    }
 }

@@ -27,6 +27,44 @@ fn stopping_a_waiting_review_names_watch() {
 }
 
 #[test]
+fn an_attached_cli_leaves_a_draft_held_for_watch_but_a_new_manual_review_can_run() {
+    let sandbox = Sandbox::new();
+    let (_, head) = with_pr(&sandbox);
+    sandbox.gh.replace_route(
+        &format!("pr view {URL}"),
+        &super::poll::sync::view(&head, "OPEN", true),
+    );
+    assert!(
+        debug_enqueue(&sandbox, URL, &["--automatic"])
+            .status
+            .success()
+    );
+    let attached = sandbox.run(&["review", URL]);
+    assert_eq!(attached.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&attached.stderr).contains("run review again for a manual review")
+    );
+    assert!(sandbox.claude.run_calls().is_empty());
+    let manual = sandbox.run(&["review", URL]);
+    assert!(manual.status.success(), "{manual:?}");
+    let db = database(&sandbox);
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM jobs WHERE origin = 'automatic' AND state = 'queued' AND held = 1"
+        ),
+        1
+    );
+    assert_eq!(
+        count(
+            &db,
+            "SELECT count(*) FROM jobs WHERE origin = 'manual' AND state = 'succeeded'"
+        ),
+        1
+    );
+}
+
+#[test]
 fn review_while_watch_runs_prints_the_result() {
     let sandbox = Sandbox::new();
     concurrency::with_two_prs(&sandbox);

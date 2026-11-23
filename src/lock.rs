@@ -12,6 +12,7 @@ use std::time::Duration;
 
 pub(crate) const LOCK_POLL: Duration = Duration::from_millis(500);
 
+#[derive(Clone)]
 pub(crate) struct RunnerLock {
     file: Arc<File>,
 }

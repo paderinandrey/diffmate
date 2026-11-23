@@ -19,7 +19,6 @@ fn killed_runner_is_recovered_by_next_runner() {
     assert!(sandbox.cache_dir().join("runs/1/worktree").exists());
     first.kill().unwrap();
     first.wait().unwrap();
-    hold.release();
 
     let second = spawn_review(&sandbox, 2).wait_with_output().unwrap();
 

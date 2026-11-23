@@ -58,7 +58,7 @@ async fn reconcile_missing_marker_stays_unknown() {
 #[tokio::test]
 async fn abandon_unknown_sets_confirmed_by_me() {
     let (_tmp, store, remote, _job) = unknown().await;
-    store.abandon_unknown(PUBLICATION).await.unwrap();
+    assert!(store.abandon_unknown(PUBLICATION).await.unwrap());
     assert_eq!(
         harness::text(&store, "SELECT state FROM publications").await,
         "abandoned"
@@ -68,6 +68,6 @@ async fn abandon_unknown_sets_confirmed_by_me() {
         "confirmed by me"
     );
     let again = store.abandon_unknown(PUBLICATION).await;
-    assert!(again.is_err(), "{again:?}");
+    assert!(!again.unwrap());
     assert_eq!(remote.posts(), 0);
 }

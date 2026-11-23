@@ -23,7 +23,7 @@ async fn a_new_request_tracks_and_a_repeat_does_not_change_tracking() {
     );
     let draft = fix.target(4).await.unwrap();
     assert_eq!((draft.tracking.as_str(), draft.seen), ("tracked", true));
-    let known = fix.store.known_targets().await.unwrap();
+    let known = fix.store.poll_targets().await.unwrap();
     let row = known.iter().find(|row| row.pr.number == 1).unwrap();
     assert_eq!(known.len(), 4);
     assert_eq!(row.tracking, "tracked");

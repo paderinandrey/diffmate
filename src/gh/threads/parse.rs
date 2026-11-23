@@ -15,14 +15,18 @@ pub(crate) struct ThreadState {
 }
 
 pub(super) fn comments(stdout: &[u8], review_id: &str) -> Result<Vec<CommentLink>, Error> {
-    let wanted = review_id.parse::<i64>().ok();
+    let wanted = review_id.parse::<i64>().map_err(|_| Error::Command {
+        program: "gh",
+        args: "api graphql".into(),
+        detail: "invalid submitted review ID".into(),
+    })?;
     let mut links = Vec::new();
     for thread in nodes(&pull(stdout)?, "reviewThreads") {
         let Some(thread_id) = thread["id"].as_str() else {
             continue;
         };
         for node in nodes(&thread, "comments") {
-            if node["pullRequestReview"]["databaseId"].as_i64() != wanted {
+            if database_id(&node["pullRequestReview"]) != Some(wanted) {
                 continue;
             }
             if let Some(link) = one(&node, thread_id) {
@@ -50,9 +54,14 @@ pub(super) fn statuses(stdout: &[u8]) -> Result<Vec<ThreadState>, Error> {
     Ok(rows)
 }
 
+fn database_id(node: &Value) -> Option<i64> {
+    let id = &node["fullDatabaseId"];
+    id.as_i64().or_else(|| id.as_str()?.parse().ok())
+}
+
 fn one(node: &Value, thread_id: &str) -> Option<CommentLink> {
     Some(CommentLink {
-        comment_id: node["databaseId"].as_i64()?.to_string(),
+        comment_id: database_id(node)?.to_string(),
         thread_id: thread_id.to_string(),
         body: node["body"].as_str()?.to_string(),
     })
@@ -101,12 +110,35 @@ mod tests {
     use super::{comments, page_after, statuses};
 
     #[test]
-    fn comments_keep_the_submitted_review() {
-        let raw = r#"{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"id":"t1","comments":{"nodes":[{"databaseId":7,"body":"<!-- diffmate:finding=f1 -->","pullRequestReview":{"databaseId":9001}}]}},{"id":"t2","comments":{"nodes":[{"databaseId":8,"body":"other","pullRequestReview":{"databaseId":3}}]}}]}}}}}"#;
-        let links = comments(raw.as_bytes(), "9001").unwrap();
-        assert_eq!(links.len(), 1);
-        assert_eq!(links[0].comment_id, "7");
-        assert_eq!(links[0].thread_id, "t1");
+    fn comments_link_only_the_submitted_review_using_full_database_ids() {
+        use serde_json::json;
+
+        for (review_id, comment_id, wanted, expected) in [
+            (
+                json!("6026927509"),
+                json!("4669944031"),
+                "6026927509",
+                "4669944031",
+            ),
+            (
+                json!(9_007_199_254_740_993_i64),
+                json!(9_007_199_254_740_995_i64),
+                "9007199254740993",
+                "9007199254740995",
+            ),
+        ] {
+            let thread = json!({"id":"t1","comments":{"nodes":[
+                {"fullDatabaseId":comment_id,"body":"<!-- diffmate:finding=f1 -->","pullRequestReview":{"fullDatabaseId":review_id}},
+                {"fullDatabaseId":8,"body":"other","pullRequestReview":{"fullDatabaseId":9_007_199_254_740_992_i64}}
+            ]}});
+            let response =
+                json!({"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[thread]}}}}});
+            let links = comments(&serde_json::to_vec(&response).unwrap(), wanted).unwrap();
+            assert_eq!(links.len(), 1);
+            assert_eq!(links[0].comment_id, expected);
+            assert_eq!(links[0].thread_id, "t1");
+            assert_eq!(links[0].body, "<!-- diffmate:finding=f1 -->");
+        }
     }
 
     #[test]

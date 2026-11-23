@@ -4,7 +4,16 @@ use rustix::process::{Pid, Signal, kill_process};
 use std::io::BufReader;
 use std::process::{Child, ChildStderr, Command, Stdio};
 
-pub fn spawn_at(command: &mut Command, point: &str) -> (Child, BufReader<ChildStderr>) {
+pub struct HeldChild(pub Child);
+
+impl Drop for HeldChild {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+pub fn spawn_at(command: &mut Command, point: &str) -> (HeldChild, BufReader<ChildStderr>) {
     let mut child = command
         .env("DIFFMATE_CRASH_POINT", point)
         .stdin(Stdio::null())
@@ -13,7 +22,7 @@ pub fn spawn_at(command: &mut Command, point: &str) -> (Child, BufReader<ChildSt
         .spawn()
         .unwrap();
     let reader = BufReader::new(child.stderr.take().unwrap());
-    (child, reader)
+    (HeldChild(child), reader)
 }
 
 pub fn kill(child: &mut Child) {
@@ -35,8 +44,7 @@ pub fn crash_after_stop(sandbox: &Sandbox, command: &mut Command, stop: Signal) 
     let hold = sandbox.claude.hold_run(1);
     let (mut child, mut reader) = spawn_at(command, "stop-stored");
     hold.wait_started();
-    signal(&child, stop);
+    signal(&child.0, stop);
     read_until(&mut reader, "crash point reached: stop-stored");
-    kill(&mut child);
-    hold.release();
+    kill(&mut child.0);
 }

@@ -12,9 +12,6 @@ fn killed_at(point: &str) {
             hold.wait_started();
         }
     });
-    if let Some(hold) = hold {
-        hold.release();
-    }
     if point == "agent-start" {
         assert!(sandbox.claude.calls().is_empty());
     }

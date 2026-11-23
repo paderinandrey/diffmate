@@ -64,7 +64,7 @@ async fn quit_during_head_check(pressed: KeyEvent) {
             key(KeyCode::Char('c')),
             Some((&gate, &mut keys)),
         ));
-        tx.send(Ok(Some(pressed))).await.unwrap();
+        tx.send(Ok(Some(pressed.into()))).await.unwrap();
         turn.as_mut().await.unwrap()
     };
     assert!(quit);

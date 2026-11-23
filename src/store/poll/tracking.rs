@@ -9,13 +9,18 @@ pub(super) fn discard(tx: &Transaction, pr: &PrRef, now: i64) -> rusqlite::Resul
         "UPDATE targets SET tracking = 'untracked', request_seen = 1 WHERE id = ?1",
         [id],
     )?;
+    stop_automatic(tx, id, now, "target discarded")
+}
+
+fn stop_automatic(tx: &Transaction, id: TargetId, now: i64, reason: &str) -> rusqlite::Result<()> {
     tx.execute(
-        "DELETE FROM jobs WHERE target_id = ?1 AND kind = 'review' AND origin = 'automatic'
-         AND state = 'queued' AND retry_count = 0
-         AND NOT EXISTS (SELECT 1 FROM runs WHERE job_id = jobs.id)",
-        [id],
-    )?;
-    Ok(())
+        "UPDATE jobs SET state = CASE state WHEN 'queued' THEN 'cancelled' ELSE state END,
+         failure_reason = coalesce(failure_reason, ?3), next_attempt_at = NULL, updated_at = ?2
+         WHERE target_id = ?1 AND kind = 'review' AND origin = 'automatic'
+         AND state IN ('queued', 'running')",
+        params![id, now, reason],
+    )
+    .map(drop)
 }
 
 pub(super) fn apply(
@@ -45,6 +50,7 @@ pub(super) fn target_id(tx: &Transaction, pr: &PrRef) -> rusqlite::Result<Option
 
 fn see(tx: &Transaction, pr: &PrRef, now: i64) -> rusqlite::Result<()> {
     let id = upsert(tx, pr, now)?;
+    crate::store::targets::clear_ref_cleanup(tx, id)?;
     tx.execute(
         "UPDATE targets SET tracking = 'tracked', request_seen = 1
          WHERE id = ?1 AND request_seen = 0",
@@ -60,9 +66,11 @@ fn miss(tx: &Transaction, pr: &PrRef, kind: &Absent, now: i64) -> rusqlite::Resu
     match kind {
         Absent::Skip => Ok(()),
         Absent::Closed { .. } => close(tx, id, now),
-        Absent::Open { .. } => tx
-            .execute("UPDATE targets SET request_seen = 0 WHERE id = ?1", [id])
-            .map(drop),
+        Absent::Open { .. } => {
+            crate::store::targets::clear_ref_cleanup(tx, id)?;
+            tx.execute("UPDATE targets SET request_seen = 0 WHERE id = ?1", [id])
+                .map(drop)
+        }
     }
 }
 
@@ -73,12 +81,10 @@ pub(super) fn close(tx: &Transaction, id: TargetId, now: i64) -> rusqlite::Resul
         [id],
     )?;
     tx.execute(
-        "UPDATE jobs SET state = 'cancelled', updated_at = ?1
-         WHERE target_id = ?2 AND kind = 'review' AND origin = 'automatic'
-         AND state = 'queued'",
-        params![now, id],
+        "INSERT INTO pending_ref_cleanup (target_id) VALUES (?1) ON CONFLICT DO NOTHING",
+        [id],
     )?;
-    Ok(())
+    stop_automatic(tx, id, now, "pull request closed")
 }
 
 fn upsert(tx: &Transaction, pr: &PrRef, now: i64) -> rusqlite::Result<TargetId> {

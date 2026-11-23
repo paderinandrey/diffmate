@@ -55,6 +55,31 @@ fn discard_rejects_the_same_invalid_url_as_enqueue() {
 }
 
 #[test]
+fn an_attached_review_reports_discard_instead_of_losing_its_job() {
+    let sandbox = Sandbox::new();
+    assert!(
+        debug_enqueue(&sandbox, URL, &["--automatic"])
+            .status
+            .success()
+    );
+    let db = rusqlite::Connection::open(sandbox.db_path()).unwrap();
+    db.execute("UPDATE jobs SET next_attempt_at = 4102444800000", [])
+        .unwrap();
+    let mut review = concurrency::spawn_review(&sandbox, 1);
+    let mut stderr = BufReader::new(review.stderr.take().unwrap());
+    read_until(&mut stderr, "attached to job");
+    assert!(debug_discard(&sandbox, URL).status.success());
+    let mut message = String::new();
+    stderr.read_to_string(&mut message).unwrap();
+    assert_eq!(review.wait().unwrap().code(), Some(1));
+    assert!(
+        message.contains("job cancelled: target discarded"),
+        "{message}"
+    );
+    assert!(sandbox.claude.run_calls().is_empty());
+}
+
+#[test]
 fn debug_stays_hidden_when_discard_exists() {
     let output = Sandbox::new().run(&["--help"]);
     let help = String::from_utf8_lossy(&output.stdout);

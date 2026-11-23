@@ -41,24 +41,49 @@ impl Window {
     }
 }
 
-pub(super) fn screen(frame: &mut Frame<'_>, session: &Session) -> Window {
+pub(super) fn screen(frame: &mut Frame<'_>, session: &Session, running: bool) -> Window {
+    let mut area = frame.area();
+    if running && area.height > 0 {
+        area.height -= 1;
+        let bar = ratatui::layout::Rect {
+            y: area.bottom(),
+            height: 1,
+            ..area
+        };
+        frame.render_widget(Paragraph::new("runner: tui"), bar);
+    }
     if let Some(confirm) = session.confirm_modal() {
-        super::confirm::draw(frame, confirm);
+        super::confirm::draw(frame, confirm, area);
         return Window::empty();
     }
+    if let Some(report) = session.publication_report()
+        && area.height > 1
+    {
+        area.height -= 1;
+        let bar = ratatui::layout::Rect {
+            y: area.bottom(),
+            height: 1,
+            ..area
+        };
+        frame.render_widget(Paragraph::new(sanitize(&report.text)), bar);
+    }
     if let Some((draft, focus)) = session.draft() {
-        return draft::screen(frame, draft, focus, session.notice(), session.scroll());
+        return draft::screen(
+            frame,
+            area,
+            draft,
+            focus,
+            session.notice(),
+            session.scroll(),
+        );
     }
-    let height = usize::from(frame.area().height);
-    let extra = usize::from(session.running()) + usize::from(session.notice().is_some());
+    let height = usize::from(area.height);
+    let extra = usize::from(session.notice().is_some());
     let mut lines = queue_lines(session, height.saturating_sub(extra));
-    if session.running() {
-        lines.push(Line::from("runner: tui"));
-    }
     if let Some(notice) = session.notice() {
         lines.push(Line::from(sanitize(notice)));
     }
-    frame.render_widget(Paragraph::new(lines), frame.area());
+    frame.render_widget(Paragraph::new(lines), area);
     Window::empty()
 }
 

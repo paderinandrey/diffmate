@@ -28,15 +28,6 @@ pub(super) enum Command {
     Ignored,
 }
 
-pub(super) fn follows_draft(key: &KeyEvent) -> bool {
-    !key.modifiers
-        .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER)
-        && matches!(
-            key.code,
-            KeyCode::Char('a' | 'r' | 'c' | 'k' | 'd' | 'e' | 'i' | 'K')
-        )
-}
-
 pub(super) fn quits(key: &KeyEvent) -> bool {
     if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
     {

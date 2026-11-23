@@ -79,10 +79,15 @@ pub(crate) fn classify(captured: &Captured, schemas: &Schemas) -> AgentOutcome {
         detail.message = "the agent could not produce schema-valid output".into();
         return failed(FailureKind::InvalidOutput, detail, metrics);
     }
-    if exit_code != Some(0) || fields.is_error() || fields.subtype() != Some("success") {
+    if exit_code != Some(0) || detail.is_error == Some(true) || fields.subtype() != Some("success")
+    {
         let reason = fields.reason();
         detail.message = format!("agent run failed ({subtype}, exit {exit_code:?}): {reason}");
         return failed(FailureKind::AgentError, detail, metrics);
+    }
+    if detail.is_error.is_none() {
+        detail.message = "success envelope has no boolean is_error".into();
+        return failed(FailureKind::InvalidOutput, detail, metrics);
     }
     match structured(&fields, schemas) {
         Ok((output, raw)) => AgentOutcome::Succeeded {

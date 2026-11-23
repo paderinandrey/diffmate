@@ -7,7 +7,7 @@ use crate::git::Git;
 use crate::normalize::{Normalized, normalize};
 use crate::paths::Paths;
 use crate::pr_url::PrRef;
-use crate::store::{Store, jobs::EnqueuedJob, now_ms, records::Revision};
+use crate::store::{Store, jobs::EnqueuedJob, records::Revision};
 
 pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
     paths: &Paths,
@@ -32,14 +32,12 @@ pub(super) async fn review_run<G: Git, H: Gh, A: Agent>(
     let mut follow = Follow::Schedule;
     if matches!(outcome, AgentOutcome::Succeeded { .. }) {
         let mut stop = cancel.clone();
-        match cancel::raced(&mut stop, deps.gh.pr_view(pr)).await {
+        match cancel::raced(&mut stop, crate::gh::verified_view(&deps.gh, pr)).await {
             Some(Ok(latest)) => {
-                if let Err(error) = store.set_known_head(job.target_id, &latest.head_sha).await {
-                    return job_failed(store, job, error.to_string()).await;
-                }
                 follow = observed(&latest);
-                if follow == Follow::Stop
-                    && let Err(error) = store.close_tracked(job.target_id, now_ms()).await
+                if let Err(error) = store
+                    .observe_review_head(job.target_id, &latest.head_sha, follow == Follow::Stop)
+                    .await
                 {
                     return job_failed(store, job, error.to_string()).await;
                 }
@@ -84,6 +82,6 @@ fn observed(meta: &PrMeta) -> Follow {
     }
 }
 
-fn closed(state: &str) -> bool {
+pub(super) fn closed(state: &str) -> bool {
     state.eq_ignore_ascii_case("closed") || state.eq_ignore_ascii_case("merged")
 }

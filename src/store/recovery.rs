@@ -36,7 +36,7 @@ impl Store {
                     stopped.manual_crashes.push(job.id);
                 }
                 let next = after_failure(job.origin, &failure, job.retry, config_max, now);
-                apply_job_next(&tx, job.id, &next, now)?;
+                let next = apply_job_next(&tx, job.id, next, now)?;
                 stopped
                     .jobs
                     .push((job.id, resolve::description(&next, &failure)));

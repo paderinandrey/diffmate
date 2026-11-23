@@ -35,6 +35,7 @@ pub(crate) fn now_ms() -> i64 {
 #[derive(Clone)]
 pub(crate) struct Store {
     conn: Arc<Mutex<Connection>>,
+    runner: Option<crate::lock::RunnerLock>,
 }
 
 impl Store {
@@ -54,9 +55,17 @@ impl Store {
             conn.pragma_update(None, "journal_mode", "WAL")?;
             Ok(Store {
                 conn: Arc::new(Mutex::new(conn)),
+                runner: None,
             })
         })
         .await?
+    }
+
+    pub fn under_lock(&self, lock: crate::lock::RunnerLock) -> Self {
+        Self {
+            conn: Arc::clone(&self.conn),
+            runner: Some(lock),
+        }
     }
 
     pub async fn call<R, F>(&self, f: F) -> Result<R, Error>
@@ -65,8 +74,10 @@ impl Store {
         F: FnOnce(&mut Connection) -> rusqlite::Result<R> + Send + 'static,
     {
         let conn = Arc::clone(&self.conn);
+        let runner = self.runner.clone();
         let joined = tokio::task::spawn_blocking(move || {
             let mut guard = conn.lock().unwrap_or_else(PoisonError::into_inner);
+            let _runner = runner;
             f(&mut guard)
         })
         .await?;

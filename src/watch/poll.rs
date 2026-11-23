@@ -1,3 +1,6 @@
+mod schedule;
+pub(super) use schedule::Schedule;
+
 use crate::app::ProcessInfo;
 use crate::error::Error;
 use crate::gh::{DirectRequest, Gh, PrMeta};
@@ -13,7 +16,7 @@ pub(super) async fn once<H: Gh>(
     process: &ProcessInfo,
 ) -> Result<(), Error> {
     let hits = gh.search_review_requested().await?;
-    let known = store.known_targets().await?;
+    let known = store.poll_targets().await?;
     let mut absent = missing(gh, &known, &hits).await;
     let (seen, later) = present(gh, &known, &hits).await;
     absent.extend(later);
@@ -33,7 +36,10 @@ async fn missing<H: Gh>(
         if hits.iter().any(|hit| hit.pr == target.pr) {
             continue;
         }
-        rows.push((target.pr.clone(), classify(gh.pr_view(&target.pr).await)));
+        rows.push((
+            target.pr.clone(),
+            classify(crate::gh::verified_view(gh, &target.pr).await),
+        ));
     }
     rows
 }
@@ -67,7 +73,7 @@ async fn present<H: Gh>(
             seen.push(from_search(hit));
             continue;
         }
-        match gh.pr_view(&hit.pr).await {
+        match crate::gh::verified_view(gh, &hit.pr).await {
             Err(_) => seen.push(from_search(hit)),
             Ok(meta) if closed(&meta.state) => later.push((
                 hit.pr.clone(),

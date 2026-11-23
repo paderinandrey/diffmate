@@ -94,7 +94,17 @@ and exits 0. `watch` already waits for the runner lock instead of
 exiting, and already exits 0 on SIGTERM, which is what `KeepAlive`
 needs. The agent runs in the GUI session, not at the login window.
 
+The TUI can publish a draft without `watch`. It releases the runner lock
+when the ready publication, reconciliation, and sync jobs finish. Leave
+the TUI open and start `diffmate watch` or `diffmate review <pr-url>`
+to run a queued review; the TUI does not run review jobs.
+
 ## Update
+
+Close older `tui` and `review` processes before restarting `watch` with
+the new binary. The first command that opens a v5 database for writing
+saves `diffmate.db.v5-backup` beside it before migrating to v6. The
+`status` and `doctor` commands do not migrate the database.
 
 A second bootstrap is not how a new binary is picked up. Copy the binary
 again, then kickstart the job that is already loaded:

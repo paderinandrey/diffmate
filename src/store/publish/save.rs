@@ -1,34 +1,26 @@
 use super::Outcome;
-use super::rows::{Draft, Finding};
+use super::rows::Draft;
+use crate::store::status::DraftFinding;
 use rusqlite::{Transaction, params};
 use serde_json::{Value, json};
 
-pub(super) fn snapshot(
-    event: &str,
-    draft: &Draft,
-    findings: &[Finding],
-) -> rusqlite::Result<String> {
-    let future: Value = serde_json::from_str(&draft.future).map_err(json_err)?;
+pub(super) fn snapshot(event: &str, draft: &Draft, findings: &[DraftFinding]) -> String {
     let kept: Vec<Value> = findings
         .iter()
         .filter(|finding| matches!(finding.decision.as_str(), "kept" | "edited"))
         .map(finding_json)
         .collect();
-    let limitation = if draft.included {
-        draft.limitation.clone()
-    } else {
-        None
-    };
-    Ok(json!({
+    let limitation = draft.limitation.as_deref().filter(|_| draft.included);
+    json!({
         "event": event,
         "findings": kept,
         "limitation": limitation,
-        "future_improvements": future,
+        "future_improvements": draft.future,
     })
-    .to_string())
+    .to_string()
 }
 
-fn finding_json(finding: &Finding) -> Value {
+fn finding_json(finding: &DraftFinding) -> Value {
     json!({
         "id": finding.id,
         "decision": finding.decision,
@@ -39,10 +31,6 @@ fn finding_json(finding: &Finding) -> Value {
         "title": finding.title,
         "body": finding.body,
     })
-}
-
-fn json_err(error: serde_json::Error) -> rusqlite::Error {
-    rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(error))
 }
 
 pub(super) fn publication(

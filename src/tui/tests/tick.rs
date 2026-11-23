@@ -11,7 +11,9 @@ async fn a_tick_keeps_the_service_running() {
         Ok(())
     };
     tx.send(Ok(None)).await.unwrap();
-    tx.send(Ok(Some(key(KeyCode::Char('j'))))).await.unwrap();
+    tx.send(Ok(Some(key(KeyCode::Char('j')).into())))
+        .await
+        .unwrap();
     let mut turn = std::pin::pin!(super::super::finish_or_quit(work, &mut keys));
     for _ in 0..20 {
         tokio::select! {
@@ -25,5 +27,5 @@ async fn a_tick_keeps_the_service_running() {
         panic!("quit on a tick");
     };
     assert_eq!(queued.len(), 1);
-    assert!(matches!(queued[0].code, KeyCode::Char('j')));
+    assert!(matches!(queued[0].key.code, KeyCode::Char('j')));
 }

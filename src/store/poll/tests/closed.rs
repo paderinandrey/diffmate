@@ -107,10 +107,12 @@ async fn a_closed_view_stops_tracking_and_a_discard_stays_latched() {
     fix.seed(1, true, true).await;
     fix.seed(2, false, true).await;
     let tracked = fix.id(1).await;
-    fix.store.set_known_head(tracked, "bbb").await.unwrap();
-    fix.store.close_tracked(tracked, 1_000).await.unwrap();
     fix.store
-        .close_tracked(fix.id(2).await, 1_000)
+        .observe_review_head(tracked, "bbb", true)
+        .await
+        .unwrap();
+    fix.store
+        .observe_review_head(fix.id(2).await, "bbb", true)
         .await
         .unwrap();
     fix.after(1, 2_000, DEBOUNCE).await;

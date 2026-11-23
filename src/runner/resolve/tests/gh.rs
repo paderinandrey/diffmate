@@ -5,7 +5,21 @@ use crate::error::Error;
 use crate::gh::{Annotation, CheckRuns, DirectRequest, Discussion, Gh, PrMeta};
 use crate::pr_url::PrRef;
 
-pub(super) struct FakeGh;
+pub(super) struct FakeGh {
+    pub state: &'static str,
+    pub draft: bool,
+    pub head: &'static str,
+}
+
+impl Default for FakeGh {
+    fn default() -> Self {
+        Self {
+            state: "OPEN",
+            draft: false,
+            head: "new-head",
+        }
+    }
+}
 
 #[allow(refining_impl_trait)]
 impl Gh for FakeGh {
@@ -18,10 +32,10 @@ impl Gh for FakeGh {
             author: "owner".into(),
             base_ref: "new-main".into(),
             head_ref: "branch".into(),
-            head_sha: "new-head".into(),
+            head_sha: self.head.into(),
             is_cross_repository: false,
-            state: "OPEN".into(),
-            is_draft: false,
+            state: self.state.into(),
+            is_draft: self.draft,
         }))
     }
     fn discussion(&self, _: &PrRef) -> Done<Discussion> {

@@ -22,7 +22,7 @@ async fn record(store: &Store, job: &EnqueuedJob, settings: &Settings) -> Result
             *reason = format!("{reason} ({})", cause.as_str());
         }
     }
-    store.resolve_job(job.job_id, &next).await?;
+    let next = store.resolve_job(job.job_id, next).await?;
     Ok(JobEnd::from(&next))
 }
 

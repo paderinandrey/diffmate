@@ -52,7 +52,13 @@ async fn comment_key_posts_one_review() {
         &[KeyCode::Enter, KeyCode::Char('c'), KeyCode::Esc],
     )
     .await;
-    assert!(text.contains("runner: tui"), "{text}");
+    assert!(!text.contains("runner: tui"), "{text}");
+    assert!(
+        crate::lock::try_acquire(&paths.lock())
+            .await
+            .unwrap()
+            .is_some()
+    );
     let seen = gh.seen();
     assert_eq!(seen.len(), 1);
     assert_eq!(seen[0].event, "COMMENT");
@@ -93,4 +99,21 @@ pub(super) fn hold(path: &std::path::Path) -> std::fs::File {
         .unwrap();
     file.try_lock().unwrap();
     file
+}
+
+#[tokio::test]
+async fn publishing_shows_submission_without_leaving_the_draft() {
+    let (tmp, store) = open().await;
+    seed(&store).await;
+    let gh = Fake::new(HEAD);
+    let text = press(
+        &store,
+        &paths(&tmp),
+        &gh,
+        &[KeyCode::Enter, KeyCode::Char('a')],
+    )
+    .await;
+    assert!(text.contains("publication: submitted"), "{text}");
+    assert!(text.contains("Title"), "{text}");
+    assert_eq!(gh.seen().len(), 1);
 }

@@ -96,3 +96,21 @@ async fn a_base_branch_replaced_by_a_conflicting_name_still_fetches() {
         );
     }
 }
+
+#[tokio::test]
+async fn deleting_pull_refs_leaves_other_pulls_and_symbolic_referents_alone() {
+    let (clone, up) = fetched().await;
+    let other = "refs/diffmate/pull/10/head";
+    git(&clone.repo, &["update-ref", other, &up.head]);
+    git(
+        &clone.repo,
+        &["symbolic-ref", "refs/diffmate/pull/1/other", other],
+    );
+    for _ in 0..2 {
+        clone.cli.delete_pull_refs(&clone.repo, 1).await.unwrap();
+    }
+    assert_eq!(
+        git(&clone.repo, &["for-each-ref", "--format=%(refname)"]),
+        format!("refs/diffmate/base/main\n{other}")
+    );
+}

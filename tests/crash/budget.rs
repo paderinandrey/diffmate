@@ -32,7 +32,7 @@ fn crash_every_time_exhausts_the_budget_across_watch_restarts() {
                 .unwrap();
         }
         read_until(&mut reader, "crash point reached: agent-running");
-        process::kill(&mut child);
+        process::kill(&mut child.0);
     }
     let mut last = spawn_watch(&sandbox);
     let mut reader = BufReader::new(last.stderr.take().unwrap());

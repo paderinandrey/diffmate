@@ -40,14 +40,39 @@ fn parsers_read_login_reviews_and_the_created_id() {
             .unwrap();
     assert_eq!(listed[0].id, "9");
     assert_eq!(listed[0].author, "octo");
-    assert!(reviews_from(br#"[{"id":9,"user":null,"state":"COMMENTED","body":""}]"#).is_err());
+    assert_eq!(
+        created_from(br#"{"id":6026927509}"#).unwrap().id,
+        "6026927509"
+    );
+}
+
+#[test]
+fn deleted_reviewers_do_not_hide_eligible_reviews_on_later_pages() {
     let pages = reviews_from(
-        br#"[{"id":1,"user":{"login":"old"},"state":"COMMENTED","body":""}]
-[{"id":2,"user":{"login":"octo"},"state":"PENDING","body":"later"}]"#,
+        br#"[{"id":1,"user":null,"state":"COMMENTED","body":"<!-- diffmate:publication=p1 -->"}]
+[{"id":6026927509,"user":{"login":"octo"},"state":"COMMENTED","body":"<!-- diffmate:publication=p1 -->"},
+ {"id":3,"user":{"login":"octo"},"state":"PENDING","body":""}]"#,
     )
     .unwrap();
     assert_eq!(pages.len(), 2);
-    assert_eq!(pages[1].id, "2");
+    assert_eq!(pages[0].id, "6026927509");
+    assert_eq!(pages[0].author, "octo");
+    assert_eq!(pages[0].body, "<!-- diffmate:publication=p1 -->");
     assert_eq!(pages[1].state, "PENDING");
-    assert_eq!(created_from(br#"{"id":9001}"#).unwrap().id, "9001");
+}
+
+#[test]
+fn ambiguous_or_malformed_review_authors_are_still_errors() {
+    for row in [
+        r#"{"id":1,"user":null,"state":"PENDING","body":""}"#,
+        r#"{"id":1,"user":null,"state":"","body":""}"#,
+        r#"{"id":1,"state":"COMMENTED","body":""}"#,
+        r#"{"id":1,"user":{"login":""},"state":"COMMENTED","body":""}"#,
+        r#"{"id":1,"user":{},"state":"COMMENTED","body":""}"#,
+    ] {
+        assert!(
+            reviews_from(format!("[{row}]").as_bytes()).is_err(),
+            "{row}"
+        );
+    }
 }

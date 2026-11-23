@@ -16,6 +16,8 @@ use crate::store::records::Metrics;
 type Done<T> = Ready<Result<T, Error>>;
 pub(super) struct Remote {
     pub posts: Arc<AtomicUsize>,
+    pub requests: std::sync::Mutex<Vec<DirectRequest>>,
+    pub closed: std::sync::Mutex<Option<PrRef>>,
     pub hang: bool,
     pub resume: Option<watch::Receiver<bool>>,
 }
@@ -53,7 +55,11 @@ fn meta(pr: &PrRef) -> PrMeta {
 #[allow(refining_impl_trait)]
 impl Gh for Remote {
     fn pr_view(&self, pr: &PrRef) -> Done<PrMeta> {
-        ready(Ok(meta(pr)))
+        let mut meta = meta(pr);
+        if self.closed.lock().unwrap().as_ref() == Some(pr) {
+            meta.state = "MERGED".into();
+        }
+        ready(Ok(meta))
     }
     fn discussion(&self, _: &PrRef) -> Done<Discussion> {
         gone()
@@ -65,7 +71,7 @@ impl Gh for Remote {
         gone()
     }
     fn search_review_requested(&self) -> Done<Vec<DirectRequest>> {
-        ready(Ok(Vec::new()))
+        ready(Ok(self.requests.lock().unwrap().clone()))
     }
     fn current_login(&self) -> Done<String> {
         ready(Ok("me".into()))

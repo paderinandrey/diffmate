@@ -10,6 +10,7 @@ struct Login {
 #[derive(Deserialize)]
 struct RawReview {
     id: i64,
+    #[serde(deserialize_with = "Option::deserialize")]
     user: Option<Login>,
     state: String,
     body: String,
@@ -43,6 +44,14 @@ pub(super) fn reviews_from(bytes: &[u8]) -> Result<Vec<ListedReview>, Error> {
     for page in stream {
         pages += 1;
         for row in page? {
+            if row.user.is_none()
+                && matches!(
+                    row.state.as_str(),
+                    "COMMENTED" | "APPROVED" | "CHANGES_REQUESTED" | "DISMISSED"
+                )
+            {
+                continue;
+            }
             listed.push(one_review(row)?);
         }
     }

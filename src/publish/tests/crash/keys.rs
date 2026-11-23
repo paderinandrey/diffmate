@@ -55,6 +55,7 @@ async fn y_missing_marker_stays_unknown() {
     remote.reviews(vec![review("no marker")]);
     let text = shown(&store, &tmp, &remote, &[KeyCode::Char('y')]).await;
     assert!(text.contains("unknown"), "{text}");
+    assert!(text.contains("marker not found"), "{text}");
     assert_eq!(
         harness::text(&store, "SELECT state FROM publications").await,
         "unknown"
@@ -84,13 +85,8 @@ async fn y_on_the_open_draft_submits() {
     let (tmp, store, remote) = planted("unknown").await;
     let marker = format!("<!-- diffmate:publication={PUBLICATION} -->");
     remote.reviews(vec![review(&marker)]);
-    shown(
-        &store,
-        &tmp,
-        &remote,
-        &[KeyCode::Enter, KeyCode::Char('y'), KeyCode::Esc],
-    )
-    .await;
+    let draft = shown(&store, &tmp, &remote, &[KeyCode::Enter, KeyCode::Char('y')]).await;
+    assert!(draft.contains("publication: submitted"), "{draft}");
     assert_eq!(
         harness::text(&store, "SELECT state FROM publications").await,
         "submitted"
@@ -153,7 +149,12 @@ INSERT INTO drafts (id, run_id, original_output, created_at) VALUES (2, 2, '{}',
 INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side, title, body, decision) VALUES ('f2', 2, 2, 1, 'high', 'src/a.rs', 4, 'RIGHT', 'Title', 'Body text', 'kept');";
     super::super::support::batch(&store, second).await;
     let publish = store
-        .confirm_publication(2, "COMMENT", "abc123", &super::super::support::process())
+        .confirm_publication(
+            store.displayed_draft(2).await,
+            "COMMENT",
+            "abc123",
+            &super::super::support::process(),
+        )
         .await
         .unwrap();
     let remote = Remote::new(store.clone());

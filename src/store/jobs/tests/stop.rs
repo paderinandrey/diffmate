@@ -45,7 +45,7 @@ async fn a_late_stop_does_not_mark_the_requeued_attempt() {
     store
         .resolve_job(
             job,
-            &JobNext::Requeue {
+            JobNext::Requeue {
                 retry_count: 1,
                 max_retries: Some(2),
                 next_attempt_at: Some(1),

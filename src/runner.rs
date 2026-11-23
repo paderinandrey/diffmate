@@ -45,18 +45,25 @@ pub(crate) async fn execute_review_job<G: Git, H: Gh, A: Agent>(
 ) -> ReviewResult {
     let mut stop = cancel.clone();
     let started = match store.start_job(job.job_id).await {
-        Ok(started) => started,
-        Err(error) => return job_failed(store, job, error.to_string()).await,
+        Ok(Some(started)) => started,
+        Ok(None) => return result::stored(store, job).await,
+        Err(error) => {
+            return ReviewResult::JobFailed {
+                reason: error.to_string(),
+            };
+        }
     };
     crash_point!("job-started");
-    let resolved = cancel::raced(&mut stop, resolve::resolve(paths, store, deps, pr, job)).await;
+    let resolved = cancel::raced(
+        &mut stop,
+        resolve::resolve(paths, store, deps, pr, job, &started),
+    )
+    .await;
     match resolved {
         None => cancelled_before_run(store, job, &deps.settings).await,
-        Some(Ok((meta, revision))) => {
+        Some(Ok(None)) => result::stored(store, job).await,
+        Some(Ok(Some((meta, revision)))) => {
             crash_point!("revision");
-            if let Err(error) = store.set_known_head(job.target_id, &meta.head_sha).await {
-                return job_failed(store, job, error.to_string()).await;
-            }
             if !started.force {
                 match store
                     .succeeded_run_for_head(job.target_id, &revision.head_sha)

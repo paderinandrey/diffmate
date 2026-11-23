@@ -54,6 +54,7 @@ async fn the_open_tui_serves_a_sync_after_the_lock_frees() {
         git: &git,
         paths: &paths,
         settings: &settings,
+        paint_runner: None,
     };
     let held = OpenOptions::new()
         .write(true)
@@ -117,6 +118,7 @@ async fn the_open_queue_reloads_when_no_job_is_due() {
         git: &git,
         paths: &paths,
         settings: &settings,
+        paint_runner: None,
     };
     super::super::service(&mut session, &store, &mode)
         .await
@@ -159,6 +161,7 @@ async fn a_moved_head_is_shown_without_resetting_the_choice() {
         git: &git,
         paths: &paths,
         settings: &settings,
+        paint_runner: None,
     };
     super::super::service(&mut session, &store, &mode)
         .await
@@ -205,6 +208,7 @@ async fn an_open_draft_shows_a_moved_head() {
         git: &git,
         paths: &paths,
         settings: &settings,
+        paint_runner: None,
     };
     store
         .call(|conn| {

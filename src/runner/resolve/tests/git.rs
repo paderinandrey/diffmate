@@ -19,6 +19,10 @@ impl Git for FakeGit {
         self.0.lock().unwrap().push("fetch");
         ready(Ok(()))
     }
+    fn delete_pull_refs(&self, _: &Path, _: u64) -> Done<()> {
+        self.0.lock().unwrap().push("delete pull refs");
+        ready(Ok(()))
+    }
     fn rev_parse(&self, _: &Path, reference: &str) -> Done<String> {
         ready(Ok(if reference.contains("pull") {
             "new-head"

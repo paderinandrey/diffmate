@@ -48,10 +48,9 @@ impl Store {
         failure: (FailureKind, Option<StopReason>),
         detail: FailureDetail,
         metrics: Metrics,
-        next: &JobNext,
-    ) -> Result<(), Error> {
+        next: JobNext,
+    ) -> Result<JobNext, Error> {
         let (kind, stop) = failure;
-        let next = next.clone();
         let detail = serde_json::to_string(&detail)?;
         let cause = stop.filter(|reason| {
             matches!(kind, FailureKind::Interrupted)
@@ -74,8 +73,9 @@ impl Store {
                     cause.map(StopReason::as_str)
                 ],
             )?;
-            apply_job_next(&tx, job, &next, now)?;
-            tx.commit()
+            let next = apply_job_next(&tx, job, next, now)?;
+            tx.commit()?;
+            Ok(next)
         })
         .await
     }

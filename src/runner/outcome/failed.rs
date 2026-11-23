@@ -27,16 +27,16 @@ pub(super) async fn failed(
         Ok(next) => next,
         Err(error) => return job_failed(store, job, format!("reading retry state: {error}")).await,
     };
-    let job_end = JobEnd::from(&next);
     let mut message = detail.message.clone();
     for warning in cleanup_warnings {
         message = format!("{message}; {warning}");
     }
     match store
-        .finish_failed(run, job.job_id, (kind, stop), detail, metrics, &next)
+        .finish_failed(run, job.job_id, (kind, stop), detail, metrics, next)
         .await
     {
-        Ok(()) => {
+        Ok(next) => {
+            let job_end = JobEnd::from(&next);
             crash_point!("stored");
             if matches!(kind, FailureKind::Interrupted) {
                 ReviewResult::Cancelled {

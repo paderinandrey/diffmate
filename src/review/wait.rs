@@ -10,6 +10,7 @@ mod tests;
 pub(super) enum Waited {
     Locked(RunnerLock),
     Finished,
+    Held,
     Stopped,
 }
 
@@ -23,16 +24,18 @@ pub(super) async fn until_lock_or_end(
     let polling = async {
         let mut notified = false;
         loop {
-            if matches!(store.job_progress(job).await?, JobProgress::Finished) {
-                return Ok(Waited::Finished);
-            }
-            let delayed = store.job_delayed(job, crate::store::now_ms()).await?;
+            let delayed = match store.job_progress(job, crate::store::now_ms()).await? {
+                JobProgress::Finished => return Ok(Waited::Finished),
+                JobProgress::Held => return Ok(Waited::Held),
+                JobProgress::Delayed => true,
+                JobProgress::Active => false,
+            };
             if !delayed && let Some(lock) = lock::try_acquire(path).await? {
                 return Ok(Waited::Locked(lock));
             }
             if !notified {
                 if delayed {
-                    eprintln!("waiting: job {job} is not due; waiting for its retry time");
+                    eprintln!("waiting: job {job} is not due; waiting for its scheduled time");
                 } else {
                     eprintln!(
                         "waiting: another diffmate process holds the runner lock; job {job} stays queued until it is released"

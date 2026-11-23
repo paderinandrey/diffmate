@@ -43,7 +43,7 @@ proptest! {
             Some(flag) => value["is_error"] = json!(flag),
             None => { value.as_object_mut().unwrap().remove("is_error"); }
         }
-        let expected = exit == 0 && is_error != Some(true) && subtype == "success" && shape == Shape::Valid;
+        let expected = exit == 0 && is_error == Some(false) && subtype == "success" && shape == Shape::Valid;
         match run(&value, exit) {
             AgentOutcome::Succeeded { output, .. } => {
                 prop_assert!(expected);

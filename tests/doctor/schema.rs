@@ -63,9 +63,9 @@ fn user_version_one_is_not_migrated() {
 }
 
 #[test]
-fn user_version_six_is_not_rewritten() {
+fn a_newer_schema_is_not_rewritten() {
     let sandbox = ready();
-    let before = set_version(&sandbox, 6);
+    let before = set_version(&sandbox, 7);
     let (output, stdout) = doctor(&sandbox);
     assert_eq!(output.status.code(), Some(1));
     let schema = schema_line(&stdout);
@@ -74,7 +74,7 @@ fn user_version_six_is_not_rewritten() {
         "{schema}"
     );
     assert_eq!(fs::read(sandbox.db_path()).unwrap(), before);
-    assert_eq!(user_version(&sandbox), 6);
+    assert_eq!(user_version(&sandbox), 7);
 }
 
 #[test]

@@ -9,7 +9,12 @@ async fn second_confirm_creates_nothing() {
         let (_tmp, store) = open().await;
         batch(&store, KEPT).await;
         store
-            .confirm_publication(1, "COMMENT", "other", &process())
+            .confirm_publication(
+                store.displayed_draft(1).await,
+                "COMMENT",
+                "other",
+                &process(),
+            )
             .await
             .unwrap();
         if state != "pending" {
@@ -20,7 +25,12 @@ async fn second_confirm_creates_nothing() {
             .await;
         }
         let error = store
-            .confirm_publication(1, "COMMENT", "other", &process())
+            .confirm_publication(
+                store.displayed_draft(1).await,
+                "COMMENT",
+                "other",
+                &process(),
+            )
             .await
             .unwrap_err();
         assert!(matches!(&error, ConfirmError::Blocked), "{state} {error}");
@@ -43,7 +53,12 @@ async fn submitted_draft_is_refused() {
     batch(&store, KEPT).await;
     let script = Script::new(store.clone());
     let job = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap();
     execute_publish(&store, &script, job, 2).await.unwrap();
@@ -52,7 +67,12 @@ async fn submitted_draft_is_refused() {
         .await
         .unwrap();
     let error = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(&error, ConfirmError::DraftSubmitted), "{error}");
@@ -68,7 +88,12 @@ async fn rejected_allows_another_confirm() {
         let (_tmp, store) = open().await;
         batch(&store, KEPT).await;
         store
-            .confirm_publication(1, "APPROVE", "other", &process())
+            .confirm_publication(
+                store.displayed_draft(1).await,
+                "APPROVE",
+                "other",
+                &process(),
+            )
             .await
             .unwrap();
         batch(
@@ -77,7 +102,12 @@ async fn rejected_allows_another_confirm() {
         )
         .await;
         store
-            .confirm_publication(1, "APPROVE", "other", &process())
+            .confirm_publication(
+                store.displayed_draft(1).await,
+                "APPROVE",
+                "other",
+                &process(),
+            )
             .await
             .unwrap();
         assert_eq!(

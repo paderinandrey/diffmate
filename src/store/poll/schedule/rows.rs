@@ -32,17 +32,25 @@ pub(super) fn consider(
         }
         if started {
             cancel(tx, job.id, when)?;
-        } else if run_exists(tx, target, head)? || failed_attempt(tx, target, head)? {
+        } else if attempted(tx, target, head)? {
             cancel(tx, job.id, when)?;
             return Ok(());
         } else {
             return reset(tx, job.id, target, head, when);
         }
     }
-    if run_exists(tx, target, head)? || failed_attempt(tx, target, head)? {
+    if attempted(tx, target, head)? {
         return Ok(());
     }
     insert(tx, target, head, when)
+}
+
+pub(in crate::store::poll) fn attempted(
+    tx: &Transaction,
+    target: TargetId,
+    head: &str,
+) -> rusqlite::Result<bool> {
+    Ok(run_exists(tx, target, head)? || failed_attempt(tx, target, head)?)
 }
 
 pub(super) fn tracked(tx: &Transaction, id: TargetId) -> rusqlite::Result<bool> {

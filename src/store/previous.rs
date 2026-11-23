@@ -44,7 +44,7 @@ impl Store {
                     |row| row.get(0),
                 )
                 .optional()?;
-            let originals = raw.as_deref().map(original_texts).unwrap_or_default();
+            let originals = raw.as_deref().map_or_default(original_texts);
             let sql = "SELECT id, severity, path, line, side, title, body, decision,
                        github_thread_id, ordinal FROM findings WHERE run_id = ?1 ORDER BY ordinal";
             let mut statement = conn.prepare(sql)?;

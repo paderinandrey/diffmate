@@ -92,6 +92,8 @@ impl Rig {
             git: FakeGit::default(),
             gh: Remote {
                 posts: Arc::clone(&self.posts),
+                requests: std::sync::Mutex::default(),
+                closed: std::sync::Mutex::default(),
                 hang: false,
                 resume: None,
             },

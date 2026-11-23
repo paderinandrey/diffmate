@@ -18,7 +18,12 @@ fn cmd(detail: &str) -> Error {
 
 async fn queued(store: &crate::store::Store) -> i64 {
     store
-        .confirm_publication(1, "COMMENT", RUN, &super::super::support::process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            RUN,
+            &super::super::support::process(),
+        )
         .await
         .unwrap()
 }

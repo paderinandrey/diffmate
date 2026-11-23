@@ -7,7 +7,7 @@ mod latest;
 mod queue;
 use latest::{Row, latest};
 
-pub(crate) use draft::DraftView;
+pub(crate) use draft::{DraftFinding, DraftView, findings, improvements};
 pub(crate) use queue::QueueRow;
 
 pub(crate) struct TargetStatus {

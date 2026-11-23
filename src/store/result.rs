@@ -52,7 +52,7 @@ impl Store {
     pub async fn finish_reused(&self, job: JobId, run: RunId) -> Result<(), Error> {
         self.call(move |conn| {
             conn.execute(
-                "UPDATE jobs SET state = 'succeeded', result_run_id = ?1, updated_at = ?2
+                "UPDATE jobs SET state = 'succeeded', failure_reason = NULL, result_run_id = ?1, updated_at = ?2
                  WHERE id = ?3",
                 params![run, now_ms(), job],
             )

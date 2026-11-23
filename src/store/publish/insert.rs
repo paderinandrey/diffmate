@@ -1,5 +1,6 @@
 use super::{Outcome, rows, save};
 use crate::store::now_ms;
+use crate::store::status::{DraftView, findings};
 use rusqlite::{Connection, Transaction, TransactionBehavior};
 
 const SUBMITTED: &str =
@@ -8,14 +9,14 @@ const BLOCKING: &str = "SELECT EXISTS(SELECT 1 FROM publications WHERE target_id
 
 pub(super) fn write(
     conn: &mut Connection,
-    draft_id: i64,
+    displayed: &DraftView,
     event: &str,
     confirmed_sha: &str,
     pid: i64,
     started: i64,
 ) -> rusqlite::Result<Outcome> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-    let outcome = insert(&tx, draft_id, event, confirmed_sha, pid, started)?;
+    let outcome = insert(&tx, displayed, event, confirmed_sha, pid, started)?;
     if matches!(outcome, Outcome::Job(_)) {
         tx.commit()?;
     }
@@ -24,12 +25,13 @@ pub(super) fn write(
 
 fn insert(
     tx: &Transaction,
-    draft_id: i64,
+    displayed: &DraftView,
     event: &str,
     confirmed_sha: &str,
     pid: i64,
     started: i64,
 ) -> rusqlite::Result<Outcome> {
+    let draft_id = displayed.id;
     let draft = rows::draft(tx, draft_id)?;
     if flag(tx, SUBMITTED, draft_id)? {
         return Ok(Outcome::DraftSubmitted);
@@ -37,12 +39,19 @@ fn insert(
     if flag(tx, BLOCKING, draft.target_id)? {
         return Ok(Outcome::Blocked);
     }
-    let findings = rows::findings(tx, draft_id)?;
+    let findings = findings(tx, draft_id)?;
+    if findings != displayed.findings
+        || draft.included != displayed.included
+        || draft.limitation != displayed.limitation
+        || draft.future != displayed.future
+    {
+        return Ok(Outcome::Changed);
+    }
     let undecided = rows::undecided(&findings);
     if !undecided.is_empty() {
         return Ok(Outcome::Undecided(undecided));
     }
-    let snapshot = save::snapshot(event, &draft, &findings)?;
+    let snapshot = save::snapshot(event, &draft, &findings);
     let now = now_ms();
     let publication_id =
         save::publication(tx, &draft, draft_id, event, confirmed_sha, &snapshot, now)?;

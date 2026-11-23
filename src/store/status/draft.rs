@@ -1,11 +1,14 @@
 use super::Store;
 use crate::error::Error;
 use crate::store::TargetId;
-use rusqlite::{OptionalExtension, params};
+use rusqlite::{Connection, OptionalExtension, params};
 
+#[derive(PartialEq, Eq)]
 pub(crate) struct DraftFinding {
     pub id: String,
-    pub anchor: String,
+    pub path: Option<String>,
+    pub line: Option<i64>,
+    pub side: Option<String>,
     pub severity: String,
     pub title: String,
     pub body: String,
@@ -22,39 +25,58 @@ pub(crate) struct DraftView {
     pub freshness: String,
 }
 
-fn anchor(path: Option<String>, line: Option<i64>) -> String {
-    match (path, line) {
-        (Some(path), Some(line)) => format!("{path}:{line}"),
-        (Some(path), None) => path,
-        (None, _) => "(no file)".to_string(),
+impl DraftFinding {
+    pub(crate) fn anchor(&self) -> std::borrow::Cow<'_, str> {
+        match (&self.path, self.line) {
+            (Some(path), Some(line)) => format!("{path}:{line}").into(),
+            (Some(path), None) => path.as_str().into(),
+            (None, _) => "(no file)".into(),
+        }
     }
 }
 
-fn read_finding(row: &rusqlite::Row<'_>) -> rusqlite::Result<(bool, DraftFinding)> {
-    let path: Option<String> = row.get(2)?;
-    let line: Option<i64> = row.get(3)?;
-    let anchored = path.is_some() && line.is_some();
-    Ok((
-        anchored,
-        DraftFinding {
-            id: row.get(7)?,
-            anchor: anchor(path, line),
-            severity: row.get(1)?,
-            title: row.get(4)?,
-            body: row.get(5)?,
-            decision: row.get(6)?,
-            hint: row.get(8)?,
-        },
-    ))
+fn read_finding(row: &rusqlite::Row<'_>) -> rusqlite::Result<DraftFinding> {
+    Ok(DraftFinding {
+        id: row.get(7)?,
+        path: row.get(2)?,
+        line: row.get(3)?,
+        side: row.get(9)?,
+        severity: row.get(1)?,
+        title: row.get(4)?,
+        body: row.get(5)?,
+        decision: row.get(6)?,
+        hint: row.get(8)?,
+    })
 }
 
-fn improvements(value: &str) -> rusqlite::Result<Vec<String>> {
+pub(crate) fn findings(conn: &Connection, draft: i64) -> rusqlite::Result<Vec<DraftFinding>> {
+    let mut stmt = conn.prepare("SELECT ordinal, severity, path, line, title, body, decision, id,
+                        (SELECT p.decision FROM findings p WHERE p.id = findings.previous_finding_id), side
+                 FROM findings WHERE draft_id = ?1 ORDER BY (line IS NULL OR path IS NULL), ordinal")?;
+    stmt.query_map([draft], read_finding)?.collect()
+}
+
+impl DraftView {
+    pub(crate) fn same_content(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.findings == other.findings
+            && self.limitation == other.limitation
+            && self.future == other.future
+            && self.included == other.included
+    }
+}
+
+pub(crate) fn improvements(value: &str) -> rusqlite::Result<Vec<String>> {
     serde_json::from_str(value).map_err(|error| {
         rusqlite::Error::FromSqlConversionFailure(2, rusqlite::types::Type::Text, Box::new(error))
     })
 }
 
 impl Store {
+    #[cfg(test)]
+    pub(crate) async fn displayed_draft(&self, target: TargetId) -> std::sync::Arc<DraftView> {
+        self.latest_draft(target).await.unwrap().unwrap().into()
+    }
     pub async fn latest_draft(&self, target: TargetId) -> Result<Option<DraftView>, Error> {
         let now = crate::store::now_ms();
         self.call(move |conn| {
@@ -91,21 +113,7 @@ impl Store {
                 Option<i64>,
             ) = row;
             let known = known_head.zip(checked);
-            let mut statement = conn.prepare(
-                "SELECT ordinal, severity, path, line, title, body, decision, id,
-                        (SELECT p.decision FROM findings p WHERE p.id = findings.previous_finding_id)
-                 FROM findings WHERE draft_id = ?1 ORDER BY ordinal",
-            )?;
-            let loaded: Vec<_> = statement
-                .query_map(params![draft_id], read_finding)?
-                .collect::<Result<_, _>>()?;
-            let (anchored, rest): (Vec<_>, Vec<_>) =
-                loaded.into_iter().partition(|(anchored, _)| *anchored);
-            let findings = anchored
-                .into_iter()
-                .chain(rest)
-                .map(|(_, finding)| finding)
-                .collect();
+            let findings = findings(conn, draft_id)?;
             Ok(Some(DraftView {
                 id: draft_id,
                 findings,

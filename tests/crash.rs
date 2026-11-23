@@ -5,6 +5,8 @@ mod budget;
 mod concurrency;
 #[path = "crash/helpers.rs"]
 mod helpers;
+#[path = "crash/lifetime.rs"]
+mod lifetime;
 #[path = "crash/manual_stop.rs"]
 mod manual_stop;
 #[path = "crash/matrix.rs"]
@@ -63,4 +65,28 @@ fn killed_while_the_agent_runs_leaves_no_duplicate_and_no_worktree() {
         1
     );
     assert_clean(&sandbox);
+}
+
+#[test]
+fn recovery_drains_a_version_probe_before_marking_the_run_interrupted() {
+    use rustix::process::{Pid, test_kill_process_group};
+    use std::fs;
+
+    let sandbox = Sandbox::new();
+    with_pr(&sandbox);
+    let version = sandbox.claude.dir.join("version");
+    fs::remove_file(&version).unwrap();
+    support::mkfifo(&version);
+    let mut first = process::HeldChild(sandbox.diffmate().args(["review", URL]).spawn().unwrap());
+    let _blocked_probe = fs::OpenOptions::new().write(true).open(&version).unwrap();
+    let call = sandbox.claude.calls().remove(0);
+    assert_eq!(call.argv, ["--version"]);
+    let pgid = Pid::from_raw(call.pid.unwrap().try_into().unwrap()).unwrap();
+    process::kill(&mut first.0);
+
+    let (mut next, mut log) =
+        process::spawn_at(sandbox.diffmate().args(["review", URL]), "recovery-db");
+    watch_helpers::read_until(&mut log, "crash point reached: recovery-db");
+    assert!(test_kill_process_group(pgid).is_err());
+    process::kill(&mut next.0);
 }

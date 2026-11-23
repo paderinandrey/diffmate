@@ -28,14 +28,14 @@ async fn fresh_and_upgraded_schemas_match() {
 
 #[tokio::test]
 async fn newer_version_is_refused_and_left_alone() {
-    let (_tmp, paths) = fixture(6);
+    let (_tmp, paths) = fixture(7);
     let before = fs::read(paths.db()).unwrap();
     assert!(matches!(
         Store::open(&paths).await,
-        Err(Error::SchemaVersion(6))
+        Err(Error::SchemaVersion(7))
     ));
     assert_eq!(fs::read(paths.db()).unwrap(), before);
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 6);
+    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 7);
     assert_eq!(fs::read_dir(paths.state_dir()).unwrap().count(), 1);
 }
 
@@ -47,7 +47,7 @@ async fn reopening_migrated_database_changes_nothing() {
     let before = (schema(&conn), contents(&conn));
     drop(Store::open(&paths).await.unwrap());
     assert_eq!((schema(&conn), contents(&conn)), before);
-    assert_eq!(version(&conn), 5);
+    assert_eq!(version(&conn), super::SCHEMA_VERSION);
 }
 
 #[tokio::test]

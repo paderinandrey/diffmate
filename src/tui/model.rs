@@ -1,3 +1,4 @@
+use super::confirm::{Offer, Purpose};
 use super::spawn::{Browser, BrowserCommand, Editor, EditorCommand, ReapGate};
 use crate::app::ProcessInfo;
 use crate::error::Error;
@@ -11,7 +12,7 @@ use std::sync::Arc;
 
 enum Screen {
     Queue,
-    Draft(DraftView),
+    Draft(Arc<DraftView>),
 }
 
 pub(super) struct Session {
@@ -21,8 +22,10 @@ pub(super) struct Session {
     focus: usize,
     scroll: usize,
     view_width: usize,
+    pub(super) presented: Option<super::input::Presented>,
     view_height: usize,
     notice: Option<String>,
+    pub(super) publication: Option<Arc<super::follow::Report>>,
     editor: Option<String>,
     file_seq: u64,
     editor_launch: Box<dyn Editor>,
@@ -32,20 +35,17 @@ pub(super) struct Session {
     live: bool,
     repaint: bool,
     confirm: Option<super::confirm::Confirm>,
-    offer: Option<super::confirm::Offer>,
+    pub(super) modal_generation: u64,
     lock_path: PathBuf,
     opener: Option<String>,
     process: ProcessInfo,
-    runner: Option<crate::lock::RunnerLock>,
 }
 
 pub(super) struct Intent {
-    pub draft: i64,
+    pub displayed: Arc<DraftView>,
     pub target: i64,
     pub pr: PrRef,
     pub undecided: Vec<String>,
-    pub pid: u32,
-    pub started: i64,
 }
 
 impl Session {
@@ -58,8 +58,10 @@ impl Session {
             focus: 0,
             scroll: 0,
             view_width: 0,
+            presented: None,
             view_height: 0,
             notice: None,
+            publication: None,
             editor: None,
             file_seq: 0,
             editor_launch: Box::new(EditorCommand::new(Arc::clone(&reap))),
@@ -69,19 +71,18 @@ impl Session {
             live: false,
             repaint: false,
             confirm: None,
-            offer: None,
+            modal_generation: 0,
             lock_path: PathBuf::new(),
             opener: None,
             process: ProcessInfo {
                 pid: std::process::id(),
                 started_at_ms: 0,
             },
-            runner: None,
         })
     }
 
     pub(super) fn intent(&self) -> Option<Intent> {
-        let (draft, _) = self.draft()?;
+        let draft = self.displayed_draft()?;
         let row = self.rows.get(self.selected)?;
         let undecided = draft
             .findings
@@ -90,21 +91,15 @@ impl Session {
             .map(|finding| finding.id.clone())
             .collect();
         Some(Intent {
-            draft: draft.id,
+            displayed: Arc::clone(draft),
             target: row.target_id,
             pr: row.pr.clone(),
             undecided,
-            pid: self.process.pid,
-            started: self.process.started_at_ms,
         })
     }
 
     pub(super) fn set_notice(&mut self, text: String) {
         self.notice = Some(text);
-    }
-
-    pub(super) fn running(&self) -> bool {
-        self.runner.is_some()
     }
 
     pub(super) fn lock_path(&self) -> &std::path::Path {
@@ -116,10 +111,6 @@ impl Session {
             pid: self.process.pid,
             started_at_ms: self.process.started_at_ms,
         }
-    }
-
-    pub(super) fn hold(&mut self, lock: crate::lock::RunnerLock) {
-        self.runner = Some(lock);
     }
 
     pub(super) async fn reload_rows(&mut self, store: &Store) -> Result<(), Error> {
@@ -199,31 +190,38 @@ impl Session {
     }
 
     pub(super) fn ask_discard(&mut self) {
-        let Some(label) = self.rows.get(self.selected).map(|row| row.label.clone()) else {
-            return;
-        };
-        self.offer = None;
-        self.confirm = Some(super::confirm::Confirm::discard(&label));
+        if let Some(pr) = self.selected_pr() {
+            self.show_confirm(super::confirm::Confirm::discard(pr));
+        }
     }
 
-    pub(super) fn ask_stale(&mut self, draft: i64, event: &str, sha: &str, prompt: String) {
-        self.offer = Some(super::confirm::Offer {
-            draft,
+    fn show_confirm(&mut self, confirm: super::confirm::Confirm) {
+        self.modal_generation += 1;
+        self.confirm = Some(confirm);
+    }
+
+    pub(super) fn ask_stale(
+        &mut self,
+        displayed: Arc<DraftView>,
+        event: &str,
+        sha: &str,
+        prompt: String,
+    ) {
+        let offer = super::confirm::Offer::New {
+            displayed,
             event: event.to_string(),
             sha: sha.to_string(),
-            publication: None,
-        });
-        self.confirm = Some(super::confirm::Confirm::stale(prompt));
+        };
+        self.show_confirm(super::confirm::Confirm::send(prompt, offer));
     }
 
     pub(super) fn ask_moved(&mut self, draft: i64, publication: &str, sha: &str, prompt: String) {
-        self.offer = Some(super::confirm::Offer {
+        let offer = super::confirm::Offer::Moved {
             draft,
-            event: String::new(),
             sha: sha.to_string(),
-            publication: Some(publication.to_string()),
-        });
-        self.confirm = Some(super::confirm::Confirm::moved(prompt));
+            publication: publication.to_owned(),
+        };
+        self.show_confirm(super::confirm::Confirm::send(prompt, offer));
     }
 
     pub(super) fn highlight_confirm(&mut self, safe: bool) {
@@ -234,7 +232,6 @@ impl Session {
 
     pub(super) fn cancel_confirm(&mut self) {
         self.confirm = None;
-        self.offer = None;
     }
 
     pub(super) async fn accept_confirm(
@@ -244,32 +241,32 @@ impl Session {
         let Some(confirm) = self.confirm.take() else {
             return Ok(None);
         };
-        let offer = self.offer.take();
-        if confirm.highlighted_safe {
-            if confirm.is_moved()
-                && let Some(id) = offer.and_then(|item| item.publication)
-            {
-                store.decline(&id).await?;
-                self.reload_rows(store).await?;
+        match confirm.purpose {
+            Purpose::Send(offer) if !confirm.highlighted_safe => return Ok(Some(offer)),
+            Purpose::Send(Offer::Moved {
+                publication, sha, ..
+            }) => {
+                if !store.decline(&publication, &sha).await? {
+                    self.already_handled();
+                }
             }
-            return Ok(None);
+            Purpose::Send(Offer::New { .. }) => return Ok(None),
+            _ if confirm.highlighted_safe => return Ok(None),
+            Purpose::Cancel(id) => match store.cancel_queued(&id).await? {
+                crate::store::publish::CancelQueued::Started => {
+                    self.set_notice("it already started".into());
+                }
+                crate::store::publish::CancelQueued::Absent => self.already_handled(),
+                crate::store::publish::CancelQueued::Cancelled => {}
+            },
+            Purpose::Abandon(id) => {
+                if !store.abandon_unknown(&id).await? {
+                    self.already_handled();
+                }
+            }
+            Purpose::Discard(pr) => store.discard(&pr).await?,
         }
-        if confirm.sends() {
-            return Ok(offer);
-        }
-        if confirm.cancels() {
-            self.cancel_publication(store).await?;
-            return Ok(None);
-        }
-        if confirm.abandons() {
-            self.abandon_selected(store).await?;
-            return Ok(None);
-        }
-        let Some(pr) = self.selected_pr() else {
-            return Ok(None);
-        };
-        store.discard(&pr).await?;
-        self.rows = store.queue_rows().await?;
+        self.reload_rows(store).await?;
         Ok(None)
     }
 
@@ -277,23 +274,24 @@ impl Session {
         let Some(target) = self.selected_target() else {
             return Ok(());
         };
-        if store.unknown_publication(target).await?.is_none() {
-            return Ok(());
+        if let Some(id) = store.unknown_publication(target).await?
+            && self.same_publication(&id)
+        {
+            self.show_confirm(super::confirm::Confirm::abandon_unknown(id));
         }
-        self.offer = None;
-        self.confirm = Some(super::confirm::Confirm::abandon_unknown());
         Ok(())
     }
 
-    async fn abandon_selected(&mut self, store: &Store) -> Result<(), Error> {
-        let Some(target) = self.selected_target() else {
-            return Ok(());
-        };
-        if let Some(id) = store.unknown_publication(target).await? {
-            store.abandon_unknown(&id).await?;
-            self.reload_rows(store).await?;
+    fn same_publication(&mut self, id: &str) -> bool {
+        if self.publication_report().is_some_and(|p| p.id != id) {
+            self.set_notice("the publication changed; check the new attempt first".into());
+            return false;
         }
-        Ok(())
+        true
+    }
+
+    pub(super) fn already_handled(&mut self) {
+        self.set_notice("publication confirmation already handled or changed".into());
     }
 
     pub(super) async fn ask_cancel(&mut self, store: &Store) -> Result<(), Error> {
@@ -301,29 +299,15 @@ impl Session {
             return Ok(());
         };
         match store.publish_gate(target).await? {
-            crate::store::publish::Gate::Queued => {
-                self.offer = None;
-                self.confirm = Some(super::confirm::Confirm::cancel_queued());
+            crate::store::publish::Gate::Queued(id) if self.same_publication(&id) => {
+                self.show_confirm(super::confirm::Confirm::cancel_queued(id));
             }
             crate::store::publish::Gate::Started => {
                 self.set_notice("it already started".to_string());
             }
-            crate::store::publish::Gate::Other => {}
+            crate::store::publish::Gate::Queued(_) | crate::store::publish::Gate::Other => {}
         }
         Ok(())
-    }
-
-    async fn cancel_publication(&mut self, store: &Store) -> Result<(), Error> {
-        let Some(target) = self.selected_target() else {
-            return Ok(());
-        };
-        if matches!(
-            store.cancel_queued(target).await?,
-            crate::store::publish::CancelQueued::Started
-        ) {
-            self.set_notice("it already started".to_string());
-        }
-        self.reload_rows(store).await
     }
 
     pub(super) fn selected_target(&self) -> Option<i64> {
@@ -336,6 +320,12 @@ impl Session {
 
     pub(super) fn clear_notice(&mut self) {
         self.notice = None;
+    }
+
+    pub(super) fn publication_report(&self) -> Option<&Arc<super::follow::Report>> {
+        self.publication.as_ref().filter(|p| {
+            Some(p.target) == self.selected_target() && p.screen_draft == self.draft_id()
+        })
     }
 
     pub fn notice(&self) -> Option<&str> {
@@ -367,7 +357,7 @@ impl Session {
             return Ok(());
         };
         if let Some(draft) = store.latest_draft(target).await? {
-            self.screen = Screen::Draft(draft);
+            self.screen = Screen::Draft(draft.into());
             self.focus = 0;
             self.scroll = 0;
         }
@@ -391,6 +381,7 @@ impl Session {
     }
 
     pub(super) fn note_window(&mut self, width: usize, height: usize) {
+        self.presented = Some(super::input::Presented::draw(self, self.presented.as_ref()));
         self.view_width = width;
         self.view_height = height;
     }
@@ -571,14 +562,21 @@ impl Session {
         if self.confirming() {
             return Ok(());
         }
-        let Screen::Draft(_) = &self.screen else {
+        let Some(previous) = self.draft_id() else {
             return Ok(());
         };
-        let Some(target) = self.rows.get(self.selected).map(|row| row.target_id) else {
+        let Some(target) = self.selected_target() else {
+            self.close_draft();
             return Ok(());
         };
         if let Some(draft) = store.latest_draft(target).await? {
-            self.screen = Screen::Draft(draft);
+            if draft.id != previous {
+                self.focus = 0;
+                self.scroll = 0;
+            }
+            self.screen = Screen::Draft(draft.into());
+        } else {
+            self.close_draft();
         }
         Ok(())
     }
@@ -586,6 +584,13 @@ impl Session {
     fn finding_id(&self) -> Option<String> {
         let (draft, focus) = self.draft()?;
         Some(draft.findings.get(focus)?.id.clone())
+    }
+
+    pub(super) fn displayed_draft(&self) -> Option<&Arc<DraftView>> {
+        match &self.screen {
+            Screen::Queue => None,
+            Screen::Draft(draft) => Some(draft),
+        }
     }
 
     pub(super) fn draft_id(&self) -> Option<i64> {

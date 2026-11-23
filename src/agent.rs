@@ -7,6 +7,7 @@ mod request;
 pub(crate) mod schema;
 mod spawn;
 mod stop;
+pub(crate) mod supervisor;
 
 use crate::store::records::Metrics;
 pub(crate) use output::{ReviewOutput, ReviewStatus, Severity, Side};

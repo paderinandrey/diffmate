@@ -1,50 +1,30 @@
 use super::model::Session;
-use crate::config::Settings;
+use super::post::Mode;
 use crate::error::Error;
 use crate::gh::Gh;
 use crate::git::Git;
 use crate::lock::{self, Role};
-use crate::paths::Paths;
+use crate::notify::{self, Notice};
 use crate::store::Store;
-use rusqlite::OptionalExtension;
+
+pub(super) type PaintRunner<'a> = dyn Fn(&mut Session, bool) -> Result<(), Error> + 'a;
 
 pub(crate) async fn serve<H: Gh>(store: &Store, gh: &H, max_retries: u32) -> Result<(), Error> {
-    loop {
-        let Some((id, kind)) = next_service(store).await? else {
-            return Ok(());
-        };
-        match kind.as_str() {
-            "publish" => {
-                store.start_job(id).await?;
-                crate::publish::execute_publish(store, gh, id, max_retries).await?;
-            }
-            "reconcile" => {
-                store.start_job(id).await?;
-                crate::publish::execute_reconcile(store, gh, id).await?;
-            }
-            "sync" => {
-                store.start_job(id).await?;
-                crate::publish::execute_sync(store, gh, id).await?;
-            }
-            _ => return Ok(()),
-        }
-    }
+    while crate::publish::serve_next(store, gh, max_retries).await? {}
+    Ok(())
 }
 
-pub(super) async fn needs_runner(store: &Store, held: bool) -> Result<bool, Error> {
-    if held
-        || store
-            .next_service_job(crate::store::now_ms())
-            .await?
-            .is_some()
-    {
-        return Ok(true);
-    }
+async fn needs_runner(store: &Store) -> Result<bool, Error> {
+    let now = crate::store::now_ms();
     store
-        .call(|conn| {
-            let sql = "SELECT 1 FROM jobs WHERE kind IN ('publish', 'reconcile', 'sync') \
-                       AND state = 'running' LIMIT 1";
-            Ok(conn.query_row(sql, [], |_| Ok(())).optional()?.is_some())
+        .call(move |conn| {
+            conn.query_row(
+                "SELECT EXISTS(SELECT 1 FROM jobs WHERE kind IN ('publish','reconcile','sync')
+             AND (state = 'running' OR (state = 'queued' AND held = 0
+             AND (next_attempt_at IS NULL OR next_attempt_at <= ?1))))",
+                [now],
+                |row| row.get(0),
+            )
         })
         .await
 }
@@ -52,32 +32,48 @@ pub(super) async fn needs_runner(store: &Store, held: bool) -> Result<bool, Erro
 pub(super) async fn drive<H: Gh, G: Git>(
     session: &mut Session,
     store: &Store,
-    gh: &H,
-    git: &G,
-    paths: &Paths,
-    settings: &Settings,
+    mode: &Mode<'_, H, G>,
 ) -> Result<(), Error> {
-    if !session.running() {
-        let Some(lock) = lock::try_acquire(session.lock_path()).await? else {
-            return Ok(());
-        };
-        lock.announce(Role::Tui).await?;
-        session.hold(lock);
-        crate::recovery::run(paths, store, git, settings).await?;
-    }
-    serve(store, gh, settings.max_retries()).await
+    drive_with(session, store, mode, notify::deliver).await
 }
 
-async fn next_service(store: &Store) -> Result<Option<(i64, String)>, Error> {
-    let now = crate::store::now_ms();
-    store
-        .call(move |conn| {
-            let sql = "SELECT id, kind FROM jobs WHERE kind IN ('publish', 'reconcile', 'sync') \
-                       AND state = 'queued' AND held = 0 \
-                       AND (next_attempt_at IS NULL OR next_attempt_at <= ?1) \
-                       ORDER BY id LIMIT 1";
-            conn.query_row(sql, [now], |row| Ok((row.get(0)?, row.get(1)?)))
-                .optional()
-        })
-        .await
+pub(super) async fn drive_with<H: Gh, G: Git>(
+    session: &mut Session,
+    store: &Store,
+    mode: &Mode<'_, H, G>,
+    deliver: impl AsyncFn(&Notice) -> Result<(), Error>,
+) -> Result<(), Error> {
+    let Mode::On {
+        gh,
+        git,
+        paths,
+        settings,
+        paint_runner,
+    } = *mode
+    else {
+        return Ok(());
+    };
+    if !needs_runner(store).await? {
+        return Ok(());
+    }
+    let Some(lock) = lock::try_acquire(session.lock_path()).await? else {
+        return Ok(());
+    };
+    lock.announce(Role::Tui).await?;
+    let store = store.under_lock(lock);
+    if let Some(paint) = paint_runner {
+        paint(session, true)?;
+    }
+    let report = crate::recovery::run(paths, &store, git, settings).await?;
+    for notice in notify::recovery::notices(&store, &report.jobs).await? {
+        if let Err(error) = deliver(&notice).await {
+            session.set_notice(format!("notification-failed: {error}"));
+        }
+    }
+    serve(&store, gh, settings.max_retries()).await?;
+    drop(store);
+    if let Some(paint) = paint_runner {
+        paint(session, false)?;
+    }
+    Ok(())
 }

@@ -4,6 +4,12 @@ use crate::store::result::{StoredJob, StoredRun};
 impl ReviewResult {
     pub fn from_stored(stored: StoredJob, reused: bool) -> Self {
         match (stored.state.as_str(), stored.run) {
+            ("queued", _) => Self::Deferred,
+            ("cancelled", _) => Self::JobCancelled {
+                reason: stored
+                    .reason
+                    .unwrap_or_else(|| "no longer scheduled".to_string()),
+            },
             (
                 "succeeded",
                 Some(StoredRun::Succeeded {

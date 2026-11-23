@@ -5,6 +5,8 @@ use crate::pr_url::PrRef;
 use rusqlite::TransactionBehavior;
 
 mod known;
+mod preflight;
+pub(crate) use preflight::Admission;
 mod schedule;
 #[cfg(test)]
 mod tests;
@@ -36,7 +38,7 @@ pub(crate) struct KnownTarget {
 }
 
 impl Store {
-    pub async fn known_targets(&self) -> Result<Vec<KnownTarget>, Error> {
+    pub async fn poll_targets(&self) -> Result<Vec<KnownTarget>, Error> {
         self.call(known::known).await
     }
 
@@ -68,10 +70,25 @@ impl Store {
         .await
     }
 
-    pub async fn close_tracked(&self, target: super::TargetId, now_ms: i64) -> Result<(), Error> {
+    pub async fn observe_review_head(
+        &self,
+        target: super::TargetId,
+        head: &str,
+        closed: bool,
+    ) -> Result<(), Error> {
+        let head = head.to_owned();
         self.call(move |conn| {
+            let now = super::now_ms();
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            tracking::close(&tx, target, now_ms)?;
+            tx.execute(
+                "UPDATE targets SET head_sha = ?1, head_checked_at = ?2 WHERE id = ?3",
+                rusqlite::params![head, now, target],
+            )?;
+            if closed {
+                tracking::close(&tx, target, now)?;
+            } else {
+                super::targets::clear_ref_cleanup(&tx, target)?;
+            }
             tx.commit()
         })
         .await

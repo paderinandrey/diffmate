@@ -1,3 +1,4 @@
+mod polling;
 mod remote;
 mod rig;
 
@@ -34,7 +35,12 @@ async fn publish_finishes_during_an_agent_run() {
     };
     let sha = "h".repeat(40);
     rig.store
-        .confirm_publication(1, "COMMENT", &sha, &rig.config.process)
+        .confirm_publication(
+            rig.store.displayed_draft(1).await,
+            "COMMENT",
+            &sha,
+            &rig.config.process,
+        )
         .await
         .unwrap();
     let mut submitted = false;
@@ -82,7 +88,12 @@ async fn a_stalled_publish_still_stops_the_agent() {
     };
     let sha = "h".repeat(40);
     rig.store
-        .confirm_publication(1, "COMMENT", &sha, &rig.config.process)
+        .confirm_publication(
+            rig.store.displayed_draft(1).await,
+            "COMMENT",
+            &sha,
+            &rig.config.process,
+        )
         .await
         .unwrap();
     let mut started = false;
@@ -127,7 +138,12 @@ async fn a_stalled_standalone_publish_stays_recoverable() {
         .unwrap();
     let sha = "h".repeat(40);
     rig.store
-        .confirm_publication(1, "COMMENT", &sha, &rig.config.process)
+        .confirm_publication(
+            rig.store.displayed_draft(1).await,
+            "COMMENT",
+            &sha,
+            &rig.config.process,
+        )
         .await
         .unwrap();
     let deps = rig.deps_hanging();
@@ -221,7 +237,12 @@ async fn a_finished_review_waits_for_the_in_flight_publish() {
     };
     let sha = "h".repeat(40);
     rig.store
-        .confirm_publication(1, "COMMENT", &sha, &rig.config.process)
+        .confirm_publication(
+            rig.store.displayed_draft(1).await,
+            "COMMENT",
+            &sha,
+            &rig.config.process,
+        )
         .await
         .unwrap();
     let mut started = false;

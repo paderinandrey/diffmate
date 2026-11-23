@@ -21,7 +21,12 @@ async fn crash_after_sending_is_unknown() {
     batch(&store, support::KEPT).await;
     let script = Arc::new(Script::new(store.clone()));
     let job = store
-        .confirm_publication(1, "COMMENT", "abc123", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "abc123",
+            &process(),
+        )
         .await
         .unwrap();
     store.start_job(job).await.unwrap();

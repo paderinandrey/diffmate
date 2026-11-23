@@ -60,6 +60,7 @@ pub(super) fn mode<'a, H, G>(
         git,
         paths,
         settings,
+        paint_runner: None,
     }
 }
 

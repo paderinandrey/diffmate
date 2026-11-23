@@ -58,11 +58,17 @@ async fn keep_queued_is_highlighted_and_enter_writes_nothing() {
 async fn the_other_choice_cancels_the_queued_publication() {
     let (_tmp, store) = open().await;
     seed(&store, "pending", "queued").await;
+    let selected = store
+        .next_service_job(crate::store::now_ms())
+        .await
+        .unwrap()
+        .unwrap();
     shown(
         &store,
         &[KeyCode::Char('u'), KeyCode::Right, KeyCode::Enter],
     )
     .await;
+    assert!(store.start_job(selected.id).await.unwrap().is_none());
     assert_eq!(states(&store).await, "abandoned/cancelled");
     assert_eq!(
         cell(&store, "SELECT reason FROM publications").await,
@@ -92,4 +98,51 @@ async fn quit_leaves_a_queued_publication_pending() {
         .await
         .unwrap();
     assert_eq!(states(&store).await, "pending/queued");
+}
+
+#[tokio::test]
+async fn an_old_prompt_cannot_cancel_or_abandon_a_later_attempt() {
+    for unknown in [false, true] {
+        let (_tmp, store) = open().await;
+        seed(
+            &store,
+            if unknown { "unknown" } else { "pending" },
+            if unknown { "failed" } else { "queued" },
+        )
+        .await;
+        let mut session = crate::tui::model::Session::load(&store).await.unwrap();
+        if unknown {
+            session.ask_abandon(&store).await.unwrap();
+        } else {
+            session.ask_cancel(&store).await.unwrap();
+        }
+        assert!(session.confirming());
+        session.highlight_confirm(false);
+        store.call(move |conn| conn.execute_batch("UPDATE publications SET state = 'abandoned'; UPDATE jobs SET state = 'cancelled' WHERE kind = 'publish';
+            INSERT INTO publications(id,target_id,draft_id,run_id,state,event,confirmed_sha,snapshot,created_at,updated_at)
+            SELECT 'fedcba9876543210fedcba9876543210', target_id,draft_id,run_id,'pending',event,confirmed_sha,snapshot,2,2 FROM publications;
+            INSERT INTO jobs(kind,target_id,state,enqueued_by_pid,enqueued_by_started_at,created_at,updated_at,publication_id)
+            VALUES ('publish',1,'queued',1,0,2,2,'fedcba9876543210fedcba9876543210');")).await.unwrap();
+        if unknown {
+            store.call(|conn| conn.execute("UPDATE publications SET state='unknown' WHERE id='fedcba9876543210fedcba9876543210'", [])).await.unwrap();
+        }
+        session.accept_confirm(&store).await.unwrap();
+        assert_eq!(
+            cell(
+                &store,
+                "SELECT state FROM publications WHERE id='fedcba9876543210fedcba9876543210'"
+            )
+            .await,
+            if unknown { "unknown" } else { "pending" }
+        );
+        assert_eq!(
+            cell(
+                &store,
+                "SELECT state FROM jobs WHERE publication_id='fedcba9876543210fedcba9876543210'"
+            )
+            .await,
+            "queued"
+        );
+        assert!(session.notice().unwrap().contains("already handled"));
+    }
 }

@@ -32,18 +32,20 @@ async fn a_delayed_job_waits_without_holding_the_lock_then_becomes_runnable() {
         })
         .await
         .unwrap();
-    assert!(
+    assert!(matches!(
         store
-            .job_delayed(job.job_id, 4_102_444_799_999)
+            .job_progress(job.job_id, 4_102_444_799_999)
             .await
-            .unwrap()
-    );
-    assert!(
-        !store
-            .job_delayed(job.job_id, 4_102_444_800_000)
+            .unwrap(),
+        JobProgress::Delayed
+    ));
+    assert!(matches!(
+        store
+            .job_progress(job.job_id, 4_102_444_800_000)
             .await
-            .unwrap()
-    );
+            .unwrap(),
+        JobProgress::Active
+    ));
     let mut signals = Signals::new().unwrap();
     let path = paths.lock();
     let waiting = until_lock_or_end(&path, &store, job.job_id, "o/r#1", &mut signals);

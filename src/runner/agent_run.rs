@@ -78,7 +78,10 @@ async fn execute<G: Git, H: Gh, A: Agent>(
         }
     };
     let (hook, pids) = mpsc::unbounded_channel();
-    let request = request.with_cancel(cancel.clone()).with_spawn_hook(hook);
+    let request = request
+        .with_guard(paths.state_dir().to_path_buf())
+        .with_cancel(cancel.clone())
+        .with_spawn_hook(hook);
     let running = async {
         crash_point!("agent-start");
         let outcome = deps.agent.run(&request).await;

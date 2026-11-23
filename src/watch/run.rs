@@ -17,32 +17,27 @@ pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
     deps: &Deps<G, H, A>,
     signals: &mut Signals,
 ) -> Result<(), Error> {
-    let mut next_poll_at = 0;
+    let mut polling = poll::Schedule::new(config, store, &deps.gh);
     loop {
         if shutdown(signals).await {
             return Ok(());
         }
-        if now_ms() >= next_poll_at {
-            let polled = tokio::select! {
+        if polling.delay().is_zero() {
+            tokio::select! {
                 biased;
                 _ = signals.next(StopReason::Shutdown) => {
                     stopped();
                     return Ok(());
                 }
-                result = poll::once(
-                    &deps.gh,
-                    store,
-                    config.settings.debounce(),
-                    &config.process,
-                ) => result,
-            };
-            next_poll_at = now_ms().saturating_add(interval(config));
-            if let Err(error) = polled {
-                events::print(&format!("poll failed: {error}"));
+                () = polling.poll() => {},
             }
+            clean_refs(config, store, &deps.git).await?;
         }
         if let Some(queued) = store.next_runnable_job(now_ms()).await? {
-            if alongside(config, store, deps, signals, &queued).await? {
+            let work = alongside(config, store, deps, signals, &queued);
+            let stop = polling.during(work).await?;
+            clean_refs(config, store, &deps.git).await?;
+            if stop {
                 return Ok(());
             }
         } else if store.next_service_job(now_ms()).await?.is_some() {
@@ -52,9 +47,10 @@ pub(super) async fn jobs<G: Git, H: Gh, A: Agent>(
                     stopped();
                     return Ok(());
                 }
-                result = serve(config, store, deps) => result?,
+                result = polling.during(serve(config, store, deps)) => result?,
             }
-        } else if idle(store, signals, next_poll_at).await? {
+            clean_refs(config, store, &deps.git).await?;
+        } else if idle(store, signals, polling.delay()).await? {
             return Ok(());
         }
     }
@@ -125,32 +121,16 @@ async fn serve<G: Git, H: Gh, A: Agent>(
     store: &Store,
     deps: &Deps<G, H, A>,
 ) -> Result<(), Error> {
-    let Some(job) = store.next_service_job(now_ms()).await? else {
-        return Ok(());
-    };
-    match job.kind.as_str() {
-        "publish" => {
-            store.start_job(job.id).await?;
-            crate::publish::execute_publish(store, &deps.gh, job.id, config.settings.max_retries())
-                .await
-        }
-        "reconcile" => {
-            store.start_job(job.id).await?;
-            crate::publish::execute_reconcile(store, &deps.gh, job.id).await
-        }
-        "sync" => {
-            store.start_job(job.id).await?;
-            crate::publish::execute_sync(store, &deps.gh, job.id).await
-        }
-        _ => {
-            tokio::time::sleep(super::WATCH_LOCK_POLL).await;
-            Ok(())
-        }
-    }
+    crate::publish::serve_next(store, &deps.gh, config.settings.max_retries())
+        .await
+        .map(drop)
 }
 
-fn interval(config: &AppConfig) -> i64 {
-    i64::try_from(config.settings.poll_interval().as_millis()).unwrap_or(i64::MAX)
+async fn clean_refs(config: &AppConfig, store: &Store, git: &impl Git) -> Result<(), Error> {
+    for warning in crate::recovery::clean_closed_refs(&config.paths, store, git).await? {
+        events::print(&format!("warning: {warning}"));
+    }
+    Ok(())
 }
 
 async fn shutdown(signals: &mut Signals) -> bool {
@@ -164,8 +144,12 @@ async fn shutdown(signals: &mut Signals) -> bool {
     }
 }
 
-async fn idle(store: &Store, signals: &mut Signals, next_poll_at: i64) -> Result<bool, Error> {
-    let delay = timing::idle_delay(now_ms(), next_poll_at, store.earliest_next_attempt().await?);
+async fn idle(
+    store: &Store,
+    signals: &mut Signals,
+    poll_delay: std::time::Duration,
+) -> Result<bool, Error> {
+    let delay = timing::idle_delay(now_ms(), poll_delay, store.earliest_next_attempt().await?);
     tokio::select! {
         () = tokio::time::sleep(delay) => Ok(false),
         _ = signals.next(StopReason::Shutdown) => {

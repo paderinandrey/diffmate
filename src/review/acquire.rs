@@ -5,7 +5,7 @@ use crate::crash::crash_point;
 use crate::error::Error;
 use crate::git::Git;
 use crate::pr_url::PrRef;
-use crate::store::jobs::{EnqueueRequest, EnqueuedJob};
+use crate::store::jobs::{EnqueueRequest, EnqueuedJob, JobProgress};
 use crate::store::{Store, records::JobOrigin};
 use crate::{recovery, render};
 
@@ -54,14 +54,14 @@ pub(super) async fn for_job<G: Git>(
                 .await?
                 .job;
         }
-        if store.stored_result(job.job_id).await?.state != "queued" {
-            return Ok(Waited::Finished);
-        }
-        if !store
-            .job_delayed(job.job_id, crate::store::now_ms())
+        match store
+            .job_progress(job.job_id, crate::store::now_ms())
             .await?
         {
-            return Ok(Waited::Locked(lock));
+            JobProgress::Finished => return Ok(Waited::Finished),
+            JobProgress::Held => return Ok(Waited::Held),
+            JobProgress::Active => return Ok(Waited::Locked(lock)),
+            JobProgress::Delayed => {}
         }
     }
 }

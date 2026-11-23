@@ -6,7 +6,7 @@ use crate::error::Error;
 use rusqlite::{Connection, TransactionBehavior};
 use std::path::Path;
 
-pub(crate) const SCHEMA_VERSION: i64 = 5;
+pub(crate) const SCHEMA_VERSION: i64 = 6;
 
 pub(super) fn run(conn: &mut Connection, db: &Path) -> Result<(), Error> {
     let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
@@ -20,9 +20,7 @@ pub(super) fn run(conn: &mut Connection, db: &Path) -> Result<(), Error> {
             backup::create(db, 1)?;
             tx.execute_batch(include_str!("migrate_v2.sql"))?;
         }
-        2 => backup::create(db, 2)?,
-        3 => backup::create(db, 3)?,
-        4 => backup::create(db, 4)?,
+        2..=5 => backup::create(db, version)?,
         SCHEMA_VERSION => return Ok(()),
         newer => return Err(Error::SchemaVersion(newer)),
     }
@@ -32,7 +30,10 @@ pub(super) fn run(conn: &mut Connection, db: &Path) -> Result<(), Error> {
     if version < 4 {
         tx.execute_batch(include_str!("migrate_v4.sql"))?;
     }
-    tx.execute_batch(include_str!("migrate_v5.sql"))?;
+    if version < 5 {
+        tx.execute_batch(include_str!("migrate_v5.sql"))?;
+    }
+    tx.execute_batch(include_str!("migrate_v6.sql"))?;
     tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     Ok(tx.commit()?)
 }

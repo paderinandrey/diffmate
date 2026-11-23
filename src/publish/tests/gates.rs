@@ -34,7 +34,12 @@ INSERT INTO findings (id, run_id, draft_id, ordinal, severity, path, line, side,
     );
     batch(&store, &sql).await;
     let error = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap_err();
     let ConfirmError::Undecided(ids) = error else {

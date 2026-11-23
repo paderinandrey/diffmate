@@ -4,11 +4,11 @@ use std::fs;
 use std::path::Path;
 
 #[test]
-fn wal_user_version_five_adds_no_directory_entry() {
+fn current_wal_schema_adds_no_directory_entry() {
     let sandbox = ready();
     let conn = Connection::open(sandbox.db_path()).unwrap();
     conn.execute_batch(
-        "PRAGMA journal_mode=WAL; PRAGMA user_version = 5; PRAGMA wal_checkpoint(TRUNCATE);",
+        "PRAGMA journal_mode=WAL; PRAGMA user_version = 6; PRAGMA wal_checkpoint(TRUNCATE);",
     )
     .unwrap();
     drop(conn);
@@ -33,7 +33,7 @@ fn open_wal_shows_the_uncheckpointed_user_version() {
         "PRAGMA journal_mode=WAL; PRAGMA user_version = 4; PRAGMA wal_checkpoint(TRUNCATE);",
     )
     .unwrap();
-    conn.pragma_update(None, "user_version", 5).unwrap();
+    conn.pragma_update(None, "user_version", 6).unwrap();
     let header = fs::read(sandbox.db_path()).unwrap();
     assert_eq!(&header[60..64], &[0, 0, 0, 4]);
     let before = names(&sandbox.state_dir());

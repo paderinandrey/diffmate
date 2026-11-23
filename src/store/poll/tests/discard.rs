@@ -34,17 +34,19 @@ async fn discard_hides_a_request_until_it_leaves_and_returns() {
         (row.head.as_deref(), row.checked),
         (Some("ccc"), Some(3_000))
     );
-    assert_eq!(fix.store.known_targets().await.unwrap().len(), 1);
+    assert_eq!(fix.store.poll_targets().await.unwrap().len(), 1);
 }
 
 #[tokio::test]
-async fn discard_deletes_only_an_unstarted_automatic_job() {
+async fn discard_cancels_waiting_automatic_jobs_without_losing_their_history() {
     let fix = Fix::open().await;
-    fix.enqueue(1, true).await;
+    let waiting = fix.enqueue(1, true).await;
+    let attached = fix.enqueue(1, false).await;
+    assert_eq!(attached, waiting);
     let running = fix.enqueue(2, true).await;
     fix.store.start_job(running).await.unwrap();
     let reviewed = fix.enqueue(3, true).await;
-    fix.add_run(reviewed, "aaa", false).await;
+    fix.add_run(reviewed, "aaa", true).await;
     let retrying = fix.enqueue(4, true).await;
     fix.set_job(retrying, "queued", 2, Some(50)).await;
     let manual = fix.enqueue(5, false).await;
@@ -52,15 +54,44 @@ async fn discard_deletes_only_an_unstarted_automatic_job() {
         fix.store.discard(&pr(number)).await.unwrap();
         expect(&fix, number, "untracked", true).await;
     }
-    assert!(fix.jobs(1).await.is_empty());
+    let result = fix.store.stored_result(attached).await.unwrap();
+    assert_eq!(result.state, "cancelled");
+    assert_eq!(result.reason.as_deref(), Some("target discarded"));
     let running_jobs = fix.jobs(2).await;
     assert_eq!(running_jobs[0].origin, "automatic");
     assert!(!running_jobs[0].force);
     assert_eq!(states(&running_jobs), vec![("running", running)]);
-    assert_eq!(states(&fix.jobs(3).await), vec![("queued", reviewed)]);
+    assert_eq!(states(&fix.jobs(3).await), vec![("cancelled", reviewed)]);
+    assert!(
+        fix.store
+            .stored_result(reviewed)
+            .await
+            .unwrap()
+            .run
+            .is_some()
+    );
+    assert_eq!(states(&fix.jobs(4).await), vec![("cancelled", retrying)]);
     assert_eq!(fix.jobs(4).await[0].retry, 2);
-    assert_eq!(fix.jobs(4).await[0].next, Some(50));
+    assert_eq!(fix.jobs(4).await[0].next, None);
     assert_eq!(states(&fix.jobs(5).await), vec![("queued", manual)]);
+}
+
+#[tokio::test]
+async fn recovery_does_not_requeue_a_running_attempt_after_discard() {
+    let fix = Fix::open().await;
+    let job = fix.enqueue(1, true).await;
+    fix.set_job(job, "running", 1, None).await;
+    fix.store.discard(&pr(1)).await.unwrap();
+    let stopped = fix.store.resolve_running(3, 100).await.unwrap();
+    assert_eq!(stopped.jobs, [(job, "failed (target discarded)".into())]);
+    assert_eq!(fix.jobs(1).await[0].retry, 1);
+    assert!(
+        fix.store
+            .next_runnable_job(i64::MAX)
+            .await
+            .unwrap()
+            .is_none()
+    );
 }
 
 fn states(jobs: &[Job]) -> Vec<(&str, i64)> {

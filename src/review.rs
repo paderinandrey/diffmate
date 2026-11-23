@@ -69,6 +69,13 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
         let lock = match waited {
             wait::Waited::Locked(lock) => lock,
             wait::Waited::Finished => return print::stored(&store, job.job_id, pr).await,
+            wait::Waited::Held => {
+                eprintln!(
+                    "{}: automatic review held because the PR is a draft; run review again for a manual review",
+                    render::sanitize(&pr.label())
+                );
+                return Ok(ExitCode::FAILURE);
+            }
             wait::Waited::Stopped => return Ok(ExitCode::FAILURE),
         };
         let (stop, cancel) = watch::channel(false);
@@ -82,6 +89,9 @@ async fn execute(config: &AppConfig, pr: &PrRef, force: bool) -> Result<ExitCode
             &mut signals,
         )
         .await?;
+        for warning in crate::recovery::clean_closed_refs(paths, &store, &deps.git).await? {
+            eprintln!("warning: {}", render::sanitize(&warning));
+        }
         let code = print::result(pr, &result)?;
         notify_result(&store, job.job_id, pr, &result).await?;
         if follow::again(&result, *cancel.borrow()) {

@@ -17,6 +17,16 @@ pub(crate) struct PrMeta {
     pub is_draft: bool,
 }
 
+impl PrMeta {
+    pub fn verify_target(&self, expected: &crate::pr_url::PrRef) -> Result<(), Error> {
+        let pr = crate::pr_url::parse(&self.url)?;
+        if pr != *expected || self.number != pr.number {
+            return Err(Error::Canonical(pr.label()));
+        }
+        Ok(())
+    }
+}
+
 #[derive(Deserialize)]
 pub(super) struct Author {
     pub login: String,

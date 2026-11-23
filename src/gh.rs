@@ -92,6 +92,12 @@ pub(crate) trait Gh {
     }
 }
 
+pub(crate) async fn verified_view(gh: &impl Gh, pr: &PrRef) -> Result<PrMeta, Error> {
+    let meta = gh.pr_view(pr).await?;
+    meta.verify_target(pr)?;
+    Ok(meta)
+}
+
 fn publication_unavailable(source: &impl Sized) -> Error {
     let _ = source;
     Error::Command {

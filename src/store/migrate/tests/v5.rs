@@ -46,7 +46,7 @@ async fn version_four_is_snapshotted_then_upgraded() {
     let (_tmp, paths) = version_four(DRAFT);
     drop(Store::open(&paths).await.unwrap());
     let conn = Connection::open(paths.db()).unwrap();
-    assert_eq!(version(&conn), 5);
+    assert_eq!(version(&conn), crate::store::SCHEMA_VERSION);
     let included: i64 = conn
         .query_row("SELECT limitation_included FROM drafts", [], |row| {
             row.get(0)
@@ -63,8 +63,11 @@ async fn fresh_database_writes_no_backup() {
     let tmp = TempDir::new().unwrap();
     let paths = Paths::new(tmp.path().join("state"), tmp.path().join("cache"));
     drop(Store::open(&paths).await.unwrap());
-    assert_eq!(version(&Connection::open(paths.db()).unwrap()), 5);
-    assert!((1..=5).all(|version| !backed_up(&paths, version)));
+    assert_eq!(
+        version(&Connection::open(paths.db()).unwrap()),
+        crate::store::SCHEMA_VERSION
+    );
+    assert!((1..=crate::store::SCHEMA_VERSION).all(|version| !backed_up(&paths, version)));
 }
 
 #[tokio::test]
@@ -93,4 +96,54 @@ async fn null_line_findings_become_thread_status_none() {
     };
     assert_eq!(status("loose"), "none");
     assert_eq!(status("anchored"), "unknown");
+}
+
+#[tokio::test]
+async fn version_five_upgrade_does_not_assume_that_untracked_means_closed() {
+    let (_tmp, paths) = version_four(DRAFT);
+    let conn = Connection::open(paths.db()).unwrap();
+    conn.execute_batch(include_str!("../../migrate_v5.sql"))
+        .unwrap();
+    conn.execute("UPDATE targets SET tracking = 'untracked'", [])
+        .unwrap();
+    conn.pragma_update(None, "user_version", 5).unwrap();
+    assert!(matches!(
+        Store::open_read_only(&paths).await,
+        Err(Error::SchemaOutdated(5))
+    ));
+    let store = Store::open(&paths).await.unwrap();
+    assert_eq!(version(&conn), crate::store::SCHEMA_VERSION);
+    assert!(backed_up(&paths, 5));
+    assert_eq!(store.pending_ref_cleanup().await.unwrap(), []);
+}
+
+#[tokio::test]
+async fn an_upgrade_retires_legacy_automatic_retries_on_discarded_targets() {
+    let (_tmp, paths) = version_four("");
+    let conn = Connection::open(paths.db()).unwrap();
+    conn.execute_batch(include_str!("../../migrate_v5.sql"))
+        .unwrap();
+    conn.execute_batch(
+        "UPDATE targets SET tracking = 'untracked', queued_head = 'abc';
+         INSERT INTO jobs (origin, kind, state, target_id, enqueued_by_pid, enqueued_by_started_at,
+                           created_at, updated_at, retry_count, max_retries, next_attempt_at)
+         VALUES ('automatic', 'review', 'queued', 1, 1, 1, 1, 1, 1, 2, 20),
+                ('manual', 'review', 'queued', 1, 1, 1, 1, 1, 0, NULL, NULL);",
+    )
+    .unwrap();
+    conn.pragma_update(None, "user_version", 5).unwrap();
+    let store = Store::open(&paths).await.unwrap();
+    assert_eq!(store.stored_result(1).await.unwrap().state, "cancelled");
+    let (_, retry) = store.job_retry_state(1).await.unwrap();
+    assert_eq!((retry.retry_count, retry.max_retries), (1, Some(2)));
+    assert_eq!(
+        store
+            .next_runnable_job(100)
+            .await
+            .unwrap()
+            .unwrap()
+            .job
+            .job_id,
+        2
+    );
 }

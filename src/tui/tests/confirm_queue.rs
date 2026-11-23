@@ -98,7 +98,53 @@ async fn a_newer_queue_draft_refuses_the_old_confirmation() {
     );
     let process = session.process_info();
     store
-        .confirm_publication(2, "COMMENT", &head, &process)
+        .confirm_publication(store.displayed_draft(1).await, "COMMENT", &head, &process)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn a_concurrent_reconfirmation_or_head_change_is_not_an_error_or_an_authorization() {
+    for safe in [true, false] {
+        for next in ["queued", "needs_confirmation"] {
+            let (tmp, store) = open().await;
+            moved(&store, super::queue::HEAD).await;
+            let paths = paths(&tmp);
+            let mut session = open_session(&store, &paths.lock()).await;
+            let gh = super::fake::Fake::new(super::queue::HEAD);
+            let git =
+                crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
+            let settings = crate::config::Settings::default();
+            let mode = fixture::mode(&gh, &git, &paths, &settings);
+            super::super::follow::refresh(&mut session, &store)
+                .await
+                .unwrap();
+            assert!(
+                store
+                    .reconfirm(fixture::PUB, super::queue::HEAD)
+                    .await
+                    .unwrap()
+            );
+            if next == "needs_confirmation" {
+                store
+                    .mark_needs_confirmation(2, "other head")
+                    .await
+                    .unwrap();
+            }
+            session.highlight_confirm(safe);
+            super::super::apply(&mut session, &store, &mode, key(KeyCode::Enter), None)
+                .await
+                .unwrap();
+            assert_eq!(
+                cell(&store, "SELECT state FROM jobs WHERE kind='publish'").await,
+                next
+            );
+            assert_eq!(
+                cell(&store, "SELECT state FROM publications").await,
+                "pending"
+            );
+            assert!(session.notice().unwrap().contains("already handled"));
+            assert_eq!(gh.seen(), []);
+        }
+    }
 }

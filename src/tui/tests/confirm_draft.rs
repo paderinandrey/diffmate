@@ -16,7 +16,12 @@ async fn a_stale_confirmation_publishes_its_own_draft() {
     let paths = paths(&tmp);
     let mut session = open_session(&store, &paths.lock()).await;
     session.open_draft(&store).await.unwrap();
-    session.ask_stale(1, "COMMENT", HEAD, "stale".to_string());
+    session.ask_stale(
+        session.displayed_draft().unwrap().clone(),
+        "COMMENT",
+        HEAD,
+        "stale".to_string(),
+    );
     let head = HEAD;
     store
         .call(move |conn| {
@@ -58,4 +63,40 @@ async fn a_stale_confirmation_publishes_its_own_draft() {
         .unwrap();
     assert!(!session.confirming());
     assert_eq!(session.draft().unwrap().0.id, 2);
+}
+
+#[tokio::test]
+async fn a_confirmation_never_sends_edits_made_in_another_session() {
+    let (tmp, store) = open().await;
+    super::publish::seed(&store).await;
+    let paths = paths(&tmp);
+    let mut session = open_session(&store, &paths.lock()).await;
+    session.open_draft(&store).await.unwrap();
+    let gh = Fake::new("new-head");
+    let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
+    let settings = Settings::default();
+    let mode = fixture::mode(&gh, &git, &paths, &settings);
+    super::super::apply(&mut session, &store, &mode, key(KeyCode::Char('a')), None)
+        .await
+        .unwrap();
+    assert!(session.confirming());
+    store
+        .save_finding_text("f1", "unseen title", "unseen body")
+        .await
+        .unwrap();
+    session.highlight_confirm(false);
+    super::super::apply(&mut session, &store, &mode, key(KeyCode::Enter), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        queue::count(&store, "SELECT count(*) FROM publications").await,
+        0
+    );
+    assert_eq!(
+        queue::count(&store, "SELECT count(*) FROM jobs WHERE kind = 'publish'").await,
+        0
+    );
+    assert_eq!(gh.seen(), []);
+    assert_eq!(session.draft().unwrap().0.findings[0].title, "unseen title");
+    assert!(session.notice().unwrap().contains("changed"));
 }

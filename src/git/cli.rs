@@ -46,6 +46,21 @@ impl Git for GitCli {
         GitCli::run(command).await
     }
 
+    async fn delete_pull_refs(&self, repo: &Path, number: u64) -> Result<(), Error> {
+        if !tokio::fs::try_exists(repo)
+            .await
+            .map_err(Error::io("check clone"))?
+        {
+            return Ok(());
+        }
+        let prefix = format!("refs/diffmate/pull/{number}/");
+        let list = ["for-each-ref", "--format=%(refname)", &prefix];
+        for name in GitCli::text(self.command(Some(repo), list)).await?.lines() {
+            GitCli::run(self.command(Some(repo), ["update-ref", "--no-deref", "-d", name])).await?;
+        }
+        Ok(())
+    }
+
     async fn rev_parse(&self, repo: &Path, rev: &str) -> Result<String, Error> {
         let rev = format!("{rev}^{{commit}}");
         GitCli::text(self.command(Some(repo), ["rev-parse", "--verify", &rev])).await

@@ -33,8 +33,18 @@ async fn quit_during_send(pressed: KeyEvent) {
         cell(&store, "SELECT state FROM publications").await,
         "sending"
     );
-    tx.send(Ok(Some(pressed))).await.unwrap();
+    assert_eq!(
+        crate::lock::holder(&paths.lock()).await,
+        Some(crate::lock::Role::Tui)
+    );
+    tx.send(Ok(Some(pressed.into()))).await.unwrap();
     assert!(matches!(turn.await.unwrap(), super::super::Turn::Quit));
+    assert!(
+        crate::lock::try_acquire(&paths.lock())
+            .await
+            .unwrap()
+            .is_some()
+    );
     assert_eq!(
         cell(&store, "SELECT state FROM publications").await,
         "sending"
@@ -83,7 +93,7 @@ async fn quit_during_shortcut(pressed: KeyEvent) {
         }
     }
     assert_eq!(publication_state(&store).await, "sending");
-    tx.send(Ok(Some(pressed))).await.unwrap();
+    tx.send(Ok(Some(pressed.into()))).await.unwrap();
     assert!(turn.await.unwrap());
     assert_eq!(publication_state(&store).await, "sending");
 }

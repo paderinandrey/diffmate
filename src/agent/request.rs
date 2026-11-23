@@ -7,6 +7,7 @@ pub(crate) struct AgentRequest {
     pub context_dir: PathBuf,
     pub prompt_file: PathBuf,
     pub(super) cancel: Option<CancelRx>,
+    pub(super) guard_dir: Option<PathBuf>,
     pub(super) spawn_hook: Option<UnboundedSender<u32>>,
 }
 
@@ -22,12 +23,18 @@ impl AgentRequest {
             context_dir,
             prompt_file,
             cancel: None,
+            guard_dir: None,
             spawn_hook: None,
         }
     }
 
     pub fn with_cancel(mut self, cancel: CancelRx) -> AgentRequest {
         self.cancel = Some(cancel);
+        self
+    }
+
+    pub fn with_guard(mut self, dir: PathBuf) -> AgentRequest {
+        self.guard_dir = Some(dir);
         self
     }
 

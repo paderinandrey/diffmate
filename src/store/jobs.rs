@@ -2,10 +2,9 @@ use super::records::JobOrigin;
 use super::{JobId, Store, TargetId, now_ms};
 use crate::cancel::StopReason;
 use crate::error::Error;
-use rusqlite::params;
+use rusqlite::{OptionalExtension, params};
 
 mod attach;
-mod due;
 #[cfg(test)]
 mod tests;
 
@@ -26,23 +25,35 @@ pub(crate) struct Enqueued {
 
 pub(crate) struct StartedJob {
     pub force: bool,
+    pub origin: JobOrigin,
+    pub head_sha: Option<String>,
 }
 
 pub(crate) enum JobProgress {
     Active,
+    Delayed,
+    Held,
     Finished,
 }
 
 impl Store {
-    pub async fn job_progress(&self, job: JobId) -> Result<JobProgress, Error> {
+    pub async fn job_progress(&self, job: JobId, now: i64) -> Result<JobProgress, Error> {
         self.call(move |conn| {
-            conn.query_row("SELECT state FROM jobs WHERE id = ?1", [job], |row| {
-                let state: String = row.get(0)?;
-                Ok(match state.as_str() {
-                    "queued" | "running" | "needs_confirmation" => JobProgress::Active,
-                    _ => JobProgress::Finished,
-                })
-            })
+            conn.query_row(
+                "SELECT state, held, next_attempt_at FROM jobs WHERE id = ?1",
+                [job],
+                |row| {
+                    let state: String = row.get(0)?;
+                    Ok(match state.as_str() {
+                        "queued" if row.get::<_, bool>(1)? => JobProgress::Held,
+                        "queued" if row.get::<_, Option<i64>>(2)?.is_some_and(|due| due > now) => {
+                            JobProgress::Delayed
+                        }
+                        "queued" | "running" | "needs_confirmation" => JobProgress::Active,
+                        _ => JobProgress::Finished,
+                    })
+                },
+            )
         })
         .await
     }
@@ -66,13 +77,18 @@ impl Store {
         .await
     }
 
-    pub async fn start_job(&self, job: JobId) -> Result<StartedJob, Error> {
+    pub async fn start_job(&self, job: JobId) -> Result<Option<StartedJob>, Error> {
         self.call(move |conn| {
-            let sql =
-                "UPDATE jobs SET state = 'running', updated_at = ?1 WHERE id = ?2 RETURNING force";
+            let sql = "UPDATE jobs SET state = 'running', updated_at = ?1
+                       WHERE id = ?2 AND state = 'queued' RETURNING force, origin, head_sha";
             conn.query_row(sql, params![now_ms(), job], |row| {
-                Ok(StartedJob { force: row.get(0)? })
+                Ok(StartedJob {
+                    force: row.get(0)?,
+                    origin: JobOrigin::parse(row.get_ref(1)?.as_str()?)?,
+                    head_sha: row.get(2)?,
+                })
             })
+            .optional()
         })
         .await
     }

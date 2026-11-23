@@ -23,6 +23,17 @@ fn error_flag_with_exit_zero_is_agent_error() {
 }
 
 #[test]
+fn success_requires_an_explicit_boolean_error_flag() {
+    let mut value = envelope("success", false, Some(output("no_findings", &[])));
+    value.as_object_mut().unwrap().remove("is_error");
+    assert_eq!(failure(run(&value, 0)).0, "invalid_output");
+    for flag in [Value::Null, json!("false"), json!(0)] {
+        value["is_error"] = flag;
+        assert_eq!(failure(run(&value, 0)).0, "invalid_output");
+    }
+}
+
+#[test]
 fn nonzero_exit_with_a_success_envelope_is_agent_error() {
     let (kind, detail, _) = failure(run(&good(), 1));
     assert_eq!((kind, detail.exit_code), ("agent_error", Some(1)));

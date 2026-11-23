@@ -11,13 +11,17 @@ pub(crate) use cancel::{CancelQueued, Gate};
 pub(crate) use sync::insert as insert_sync_job;
 
 use super::Store;
+use super::status::DraftView;
 use crate::app::ProcessInfo;
 use crate::error::Error;
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
+use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub(crate) enum ConfirmError {
+    #[error("the open draft changed; review the new content before sending")]
+    Changed,
     #[error("undecided findings")]
     Undecided(Vec<String>),
     #[error("this draft is already submitted")]
@@ -29,6 +33,7 @@ pub(crate) enum ConfirmError {
 }
 
 pub(super) enum Outcome {
+    Changed,
     Job(i64),
     Undecided(Vec<String>),
     DraftSubmitted,
@@ -43,7 +48,7 @@ pub(crate) struct ServiceJob {
 impl Store {
     pub async fn confirm_publication(
         &self,
-        draft_id: i64,
+        displayed: Arc<DraftView>,
         event: &str,
         confirmed_sha: &str,
         process: &ProcessInfo,
@@ -52,10 +57,11 @@ impl Store {
         let confirmed_sha = confirmed_sha.to_string();
         let (pid, started) = (i64::from(process.pid), process.started_at_ms);
         let outcome = self
-            .call(move |conn| insert::write(conn, draft_id, &event, &confirmed_sha, pid, started))
+            .call(move |conn| insert::write(conn, &displayed, &event, &confirmed_sha, pid, started))
             .await;
         match outcome {
             Ok(Outcome::Job(id)) => Ok(id),
+            Ok(Outcome::Changed) => Err(ConfirmError::Changed),
             Ok(Outcome::Undecided(ids)) => Err(ConfirmError::Undecided(ids)),
             Ok(Outcome::DraftSubmitted) => Err(ConfirmError::DraftSubmitted),
             Ok(Outcome::Blocked) => Err(ConfirmError::Blocked),
@@ -67,8 +73,9 @@ impl Store {
         self.call(move |conn| cancel::gate(conn, target)).await
     }
 
-    pub async fn cancel_queued(&self, target: i64) -> Result<CancelQueued, Error> {
-        self.call(move |conn| cancel::write(conn, target)).await
+    pub async fn cancel_queued(&self, id: &str) -> Result<CancelQueued, Error> {
+        let id = id.to_owned();
+        self.call(move |conn| cancel::write(conn, &id)).await
     }
 
     pub async fn mark_needs_confirmation(&self, job_id: i64, seen_sha: &str) -> Result<(), Error> {
@@ -77,16 +84,17 @@ impl Store {
             .await
     }
 
-    pub async fn reconfirm(&self, publication_id: &str, new_sha: &str) -> Result<(), Error> {
+    pub async fn reconfirm(&self, publication_id: &str, new_sha: &str) -> Result<bool, Error> {
         let publication_id = publication_id.to_string();
         let new_sha = new_sha.to_string();
         self.call(move |conn| confirm::reconfirm(conn, &publication_id, &new_sha))
             .await
     }
 
-    pub async fn decline(&self, publication_id: &str) -> Result<(), Error> {
+    pub async fn decline(&self, publication_id: &str, seen_sha: &str) -> Result<bool, Error> {
         let publication_id = publication_id.to_string();
-        self.call(move |conn| confirm::decline(conn, &publication_id))
+        let seen_sha = seen_sha.to_owned();
+        self.call(move |conn| confirm::decline(conn, &publication_id, &seen_sha))
             .await
     }
 
@@ -115,20 +123,11 @@ impl Store {
         .await
     }
 
-    pub async fn abandon_unknown(&self, publication_id: &str) -> Result<(), Error> {
+    pub async fn abandon_unknown(&self, publication_id: &str) -> Result<bool, Error> {
         let publication_id = publication_id.to_string();
         self.call(move |conn| {
-            let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let now = crate::store::now_ms();
             let sql = "UPDATE publications SET state = 'abandoned', reason = 'confirmed by me', updated_at = ?2 WHERE id = ?1 AND state = 'unknown'";
-            if tx.execute(sql, params![publication_id, now])? != 1 {
-                return Err(rusqlite::Error::SqliteFailure(
-                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
-                    Some("publication is not unknown".into()),
-                ));
-            }
-            tx.commit()?;
-            Ok(())
+            Ok(conn.execute(sql, params![publication_id, crate::store::now_ms()])? == 1)
         })
         .await
     }

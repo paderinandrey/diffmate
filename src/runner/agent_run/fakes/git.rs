@@ -7,6 +7,7 @@ use std::path::Path;
 #[derive(Default)]
 pub(crate) struct FakeGit {
     pub preparation: std::time::Duration,
+    pulls: std::sync::Mutex<std::collections::HashSet<std::path::PathBuf>>,
 }
 
 #[allow(refining_impl_trait)]
@@ -14,10 +15,26 @@ impl Git for FakeGit {
     fn ensure_clone(&self, _: &Path, _: &str, _: &Path) -> Done<()> {
         ready(Ok(()))
     }
-    fn fetch_pr(&self, _: &Path, _: u64, _: &str) -> Done<()> {
+    fn fetch_pr(&self, repo: &Path, number: u64, _: &str) -> Done<()> {
+        self.pulls
+            .lock()
+            .unwrap()
+            .insert(repo.join(format!("refs/diffmate/pull/{number}/head")));
         ready(Ok(()))
     }
-    fn rev_parse(&self, _: &Path, reference: &str) -> Done<String> {
+    fn delete_pull_refs(&self, repo: &Path, number: u64) -> Done<()> {
+        self.pulls
+            .lock()
+            .unwrap()
+            .remove(&repo.join(format!("refs/diffmate/pull/{number}/head")));
+        ready(Ok(()))
+    }
+    fn rev_parse(&self, repo: &Path, reference: &str) -> Done<String> {
+        if reference.starts_with("refs/diffmate/pull/")
+            && !self.pulls.lock().unwrap().contains(&repo.join(reference))
+        {
+            return ready(Err(Error::Missing(repo.join(reference))));
+        }
         ready(Ok(
             if reference.contains("pull") { "h" } else { "b" }.repeat(40)
         ))

@@ -5,7 +5,7 @@ use rusqlite::Connection;
 pub(super) fn known(conn: &mut Connection) -> rusqlite::Result<Vec<KnownTarget>> {
     let mut statement = conn.prepare(
         "SELECT owner, repo, number, tracking, request_seen, queued_head
-         FROM targets ORDER BY id",
+         FROM targets WHERE tracking = 'tracked' OR request_seen = 1 ORDER BY id",
     )?;
     let rows = statement.query_map([], |row| {
         let number: i64 = row.get(2)?;

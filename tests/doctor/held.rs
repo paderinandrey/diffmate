@@ -21,7 +21,7 @@ fn names(dir: &Path) -> Vec<String> {
 }
 
 #[test]
-fn held_watch_lock_and_schema_five_exit_zero() {
+fn held_watch_lock_and_current_schema_exit_zero() {
     let sandbox = Sandbox::new();
     sandbox.gh.route("auth status", "logged in\n");
     let state = sandbox.state_dir();
@@ -41,7 +41,7 @@ fn held_watch_lock_and_schema_five_exit_zero() {
     lock.try_lock().unwrap();
     let db = sandbox.db_path();
     let conn = Connection::open(&db).unwrap();
-    conn.execute_batch("PRAGMA user_version = 5").unwrap();
+    conn.execute_batch("PRAGMA user_version = 6").unwrap();
     drop(conn);
     let before = fs::read(&db).unwrap();
     let entries = names(&state);

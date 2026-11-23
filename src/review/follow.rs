@@ -4,10 +4,11 @@ pub(super) fn again(result: &ReviewResult, externally_cancelled: bool) -> bool {
     !externally_cancelled
         && matches!(
             result,
-            ReviewResult::RunFailed {
-                job_end: JobEnd::Requeued { .. },
-                ..
-            }
+            ReviewResult::Deferred
+                | ReviewResult::RunFailed {
+                    job_end: JobEnd::Requeued { .. },
+                    ..
+                }
         )
 }
 

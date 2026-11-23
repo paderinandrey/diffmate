@@ -12,6 +12,7 @@ mod budget;
 mod causes;
 mod fixture;
 mod orphan;
+mod pull_refs;
 
 fn revision() -> Revision {
     let sha = "a".repeat(40);

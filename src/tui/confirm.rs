@@ -3,19 +3,24 @@ use ratatui::Frame;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
-enum Purpose {
-    Discard,
-    Cancel,
-    Stale,
-    Moved,
-    Abandon,
+pub(super) enum Purpose {
+    Discard(crate::pr_url::PrRef),
+    Cancel(String),
+    Send(Offer),
+    Abandon(String),
 }
 
-pub(super) struct Offer {
-    pub draft: i64,
-    pub event: String,
-    pub sha: String,
-    pub publication: Option<String>,
+pub(super) enum Offer {
+    New {
+        displayed: std::sync::Arc<crate::store::status::DraftView>,
+        event: String,
+        sha: String,
+    },
+    Moved {
+        draft: i64,
+        publication: String,
+        sha: String,
+    },
 }
 
 pub(crate) struct Confirm {
@@ -23,85 +28,59 @@ pub(crate) struct Confirm {
     pub safe: String,
     pub danger: String,
     pub highlighted_safe: bool,
-    purpose: Purpose,
+    pub(super) purpose: Purpose,
 }
 
 impl Confirm {
-    pub(crate) fn discard(label: &str) -> Self {
+    pub(super) fn discard(pr: crate::pr_url::PrRef) -> Self {
         Self {
-            prompt: format!("{label} will be discarded."),
+            prompt: format!("{} will be discarded.", pr.label()),
             safe: "Keep".to_string(),
             danger: "Discard".to_string(),
             highlighted_safe: true,
-            purpose: Purpose::Discard,
+            purpose: Purpose::Discard(pr),
         }
     }
 
-    pub(crate) fn cancel_queued() -> Self {
+    pub(super) fn cancel_queued(id: String) -> Self {
         Self {
-            prompt: "Cancel the queued publication?".to_string(),
+            prompt: format!("Cancel the queued publication? {id}"),
             safe: "Keep queued".to_string(),
             danger: "Cancel publication".to_string(),
             highlighted_safe: true,
-            purpose: Purpose::Cancel,
+            purpose: Purpose::Cancel(id),
         }
     }
 
-    pub(crate) fn stale(prompt: String) -> Self {
+    pub(super) fn send(prompt: String, offer: Offer) -> Self {
         Self {
             prompt,
             safe: "Don't send".to_string(),
             danger: "Send anyway".to_string(),
             highlighted_safe: true,
-            purpose: Purpose::Stale,
+            purpose: Purpose::Send(offer),
         }
     }
 
-    pub(super) fn cancels(&self) -> bool {
-        matches!(self.purpose, Purpose::Cancel)
-    }
-
-    pub(super) fn abandon_unknown() -> Self {
+    pub(super) fn abandon_unknown(id: String) -> Self {
         Self {
-            prompt: "Abandon this unknown publication?".to_string(),
+            prompt: format!("Abandon this unknown publication? {id}"),
             safe: "Leave unknown".to_string(),
             danger: "Abandon".to_string(),
             highlighted_safe: true,
-            purpose: Purpose::Abandon,
+            purpose: Purpose::Abandon(id),
         }
-    }
-
-    pub(super) fn abandons(&self) -> bool {
-        matches!(self.purpose, Purpose::Abandon)
-    }
-
-    pub(crate) fn moved(prompt: String) -> Self {
-        Self {
-            prompt,
-            safe: "Don't send".to_string(),
-            danger: "Send anyway".to_string(),
-            highlighted_safe: true,
-            purpose: Purpose::Moved,
-        }
-    }
-
-    pub(super) fn sends(&self) -> bool {
-        matches!(self.purpose, Purpose::Stale | Purpose::Moved)
-    }
-
-    pub(super) fn is_moved(&self) -> bool {
-        matches!(self.purpose, Purpose::Moved)
     }
 }
 
-pub(super) fn draw(frame: &mut Frame<'_>, confirm: &Confirm) {
+pub(super) fn draw(frame: &mut Frame<'_>, confirm: &Confirm, area: ratatui::layout::Rect) {
     let safe = mark(&confirm.safe, confirm.highlighted_safe);
     let danger = mark(&confirm.danger, !confirm.highlighted_safe);
     let lines = vec![
         Line::from(sanitize(&confirm.prompt)),
         Line::from(sanitize(&format!("{safe}  {danger}"))),
     ];
-    frame.render_widget(Paragraph::new(lines), frame.area());
+    frame.render_widget(Paragraph::new(lines), area);
 }
 
 fn mark(label: &str, highlighted: bool) -> String {

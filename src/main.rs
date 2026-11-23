@@ -34,6 +34,10 @@ use clap::Parser;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    let mut args = std::env::args_os().skip(1);
+    if args.next().as_deref() == Some(agent::supervisor::ENTRY.as_ref()) {
+        return agent::supervisor::entry(args);
+    }
     let cli = cli::Cli::parse();
     let mut config = match app::AppConfig::from_process() {
         Ok(config) => config,

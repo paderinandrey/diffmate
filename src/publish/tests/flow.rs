@@ -16,7 +16,7 @@ pub(super) async fn publish(
     batch(&store, sql).await;
     let script = Script::new(store.clone());
     let job = store
-        .confirm_publication(1, event, "other", &process())
+        .confirm_publication(store.displayed_draft(1).await, event, "other", &process())
         .await
         .unwrap();
     execute_publish(&store, &script, job, 2).await.unwrap();

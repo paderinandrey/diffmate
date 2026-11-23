@@ -63,3 +63,27 @@ fn noted(sandbox: &Sandbox) -> i64 {
         "SELECT count(*) FROM targets WHERE head_sha = 'viewed-head' AND head_checked_at IS NOT NULL",
     )
 }
+
+#[test]
+fn a_closed_view_for_a_different_repository_cannot_untrack_this_pull_request() {
+    let sandbox = Sandbox::new();
+    config(
+        &sandbox,
+        "poll_interval_seconds = 1\ndebounce_seconds = 60\n",
+    );
+    seed_tracked(&sandbox);
+    sandbox.gh.route("search prs", "[]");
+    let unrelated = super::sync::view(HEAD, "MERGED", false).replace("/o/r/", "/another/r/");
+    sandbox.gh.route("pr view", &unrelated);
+    let mut watch = Running::spawn(&sandbox);
+    watch.wait_until(|_| super::sync::calls(&sandbox, "search") >= 2);
+    watch.stop();
+    assert_eq!(
+        super::sync::query(
+            &sandbox,
+            "SELECT count(*) FROM targets WHERE tracking = 'tracked' AND request_seen = 1"
+        ),
+        1
+    );
+    assert_eq!(noted(&sandbox), 0);
+}

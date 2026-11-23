@@ -18,6 +18,10 @@ pub(crate) fn review(
 ) -> io::Result<()> {
     let label = pr.label();
     match result {
+        ReviewResult::Deferred => writeln!(err, "{label}: automatic review deferred"),
+        ReviewResult::JobCancelled { reason } => {
+            writeln!(err, "{label}: job cancelled: {}", sanitize(reason))
+        }
         ReviewResult::Succeeded {
             head_sha,
             known_head,

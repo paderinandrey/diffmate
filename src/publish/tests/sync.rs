@@ -50,7 +50,12 @@ async fn published() -> (tempfile::TempDir, crate::store::Store) {
     let script = super::script::Script::new(store.clone());
     let process = super::support::process();
     let job = store
-        .confirm_publication(1, "COMMENT", "abc123", &process)
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "abc123",
+            &process,
+        )
         .await
         .unwrap();
     crate::publish::execute_publish(&store, &script, job, 2)

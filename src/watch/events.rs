@@ -17,6 +17,8 @@ pub(super) fn print(line: &str) {
 
 pub(super) fn outcome(result: &ReviewResult) -> String {
     match result {
+        ReviewResult::Deferred => "deferred".into(),
+        ReviewResult::JobCancelled { reason } => format!("cancelled: {reason}"),
         ReviewResult::Succeeded {
             reused: true,
             run_id,

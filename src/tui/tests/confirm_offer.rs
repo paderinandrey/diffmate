@@ -15,17 +15,17 @@ async fn a_confirmation_for_another_draft_is_refused() {
     let gh = super::fake::Fake::new(HEAD);
     let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
     let settings = Settings::default();
-    let offer = Offer {
-        draft: 2,
+    queue::seed(&store, 2).await;
+    let offer = Offer::New {
+        displayed: store.displayed_draft(2).await,
         event: "COMMENT".to_string(),
         sha: HEAD.to_string(),
-        publication: None,
     };
     post::commit(
         &mut session,
         &store,
         &fixture::mode(&gh, &git, &paths, &settings),
-        &offer,
+        offer,
         None,
     )
     .await

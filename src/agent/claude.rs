@@ -9,9 +9,9 @@ use crate::store::records::Metrics;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+pub(crate) use contract::{AUTH_ENV, LOCKED_ENV};
 #[cfg(test)]
-pub(crate) use contract::TestOverrides;
-pub(crate) use contract::{AUTH_ENV, LOCKED_ENV, user_prompt};
+pub(crate) use contract::{TestOverrides, user_prompt};
 
 #[cfg(test)]
 mod cancel_tests;
@@ -62,8 +62,8 @@ impl ClaudeCli {
 
     pub(super) fn run_env(&self, bin: &Path) -> Result<Pairs, Error> {
         let current = self.env_vars().iter().find(|(name, _)| name == "PATH");
-        let current = current.map(|(_, value)| value.clone()).unwrap_or_default();
-        let dirs = std::iter::once(bin.to_path_buf()).chain(std::env::split_paths(&current));
+        let current = current.map_or_default(|(_, value)| value.as_os_str());
+        let dirs = std::iter::once(bin.to_path_buf()).chain(std::env::split_paths(current));
         let path = std::env::join_paths(dirs).map_err(std::io::Error::other);
         let path = path.map_err(Error::io("build the agent PATH"))?;
         let mut env: Pairs = self

@@ -29,7 +29,7 @@ async fn timeout_is_unknown() {
     assert_eq!(remote.posts(), 1);
     let err = store
         .confirm_publication(
-            1,
+            store.displayed_draft(1).await,
             "COMMENT",
             "abc123",
             &crate::publish::tests::support::process(),
@@ -94,7 +94,7 @@ async fn a_decode_failure_stays_unknown() {
     assert_eq!(remote.posts(), 1);
     let err = store
         .confirm_publication(
-            1,
+            store.displayed_draft(1).await,
             "COMMENT",
             "abc123",
             &crate::publish::tests::support::process(),

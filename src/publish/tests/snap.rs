@@ -9,7 +9,12 @@ async fn snapshot_ignores_later_edits() {
     batch(&store, KEPT).await;
     let script = Script::new(store.clone());
     let job = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap();
     let before = cell::<String>(&store, "SELECT snapshot FROM publications").await;
@@ -34,7 +39,12 @@ async fn duplicate_publish_job_is_blocked() {
     let trigger = "CREATE TEMP TRIGGER steal_publish BEFORE INSERT ON publications BEGIN INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) VALUES ('publish', NEW.target_id, 'queued', 1, 0, 0, 0, 'manual', NEW.id); END;";
     batch(&store, trigger).await;
     let error = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap_err();
     assert!(matches!(&error, ConfirmError::Blocked), "{error}");

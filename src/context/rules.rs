@@ -23,7 +23,7 @@ async fn content<G: Git>(
     let text = String::from_utf8_lossy(&bytes);
     let total = usize::try_from(entry.size).unwrap_or(usize::MAX);
     let (marker, kept) = cap_split(&format!("rules/{name}"), &text, total, RULE_FILE_CAP);
-    let marker = marker.map(|line| format!("{line}\n")).unwrap_or_default();
+    let marker = marker.map_or_default(|line| format!("{line}\n"));
     Ok(format!("{marker}{note}{kept}"))
 }
 

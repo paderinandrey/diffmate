@@ -46,6 +46,9 @@ pub(crate) async fn run<G: Git>(
     git: &G,
     settings: &Settings,
 ) -> Result<RecoveryReport, Error> {
+    crate::agent::supervisor::lock_run(paths.state_dir().to_path_buf())
+        .await
+        .map_err(Error::io("wait for the previous agent supervisor"))?;
     let stopped = store
         .resolve_running(settings.max_retries(), crate::store::now_ms())
         .await?;
@@ -57,6 +60,9 @@ pub(crate) async fn run<G: Git>(
         ..RecoveryReport::default()
     };
     cleanup::clean_runs(paths, store, git, &mut report).await?;
+    report
+        .warnings
+        .extend(clean_closed_refs(paths, store, git).await?);
     for clone in scan::clones(&paths.repos_dir()).await? {
         if let Err(error) = git.worktree_prune(&clone).await {
             report
@@ -65,4 +71,20 @@ pub(crate) async fn run<G: Git>(
         }
     }
     Ok(report)
+}
+
+pub(crate) async fn clean_closed_refs(
+    paths: &Paths,
+    store: &Store,
+    git: &impl Git,
+) -> Result<Vec<String>, Error> {
+    let mut warnings = Vec::new();
+    for (target, pr) in store.pending_ref_cleanup().await? {
+        let repo = paths.repo_dir(&pr.owner, &pr.repo);
+        match git.delete_pull_refs(&repo, pr.number).await {
+            Ok(()) => store.clear_ref_cleanup(target).await?,
+            Err(error) => warnings.push(format!("remove pull refs for {}: {error}", pr.label())),
+        }
+    }
+    Ok(warnings)
 }

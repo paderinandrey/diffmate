@@ -20,7 +20,12 @@ async fn one_kept_finding_reaches_submitted() {
     batch(&store, KEPT).await;
     let script = Script::new(store.clone());
     let job = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await
         .unwrap();
     execute_publish(&store, &script, job, 2).await.unwrap();
@@ -84,7 +89,12 @@ async fn confirm_rolls_back_when_the_job_insert_fails() {
     let trigger = "CREATE TEMP TRIGGER fail_publish BEFORE INSERT ON jobs WHEN NEW.kind = 'publish' BEGIN SELECT RAISE(ROLLBACK, 'forced'); END;";
     batch(&store, trigger).await;
     let error = store
-        .confirm_publication(1, "COMMENT", "other", &process())
+        .confirm_publication(
+            store.displayed_draft(1).await,
+            "COMMENT",
+            "other",
+            &process(),
+        )
         .await;
     assert!(error.is_err(), "{error:?}");
     assert_eq!(

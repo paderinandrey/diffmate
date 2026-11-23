@@ -7,6 +7,7 @@ use std::sync::Mutex;
 #[derive(Default)]
 pub(super) struct FakeGit {
     pub calls: Mutex<Vec<String>>,
+    pub fail_ref_cleanup: std::sync::atomic::AtomicBool,
 }
 
 type Done<T> = std::future::Ready<Result<T, Error>>;
@@ -35,6 +36,21 @@ impl Git for FakeGit {
         _: &str,
     ) -> impl Future<Output = Result<(), Error>> + Send {
         self.note("fetch_pr".into(), ())
+    }
+
+    #[allow(refining_impl_trait)]
+    fn delete_pull_refs(&self, repo: &Path, number: u64) -> Done<()> {
+        let call = format!("delete {} pull/{number}", repo.display());
+        if self
+            .fail_ref_cleanup
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            self.calls.lock().unwrap().push(call);
+            return ready(Err(Error::io("delete pull refs")(std::io::Error::other(
+                "locked",
+            ))));
+        }
+        self.note(call, ())
     }
 
     fn rev_parse(&self, _: &Path, _: &str) -> impl Future<Output = Result<String, Error>> + Send {
