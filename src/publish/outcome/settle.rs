@@ -1,3 +1,4 @@
+use super::Outcome;
 use crate::error::Error;
 use crate::store::Store;
 use rusqlite::{TransactionBehavior, params};
@@ -6,23 +7,20 @@ pub(super) async fn settle(
     store: &Store,
     job_id: i64,
     publication_id: &str,
-    state: &'static str,
-    review_id: Option<&str>,
-    failure: Option<&'static str>,
+    outcome: Outcome,
 ) -> Result<(), Error> {
     let publication_id = publication_id.to_string();
-    let review_id = review_id.map(str::to_string);
     let now = crate::store::now_ms();
     store
         .call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let changed = if let Some(review_id) = &review_id {
-                let sql = "UPDATE publications SET state = ?2, github_review_id = ?3, updated_at = ?4 WHERE id = ?1 AND state = 'sending'";
-                tx.execute(sql, params![publication_id, state, review_id, now])?
-            } else {
-                let sql = "UPDATE publications SET state = ?2, updated_at = ?3 WHERE id = ?1 AND state = 'sending'";
-                tx.execute(sql, params![publication_id, state, now])?
+            let (state, review_id, failure) = match &outcome {
+                Outcome::Submitted(id) => ("submitted", Some(id.as_str()), None),
+                Outcome::Rejected(why) => ("rejected", None, Some(why.as_str())),
+                Outcome::Unknown(why) => ("unknown", None, Some(why.as_ref())),
             };
+            let sql = "UPDATE publications SET state = ?2, github_review_id = ?3, reason = ?4, updated_at = ?5 WHERE id = ?1 AND state = 'sending'";
+            let changed = tx.execute(sql, params![publication_id, state, review_id, failure, now])?;
             if changed != 1 {
                 return Err(constraint("publication is not sending"));
             }

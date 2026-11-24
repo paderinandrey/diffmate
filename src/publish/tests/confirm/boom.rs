@@ -5,9 +5,19 @@ use crate::pr_url::PrRef;
 use std::future::{Future, ready};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[derive(Clone, Copy, PartialEq)]
+pub(super) enum Check {
+    Head,
+    Login,
+    Reviews,
+}
+
 pub(super) struct Boom {
-    detail: &'static str,
-    view: bool,
+    detail: Option<&'static str>,
+    check: Check,
+    stalls: usize,
+    logins: AtomicUsize,
+    posts: AtomicUsize,
     views: AtomicUsize,
     lists: AtomicUsize,
 }
@@ -15,11 +25,45 @@ pub(super) struct Boom {
 impl Boom {
     pub(super) fn new(detail: &'static str, view: bool) -> Self {
         Self {
-            detail,
-            view,
+            detail: Some(detail),
+            check: if view { Check::Head } else { Check::Reviews },
+            stalls: 0,
+            logins: AtomicUsize::new(0),
+            posts: AtomicUsize::new(0),
             views: AtomicUsize::new(0),
             lists: AtomicUsize::new(0),
         }
+    }
+
+    pub(super) fn stalling(check: Check, stalls: usize) -> Self {
+        Self {
+            check,
+            stalls,
+            detail: None,
+            ..Self::new("", false)
+        }
+    }
+
+    async fn check(&self, check: Check, calls: &AtomicUsize) -> Result<(), Error> {
+        let previous = calls.fetch_add(1, Ordering::Relaxed);
+        if self.check == check {
+            if previous < self.stalls {
+                return std::future::pending().await;
+            }
+            if let Some(detail) = self.detail {
+                return Err(cmd(detail));
+            }
+        }
+        Ok(())
+    }
+
+    pub(super) fn calls(&self) -> [usize; 4] {
+        [
+            self.views(),
+            self.logins.load(Ordering::Relaxed),
+            self.lists(),
+            self.posts.load(Ordering::Relaxed),
+        ]
     }
 
     pub(super) fn views(&self) -> usize {
@@ -49,13 +93,9 @@ fn miss<T>() -> std::future::Ready<Result<T, Error>> {
 }
 
 impl Gh for Boom {
-    fn pr_view(&self, pr: &PrRef) -> impl Future<Output = Result<PrMeta, Error>> + Send {
-        let _hit = self.views.fetch_add(1, Ordering::Relaxed);
-        ready(if self.view {
-            Err(cmd(self.detail))
-        } else {
-            Ok(meta(pr.number))
-        })
+    async fn pr_view(&self, pr: &PrRef) -> Result<PrMeta, Error> {
+        self.check(Check::Head, &self.views).await?;
+        Ok(meta(pr.number))
     }
     fn discussion(&self, _: &PrRef) -> impl Future<Output = Result<Discussion, Error>> + Send {
         miss()
@@ -79,18 +119,20 @@ impl Gh for Boom {
     ) -> impl Future<Output = Result<Vec<DirectRequest>, Error>> + Send {
         miss()
     }
-    fn current_login(&self) -> impl Future<Output = Result<String, Error>> + Send {
-        ready(Ok("me".into()))
+    async fn current_login(&self) -> Result<String, Error> {
+        self.check(Check::Login, &self.logins).await?;
+        Ok("me".into())
     }
-    fn list_my_reviews(
+    async fn list_my_reviews(&self, _: &PrRef) -> Result<Vec<crate::gh::ListedReview>, Error> {
+        self.check(Check::Reviews, &self.lists).await?;
+        Ok(Vec::new())
+    }
+    fn create_review(
         &self,
         _: &PrRef,
-    ) -> impl Future<Output = Result<Vec<crate::gh::ListedReview>, Error>> + Send {
-        let _hit = self.lists.fetch_add(1, Ordering::Relaxed);
-        ready(if self.view {
-            Ok(Vec::new())
-        } else {
-            Err(cmd(self.detail))
-        })
+        _: &crate::gh::ReviewRequest,
+    ) -> impl Future<Output = Result<crate::gh::CreatedReview, Error>> {
+        let _ = self.posts.fetch_add(1, Ordering::Relaxed);
+        ready(Ok(crate::gh::CreatedReview { id: "7".into() }))
     }
 }

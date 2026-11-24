@@ -40,8 +40,10 @@ const SQL: &str = "SELECT t.owner, t.repo, t.number, t.tracking,
        j.origin, coalesce(j.retry_count, 0), j.max_retries, j.next_attempt_at,
        EXISTS (SELECT 1 FROM runs WHERE job_id = j.id AND state = 'failed'),
        t.id,
-       (SELECT p.state FROM publications p WHERE p.target_id = t.id
-        ORDER BY p.created_at DESC LIMIT 1)
+       (SELECT CASE WHEN p.state IN ('rejected', 'unknown') AND p.reason IS NOT NULL
+                    THEN p.state || ': ' || p.reason ELSE p.state END
+        FROM publications p WHERE p.target_id = t.id
+        ORDER BY p.created_at DESC, p.rowid DESC LIMIT 1)
     FROM targets t
     LEFT JOIN jobs j ON j.id = (SELECT max(id) FROM jobs WHERE target_id = t.id AND kind = 'review')
     LEFT JOIN runs r ON r.id = coalesce(j.result_run_id,

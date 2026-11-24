@@ -23,6 +23,10 @@ async fn reconcile_marker_submits() {
         "submitted"
     );
     assert_eq!(
+        harness::text(&store, "SELECT coalesce(reason, '') FROM publications").await,
+        ""
+    );
+    assert_eq!(
         harness::text(&store, "SELECT github_review_id FROM publications").await,
         "77"
     );

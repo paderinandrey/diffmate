@@ -4,10 +4,13 @@ use crate::pr_url::PrRef;
 use crate::proc::run_tool;
 use serde::Deserialize;
 
+pub(crate) const ANNOTATION_LIMIT: usize = 50;
+
 #[derive(Deserialize)]
 pub(crate) struct Output {
     pub title: Option<String>,
     pub summary: Option<String>,
+    pub annotations_count: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -54,6 +57,7 @@ pub(super) async fn runs(gh: &GhCli, pr: &PrRef, sha: &str) -> Result<CheckRuns,
 
 pub(super) async fn annotations(gh: &GhCli, pr: &PrRef, id: u64) -> Result<Vec<Annotation>, Error> {
     let (owner, repo) = (&pr.owner, &pr.repo);
-    let endpoint = format!("repos/{owner}/{repo}/check-runs/{id}/annotations?per_page=50");
+    let page_size = ANNOTATION_LIMIT + 1;
+    let endpoint = format!("repos/{owner}/{repo}/check-runs/{id}/annotations?per_page={page_size}");
     Ok(serde_json::from_slice(&get(gh, endpoint).await?)?)
 }

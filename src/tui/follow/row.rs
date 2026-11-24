@@ -11,7 +11,6 @@ pub(super) struct Publication {
     pub seen: Option<String>,
     pub run: String,
     pub reconcile: Option<String>,
-    pub failure: Option<String>,
 }
 
 pub(super) async fn load(
@@ -22,7 +21,7 @@ pub(super) async fn load(
     store
         .call(move |conn| {
             let sql = "SELECT p.id, p.draft_id, p.state, p.reason, j.state, j.head_sha, r.head_sha,
-                          c.state, c.failure_reason
+                          c.state
                    FROM publications p JOIN runs r ON r.id = p.run_id
                    JOIN jobs j ON j.publication_id = p.id AND j.kind = 'publish'
                    LEFT JOIN jobs c ON c.id = (SELECT max(id) FROM jobs
@@ -40,7 +39,6 @@ pub(super) async fn load(
                     seen: row.get(5)?,
                     run: row.get(6)?,
                     reconcile: row.get(7)?,
-                    failure: row.get(8)?,
                 })
             })
             .optional()

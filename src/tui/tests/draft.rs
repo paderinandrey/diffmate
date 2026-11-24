@@ -66,6 +66,10 @@ async fn enter_opens_the_draft_and_esc_restores_the_queue() {
 
     let back_keys = [KeyCode::Down, KeyCode::Enter, KeyCode::Esc];
     let (back, back_rows) = frame(&store, &back_keys, 8).await;
+    let back_rows: Vec<_> = back_rows
+        .iter()
+        .filter(|line| line.contains("o/r#"))
+        .collect();
     assert!(
         back_rows[0].contains("o/r#2") && !back_rows[0].starts_with('>'),
         "{back_rows:?}"

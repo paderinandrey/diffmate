@@ -106,6 +106,15 @@ when the ready publication, reconciliation, and sync jobs finish. Leave
 the TUI open and start `diffmate watch` or `diffmate review <pr-url>`
 to run a queued review; the TUI does not run review jobs.
 
+On a narrow terminal, the queue shows tracking and draft freshness below
+the list for the selected PR. Press Enter to read the draft. Use the arrow
+keys to move between findings or scroll a long finding. Esc returns to the queue.
+
+Before sending a review, the runner allows five seconds per attempt to read
+the PR head, the current login, and existing reviews. If a check still fails
+after its retries, the runner does not send the review. If the send itself
+has an unknown outcome, check the PR before abandoning the publication.
+
 ## Update
 
 Close older `tui` and `review` processes before restarting `watch` with

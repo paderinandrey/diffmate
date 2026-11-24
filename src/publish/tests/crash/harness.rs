@@ -40,7 +40,7 @@ pub(super) async fn unknown() -> (tempfile::TempDir, Store, Arc<Remote>, i64) {
     let (tmp, store) = open().await;
     batch(&store, support::KEPT).await;
     let sql = format!(
-        "INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, created_at, updated_at) VALUES ('{PUBLICATION}', 1, 1, 1, 'unknown', 'COMMENT', 'abc123', '{{}}', 1, 1);
+        "INSERT INTO publications (id, target_id, draft_id, run_id, state, event, confirmed_sha, snapshot, reason, created_at, updated_at) VALUES ('{PUBLICATION}', 1, 1, 1, 'unknown', 'COMMENT', 'abc123', '{{}}', 'HTTP 503: service unavailable', 1, 1);
          INSERT INTO jobs (kind, target_id, state, enqueued_by_pid, enqueued_by_started_at, created_at, updated_at, origin, publication_id) VALUES ('reconcile', 1, 'queued', 1, 0, 2, 2, 'manual', '{PUBLICATION}');"
     );
     batch(&store, &sql).await;

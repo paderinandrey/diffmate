@@ -77,3 +77,37 @@ async fn quitting_during_the_head_check_publishes_nothing() {
     quit_during_head_check(key(KeyCode::Char('q'))).await;
     quit_during_head_check(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)).await;
 }
+
+#[tokio::test(start_paused = true)]
+async fn stalled_head_returns_a_notice_without_queueing_a_review() {
+    let (tmp, store) = open().await;
+    publish::seed(&store).await;
+    let paths = paths(&tmp);
+    let mut session = fixture::open_session(&store, &paths.lock()).await;
+    let git = crate::git::GitCli::new(&crate::procenv::InheritedEnv::from_pairs(Vec::new()));
+    let settings = Settings::default();
+    let mode = mode(&StallView, &git, &paths, &settings);
+    super::super::apply(&mut session, &store, &mode, key(KeyCode::Enter), None)
+        .await
+        .unwrap();
+    let gate = std::sync::Arc::new(super::super::reader::KeyGate::new());
+    let (_tx, mut keys) = tokio::sync::mpsc::channel(4);
+    for reader in [None, Some((&gate, &mut keys))] {
+        let start = tokio::time::Instant::now();
+        let quit =
+            super::super::apply(&mut session, &store, &mode, key(KeyCode::Char('c')), reader)
+                .await
+                .unwrap();
+        assert!(!quit);
+        assert_eq!(start.elapsed(), std::time::Duration::from_secs(5));
+        assert_eq!(
+            session.notice(),
+            Some("HEAD check timed out; review not queued")
+        );
+        assert_eq!(count(&store, "SELECT count(*) FROM publications").await, 0);
+        assert_eq!(
+            count(&store, "SELECT count(*) FROM jobs WHERE kind='publish'").await,
+            0
+        );
+    }
+}

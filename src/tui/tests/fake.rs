@@ -9,6 +9,7 @@ pub(crate) struct Fake {
     heads: Mutex<Vec<String>>,
     reviews: Mutex<Vec<crate::gh::ListedReview>>,
     seen: Mutex<Vec<ReviewRequest>>,
+    pub(super) post_error: Option<&'static str>,
 }
 
 impl Fake {
@@ -17,6 +18,7 @@ impl Fake {
             heads: Mutex::new(vec![head.to_string()]),
             reviews: Mutex::new(Vec::new()),
             seen: Mutex::new(Vec::new()),
+            post_error: None,
         }
     }
 
@@ -100,6 +102,13 @@ impl Gh for Fake {
         let review = review.clone();
         async move {
             self.seen.lock().unwrap().push(review);
+            if let Some(detail) = self.post_error {
+                return Err(Error::Command {
+                    program: "gh",
+                    args: "api --method POST".into(),
+                    detail: detail.into(),
+                });
+            }
             Ok(CreatedReview { id: "9001".into() })
         }
     }

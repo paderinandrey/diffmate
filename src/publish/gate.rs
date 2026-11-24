@@ -5,6 +5,9 @@ use crate::gh::Gh;
 use crate::pr_url::PrRef;
 use crate::store::Store;
 use std::future::Future;
+use tokio::time::{Duration, sleep, timeout};
+
+const CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(super) async fn before_send(
     store: &Store,
@@ -24,21 +27,21 @@ pub(super) async fn before_send(
         repo: job.repo.clone(),
         number: job.number,
     };
-    let head = match retry(max_retries, || gh.pr_view(&pr)).await {
+    let head = match retry("HEAD check", max_retries, || gh.pr_view(&pr)).await {
         Ok(meta) => meta.head_sha,
-        Err(error) => return stop(store, job_id, &job.publication_id, &error.to_string()).await,
+        Err(reason) => return stop(store, job_id, &job.publication_id, &reason).await,
     };
     if head != job.confirmed_sha {
         store.mark_needs_confirmation(job_id, &head).await?;
         return Ok(false);
     }
-    let login = match retry(max_retries, || gh.current_login()).await {
+    let login = match retry("login check", max_retries, || gh.current_login()).await {
         Ok(login) => login,
-        Err(error) => return stop(store, job_id, &job.publication_id, &error.to_string()).await,
+        Err(reason) => return stop(store, job_id, &job.publication_id, &reason).await,
     };
-    let reviews = match retry(max_retries, || gh.list_my_reviews(&pr)).await {
+    let reviews = match retry("list reviews", max_retries, || gh.list_my_reviews(&pr)).await {
         Ok(reviews) => reviews,
-        Err(error) => return stop(store, job_id, &job.publication_id, &error.to_string()).await,
+        Err(reason) => return stop(store, job_id, &job.publication_id, &reason).await,
     };
     if checks::pending_review_of_mine(&reviews, &login) {
         let reason = "you already have a pending review on this pull request";
@@ -59,21 +62,22 @@ async fn stop(
     Ok(false)
 }
 
-async fn retry<T, F, Fut>(max_retries: u32, mut call: F) -> Result<T, Error>
+async fn retry<T, F, Fut>(check: &str, max_retries: u32, mut call: F) -> Result<T, String>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, Error>>,
 {
     let mut attempt = 0u32;
     loop {
-        match call().await {
-            Ok(value) => return Ok(value),
-            Err(error) if attempt < max_retries && checks::transient_gh(&error) => {
-                attempt += 1;
-                let secs = if attempt == 1 { 1 } else { 5 };
-                tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+        match timeout(CHECK_TIMEOUT, call()).await {
+            Ok(Ok(value)) => return Ok(value),
+            Ok(Err(error)) if attempt == max_retries || !checks::transient_gh(&error) => {
+                return Err(checks::failed_check(check, &error));
             }
-            Err(error) => return Err(error),
+            Err(_) if attempt == max_retries => return Err(format!("{check} timed out")),
+            _ => {}
         }
+        attempt += 1;
+        sleep(Duration::from_secs(if attempt == 1 { 1 } else { 5 })).await;
     }
 }

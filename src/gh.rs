@@ -16,7 +16,7 @@ use tokio::process::Command;
 pub(crate) use reviews::{CreatedReview, InlineComment, ListedReview, ReviewRequest};
 pub(crate) use threads::{CommentLink, ThreadState};
 
-pub(crate) use checks::{Annotation, CheckRun, CheckRuns};
+pub(crate) use checks::{ANNOTATION_LIMIT, Annotation, CheckRun, CheckRuns};
 pub(crate) use discussion::{Comment, Discussion, Review, Thread};
 pub(crate) use meta::PrMeta;
 

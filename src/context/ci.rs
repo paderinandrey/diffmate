@@ -1,5 +1,5 @@
 use super::caps::{CI_CAP, cap_text, reason};
-use crate::gh::{Annotation, CheckRun, Gh};
+use crate::gh::{ANNOTATION_LIMIT, Annotation, CheckRun, Gh};
 use crate::pr_url::PrRef;
 
 const FAILED: [&str; 4] = ["failure", "timed_out", "startup_failure", "action_required"];
@@ -24,7 +24,7 @@ fn annotation(a: &Annotation) -> String {
     format!("{}:{} [{level}] {message}", a.path, a.start_line)
 }
 
-async fn detail<H: Gh>(gh: &H, pr: &PrRef, run: &CheckRun) -> String {
+async fn detail<H: Gh>(gh: &H, pr: &PrRef, run: &CheckRun, notes: &mut Vec<String>) -> String {
     let mut lines = vec![format!("### {} ({})", run.name, status(run))];
     if let Some(output) = &run.output {
         for (label, text) in [("Title", &output.title), ("Summary", &output.summary)] {
@@ -34,7 +34,17 @@ async fn detail<H: Gh>(gh: &H, pr: &PrRef, run: &CheckRun) -> String {
         }
     }
     match gh.annotations(pr, run.id).await {
-        Ok(found) => lines.extend(found.iter().map(annotation)),
+        Ok(found) => {
+            let kept = found.len().min(ANNOTATION_LIMIT);
+            let total = run.output.as_ref().and_then(|o| o.annotations_count);
+            if found.len() > kept || total.is_some_and(|n| n > kept as u64) {
+                notes.push(format!(
+                    "only {kept} annotations are listed for check run {}",
+                    run.id
+                ));
+            }
+            lines.extend(found[..kept].iter().map(annotation));
+        }
         Err(error) => lines.push(format!("Annotations unavailable: {}", reason(&error))),
     }
     lines.join("\n")
@@ -65,7 +75,7 @@ pub(super) async fn text<H: Gh>(gh: &H, pr: &PrRef, sha: &str) -> String {
         .collect();
     let mut parts = vec![format!("# Check runs for {sha}"), items.join("\n")];
     for run in broken.into_iter().take(ANNOTATED) {
-        parts.push(detail(gh, pr, run).await);
+        parts.push(detail(gh, pr, run, &mut notes).await);
     }
     let body = parts.join("\n\n") + "\n";
     let body = if notes.is_empty() {

@@ -24,7 +24,7 @@ async fn timeout_is_unknown() {
             "SELECT failure_reason FROM jobs WHERE kind = 'publish'"
         )
         .await,
-        "outcome unknown"
+        "timed out after 30s"
     );
     assert_eq!(remote.posts(), 1);
     let err = store
@@ -55,6 +55,10 @@ async fn client_error_rejects() {
         harness::text(&store, "SELECT state FROM jobs WHERE kind = 'publish'").await,
         "failed"
     );
+    assert_eq!(
+        harness::text(&store, "SELECT reason FROM publications").await,
+        "HTTP 422: validation failed"
+    );
     assert_eq!(remote.posts(), 1);
 }
 
@@ -75,7 +79,7 @@ async fn server_error_is_unknown() {
             "SELECT failure_reason FROM jobs WHERE kind = 'publish'"
         )
         .await,
-        "outcome unknown"
+        "HTTP 500: internal server error"
     );
     assert_eq!(remote.posts(), 1);
 }
@@ -90,6 +94,10 @@ async fn a_decode_failure_stays_unknown() {
     assert_eq!(
         harness::text(&store, "SELECT state FROM publications").await,
         "unknown"
+    );
+    assert_eq!(
+        harness::text(&store, "SELECT reason FROM publications").await,
+        "unreadable review response"
     );
     assert_eq!(remote.posts(), 1);
     let err = store

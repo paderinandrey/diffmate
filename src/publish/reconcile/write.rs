@@ -41,7 +41,7 @@ pub(super) async fn submit(
     store
         .call(move |conn| {
             let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            let sql = "UPDATE publications SET state = 'submitted', github_review_id = ?2, updated_at = ?3 WHERE id = ?1 AND state = 'unknown'";
+            let sql = "UPDATE publications SET state = 'submitted', reason = NULL, github_review_id = ?2, updated_at = ?3 WHERE id = ?1 AND state = 'unknown'";
             if tx.execute(sql, params![publication_id, review_id, now])? == 1 {
                 crate::store::publish::insert_sync_job(&tx, &publication_id, now)?;
             }

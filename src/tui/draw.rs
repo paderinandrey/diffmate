@@ -1,4 +1,6 @@
 mod draft;
+mod queue;
+mod wrap;
 
 pub(super) enum Place {
     Limitation,
@@ -22,9 +24,10 @@ pub(super) fn item_rows(
 
 use super::model::Session;
 use crate::render::sanitize;
-use crate::store::status::QueueRow;
 use ratatui::Frame;
-use ratatui::text::Line;
+use ratatui::layout::Rect;
+use ratatui::style::{Style, Stylize};
+use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
 
 pub(super) struct Window {
@@ -43,7 +46,7 @@ impl Window {
 
 pub(super) fn screen(frame: &mut Frame<'_>, session: &Session, running: bool) -> Window {
     let mut area = frame.area();
-    if running && area.height > 0 {
+    if running && area.height > 1 {
         area.height -= 1;
         let bar = ratatui::layout::Rect {
             y: area.bottom(),
@@ -56,72 +59,68 @@ pub(super) fn screen(frame: &mut Frame<'_>, session: &Session, running: bool) ->
         super::confirm::draw(frame, confirm, area);
         return Window::empty();
     }
-    if let Some(report) = session.publication_report()
-        && area.height > 1
-    {
-        area.height -= 1;
-        let bar = ratatui::layout::Rect {
-            y: area.bottom(),
-            height: 1,
-            ..area
+    if area.height >= 9 {
+        let (title, keys) = if let Some((draft, _)) = session.draft() {
+            let label = session
+                .rows
+                .get(session.selected)
+                .map_or("", |row| &row.label);
+            let title = format!(
+                "Draft  /  {}  /  Findings: {}",
+                sanitize(label),
+                draft.findings.len()
+            );
+            (
+                title,
+                "↑↓ move   k keep   d drop   K keep rest   e edit   i include limit   Esc back\na approve   r request changes   c comment",
+            )
+        } else {
+            (
+                format!("Review queue  /  Targets: {}", session.rows.len()),
+                "↑↓ select   Enter draft   o open PR   n re-run   x discard   q quit",
+            )
         };
-        frame.render_widget(Paragraph::new(sanitize(&report.text)), bar);
+        let heading = Rect { height: 1, ..area };
+        frame.render_widget(Paragraph::new(title).bold(), heading);
+        area.y += 1;
+        area.height -= 1;
+        bottom(frame, &mut area, keys, Style::default().italic());
     }
-    if let Some((draft, focus)) = session.draft() {
-        return draft::screen(
+    if let Some(report) = session.publication_report() {
+        bottom(
             frame,
-            area,
-            draft,
-            focus,
-            session.notice(),
-            session.scroll(),
+            &mut area,
+            &sanitize(&report.text),
+            Style::default().bold(),
         );
     }
-    let height = usize::from(area.height);
-    let extra = usize::from(session.notice().is_some());
-    let mut lines = queue_lines(session, height.saturating_sub(extra));
-    if let Some(notice) = session.notice() {
-        lines.push(Line::from(sanitize(notice)));
+    if let Some(notice) = session.notice().filter(|s| !s.is_empty()) {
+        bottom(frame, &mut area, &sanitize(notice), Style::default().bold());
     }
-    frame.render_widget(Paragraph::new(lines), area);
+    if let Some((draft, focus)) = session.draft() {
+        return draft::screen(frame, area, draft, focus, session.scroll());
+    }
+    queue::screen(frame, session, area);
     Window::empty()
 }
 
-fn queue_lines(session: &Session, room: usize) -> Vec<Line<'static>> {
-    if session.rows.is_empty() {
-        return vec![Line::from("No targets.")];
+fn bottom(frame: &mut Frame<'_>, area: &mut Rect, text: &str, style: Style) {
+    if area.height <= 1 || area.width == 0 {
+        return;
     }
-    let start = queue_start(session.rows.len(), room, session.selected);
-    session
-        .rows
-        .iter()
-        .enumerate()
-        .skip(start)
-        .take(room)
-        .map(|(index, row)| {
-            let mark = if index == session.selected { ">" } else { " " };
-            Line::from(format!("{mark} {}", row_text(row)))
-        })
+    let lines = wrapped(text, area.width, area.height.div_ceil(2));
+    let height = u16::try_from(lines.height()).unwrap_or(area.height - 1);
+    area.height -= height;
+    let bar = Rect {
+        y: area.bottom(),
+        height,
+        ..*area
+    };
+    frame.render_widget(Paragraph::new(lines).style(style), bar);
+}
+
+pub(super) fn wrapped(text: &str, width: u16, limit: u16) -> Text<'_> {
+    wrap::lines(text, usize::from(width))
+        .take(usize::from(limit))
         .collect()
-}
-
-fn queue_start(total: usize, room: usize, selected: usize) -> usize {
-    if room == 0 || total <= room || selected < room {
-        0
-    } else {
-        selected + 1 - room
-    }
-}
-
-fn row_text(row: &QueueRow) -> String {
-    let mut parts = vec![
-        sanitize(&row.label),
-        sanitize(&row.tracking),
-        sanitize(&row.latest),
-    ];
-    if !row.freshness.is_empty() {
-        parts.push(sanitize(&row.freshness));
-    }
-    parts.push(sanitize(&row.publication));
-    parts.join("  ")
 }

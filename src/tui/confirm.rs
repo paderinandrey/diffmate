@@ -1,7 +1,9 @@
 use crate::render::sanitize;
 use ratatui::Frame;
-use ratatui::text::Line;
-use ratatui::widgets::Paragraph;
+use ratatui::layout::Rect;
+use ratatui::style::Stylize;
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Paragraph, Wrap};
 
 pub(super) enum Purpose {
     Discard(crate::pr_url::PrRef),
@@ -73,14 +75,57 @@ impl Confirm {
     }
 }
 
-pub(super) fn draw(frame: &mut Frame<'_>, confirm: &Confirm, area: ratatui::layout::Rect) {
+pub(super) fn draw(frame: &mut Frame<'_>, confirm: &Confirm, mut area: Rect) {
+    if area.height >= 6 {
+        frame.render_widget(
+            Paragraph::new("Confirm action").bold(),
+            Rect { height: 1, ..area },
+        );
+        area.y += 2;
+        area.height -= 2;
+    }
     let safe = mark(&confirm.safe, confirm.highlighted_safe);
     let danger = mark(&confirm.danger, !confirm.highlighted_safe);
-    let lines = vec![
-        Line::from(sanitize(&confirm.prompt)),
-        Line::from(sanitize(&format!("{safe}  {danger}"))),
-    ];
-    frame.render_widget(Paragraph::new(lines), area);
+    let options = if confirm.highlighted_safe {
+        vec![Span::from(safe).reversed(), "  ".into(), danger.into()]
+    } else {
+        vec![safe.into(), "  ".into(), Span::from(danger).reversed()]
+    };
+    let options = Line::from(options);
+    let choice_rows = if options.width() > usize::from(area.width) {
+        2
+    } else {
+        1
+    };
+    let hint = u16::from(area.height >= 5 && area.width >= 40);
+    let available = area.height.saturating_sub(choice_rows + hint);
+    let text = sanitize(&confirm.prompt);
+    let prompt = super::draw::wrapped(&text, area.width, available);
+    let prompt_rows = u16::try_from(prompt.height()).unwrap_or(available);
+    frame.render_widget(
+        Paragraph::new(prompt),
+        Rect {
+            height: prompt_rows,
+            ..area
+        },
+    );
+    let choices = Rect {
+        y: area.y + prompt_rows + u16::from(prompt_rows < available),
+        height: choice_rows.min(area.height),
+        ..area
+    };
+    frame.render_widget(Paragraph::new(options).wrap(Wrap { trim: true }), choices);
+    if hint != 0 {
+        let keys = Paragraph::new("← → choose   Enter confirm   Esc cancel").italic();
+        frame.render_widget(
+            keys,
+            Rect {
+                y: choices.bottom(),
+                height: 1,
+                ..area
+            },
+        );
+    }
 }
 
 fn mark(label: &str, highlighted: bool) -> String {

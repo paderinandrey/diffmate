@@ -40,6 +40,57 @@ async fn run(view: bool, detail: &'static str) -> (Boom, Duration, (String, Stri
 }
 
 #[tokio::test(start_paused = true)]
+async fn each_check_has_a_per_attempt_deadline_and_never_posts_on_exhaustion() {
+    use super::boom::Check;
+    for (check, label, index) in [
+        (Check::Head, "HEAD check", 0),
+        (Check::Login, "login check", 1),
+        (Check::Reviews, "list reviews", 2),
+    ] {
+        for (budget, seconds) in [(0, 5), (2, 21)] {
+            let (_tmp, store, _, _) = open_gh(RUN).await;
+            let gh = Boom::stalling(check, usize::MAX);
+            let job = queued(&store).await;
+            let start = tokio::time::Instant::now();
+            crate::publish::execute_publish(&store, &gh, job, budget)
+                .await
+                .unwrap();
+            assert_eq!(start.elapsed(), Duration::from_secs(seconds));
+            let mut expected = [0; 4];
+            expected[..index].fill(1);
+            expected[index] = usize::try_from(budget).unwrap() + 1;
+            assert_eq!(gh.calls(), expected);
+            assert_eq!(pair(&store).await, ("abandoned".into(), "failed".into()));
+            let reason: String =
+                super::super::support::cell(&store, "SELECT reason FROM publications").await;
+            assert_eq!(reason, format!("{label} timed out"));
+        }
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn each_check_can_recover_after_its_first_timeout_and_post_once() {
+    use super::boom::Check;
+    for (index, check) in [Check::Head, Check::Login, Check::Reviews]
+        .into_iter()
+        .enumerate()
+    {
+        let (_tmp, store, _, _) = open_gh(RUN).await;
+        let gh = Boom::stalling(check, 1);
+        let job = queued(&store).await;
+        let start = tokio::time::Instant::now();
+        crate::publish::execute_publish(&store, &gh, job, 1)
+            .await
+            .unwrap();
+        assert_eq!(start.elapsed(), Duration::from_secs(6));
+        let mut expected = [1; 4];
+        expected[index] = 2;
+        assert_eq!(gh.calls(), expected);
+        assert_eq!(pair(&store).await, ("submitted".into(), "succeeded".into()));
+    }
+}
+
+#[tokio::test(start_paused = true)]
 async fn transient_checks_sleep_then_abandon() {
     for view in [true, false] {
         let detail = if view { "HTTP 503" } else { "HTTP 429" };
@@ -87,9 +138,4 @@ fn http_status_classifies_retries() {
         assert_eq!(transient(&cmd(detail)), retry, "{detail}");
     }
     assert!(!transient(&Error::NoHome));
-    let rejected = super::super::super::checks::client_rejected;
-    assert!(rejected(&cmd("exit status: 1: HTTP 422")));
-    assert!(!rejected(&cmd(
-        "Post \"https://api.github.com/repos/o/r/pulls/422/reviews\": unexpected EOF"
-    )));
 }

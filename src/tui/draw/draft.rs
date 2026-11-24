@@ -1,33 +1,21 @@
 use crate::render::sanitize;
-use crate::store::status::DraftView;
+use crate::store::status::{DraftFinding, DraftView};
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
-use unicode_width::UnicodeWidthChar;
 
 pub(super) fn screen(
     frame: &mut Frame<'_>,
     mut area: Rect,
     draft: &DraftView,
     focus: usize,
-    notice: Option<&str>,
     scroll: usize,
 ) -> super::Window {
-    if let Some(notice) = notice.filter(|text| !text.is_empty())
-        && area.height > 1
-    {
-        let bar = Rect {
-            y: area.y + area.height - 1,
-            height: 1,
-            ..area
-        };
-        area.height -= 1;
-        frame.render_widget(Paragraph::new(sanitize(notice)), bar);
-    }
     if area.height > 0 {
         let bar = Rect { height: 1, ..area };
-        frame.render_widget(Paragraph::new(sanitize(&draft.freshness)), bar);
+        frame.render_widget(Paragraph::new(sanitize(&draft.freshness)).bold(), bar);
         area.y = area.y.saturating_add(1);
         area.height = area.height.saturating_sub(1);
     }
@@ -36,19 +24,11 @@ pub(super) fn screen(
     let mut selected = 0..0;
     for (index, finding) in draft.findings.iter().enumerate() {
         let start = rows.len();
-        push(
-            &mut rows,
-            &header(
-                &finding.anchor(),
-                &finding.severity,
-                &finding.title,
-                &finding.decision,
-                finding.hint.as_deref(),
-                focus == index,
-            ),
-            width,
-        );
+        push(&mut rows, &header(finding, focus == index), width);
         if focus == index {
+            for line in &mut rows[start..] {
+                *line = std::mem::take(line).reversed();
+            }
             push(&mut rows, &sanitize(&finding.body), width);
             selected = start..rows.len();
         }
@@ -69,11 +49,7 @@ pub(super) fn screen(
         let start = rows.len();
         let chosen =
             matches!(past_findings(draft, focus), Some(super::Place::Note(at)) if at == index);
-        push(
-            &mut rows,
-            &format!("{} {}", mark(chosen), sanitize(note)),
-            width,
-        );
+        push(&mut rows, &note_line(note, chosen), width);
         if chosen {
             selected = start..rows.len();
         }
@@ -86,47 +62,20 @@ pub(super) fn screen(
 }
 
 pub(super) fn item_rows(draft: &DraftView, focus: usize, width: usize) -> usize {
-    let mut rows = Vec::new();
+    let count = |text: &str| super::wrap::lines(text, width).count();
     if let Some(finding) = draft.findings.get(focus) {
-        push(
-            &mut rows,
-            &header(
-                &finding.anchor(),
-                &finding.severity,
-                &finding.title,
-                &finding.decision,
-                finding.hint.as_deref(),
-                true,
-            ),
-            width,
-        );
-        push(&mut rows, &sanitize(&finding.body), width);
-        return rows.len();
+        return count(&header(finding, true)) + count(&sanitize(&finding.body));
     }
     match past_findings(draft, focus) {
-        Some(super::Place::Limitation) => {
-            let Some(text) = draft.limitation.as_deref() else {
-                return 0;
-            };
-            push(
-                &mut rows,
-                &limitation_line(text, draft.included, true),
-                width,
-            );
-        }
-        Some(super::Place::Note(index)) => {
-            let Some(note) = draft.future.get(index) else {
-                return 0;
-            };
-            push(
-                &mut rows,
-                &format!("{} {}", mark(true), sanitize(note)),
-                width,
-            );
-        }
-        None => return 0,
+        Some(super::Place::Limitation) => draft.limitation.as_ref().map_or(0, |text| {
+            count(&limitation_line(text, draft.included, true))
+        }),
+        Some(super::Place::Note(index)) => draft
+            .future
+            .get(index)
+            .map_or(0, |note| count(&note_line(note, true))),
+        None => 0,
     }
-    rows.len()
 }
 
 pub(super) fn past_findings(draft: &DraftView, focus: usize) -> Option<super::Place> {
@@ -145,22 +94,22 @@ fn limitation_line(text: &str, included: bool, chosen: bool) -> String {
     format!("{} Limitation: {}{suffix}", mark(chosen), sanitize(text))
 }
 
-fn header(
-    anchor: &str,
-    severity: &str,
-    title: &str,
-    decision: &str,
-    hint: Option<&str>,
-    chosen: bool,
-) -> String {
-    let hint = hint.map_or(String::new(), |hint| format!("  hint: {hint}"));
+fn note_line(note: &str, chosen: bool) -> String {
+    format!("{} Future improvement: {}", mark(chosen), sanitize(note))
+}
+
+fn header(finding: &DraftFinding, chosen: bool) -> String {
+    let hint = finding
+        .hint
+        .as_ref()
+        .map_or(String::new(), |hint| format!("  hint: {}", sanitize(hint)));
     format!(
-        "{} {}  {}  {}  {}{hint}",
+        "{} [{}] {}  ·  {}  ·  {}{hint}",
         mark(chosen),
-        sanitize(anchor),
-        sanitize(severity),
-        sanitize(title),
-        sanitize(decision),
+        sanitize(&finding.severity),
+        sanitize(&finding.title),
+        sanitize(&finding.anchor()),
+        sanitize(&finding.decision),
     )
 }
 
@@ -169,29 +118,7 @@ fn mark(selected: bool) -> &'static str {
 }
 
 fn push(rows: &mut Vec<Line<'static>>, text: &str, width: usize) {
-    let width = width.max(1);
-    let mut rest = text;
-    if rest.is_empty() {
-        rows.push(Line::from(String::new()));
-        return;
-    }
-    while !rest.is_empty() {
-        let mut cols = 0;
-        let mut end = 0;
-        for ch in rest.chars() {
-            let ch_width = ch.width().unwrap_or(0);
-            if cols > 0 && cols + ch_width > width {
-                break;
-            }
-            cols += ch_width;
-            end += ch.len_utf8();
-            if cols >= width {
-                break;
-            }
-        }
-        rows.push(Line::from(rest[..end].to_string()));
-        rest = &rest[end..];
-    }
+    rows.extend(super::wrap::lines(text, width).map(|s| Line::from(s.to_owned())));
 }
 
 fn viewport(

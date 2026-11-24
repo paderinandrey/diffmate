@@ -42,6 +42,36 @@ fn context_files_hold_pr_data_discussion_and_ci() {
 }
 
 #[test]
+fn annotation_pages_in_agent_context_distinguish_complete_and_truncated() {
+    for (returned, total, truncated) in [(50, None, false), (51, None, true), (50, Some(51), true)]
+    {
+        let sandbox = Sandbox::new();
+        with_pr(&sandbox);
+        let check = serde_json::json!({
+            "id": 77, "name": "lint", "status": "completed", "conclusion": "failure",
+            "output": {"annotations_count": total}
+        });
+        let checks = serde_json::json!({"total_count": 1, "check_runs": [check]});
+        sandbox.gh.route(CHECK_RUNS, &checks.to_string());
+        let page: Vec<_> = (1..=returned)
+            .map(|line| serde_json::json!({"path": "src/a.rs", "start_line": line}))
+            .collect();
+        sandbox.gh.route(
+            "api repos/o/r/check-runs/77/annotations?per_page=51",
+            &serde_json::to_string(&page).unwrap(),
+        );
+
+        let output = review(&sandbox);
+        assert!(output.status.success(), "{output:?}");
+        let ci = read(&captured(&sandbox, 0), "ci.md");
+        assert_eq!(ci.starts_with("TRUNCATED: ci.md:"), truncated, "{ci}");
+        assert_eq!(ci.matches("src/a.rs:").count(), 50, "{ci}");
+        assert!(ci.contains("src/a.rs:50 [notice]"), "{ci}");
+        assert!(!ci.contains("src/a.rs:51 "), "{ci}");
+    }
+}
+
+#[test]
 fn ci_unavailable_is_written_as_unknown() {
     let sandbox = Sandbox::new();
     with_pr(&sandbox);

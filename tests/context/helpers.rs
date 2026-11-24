@@ -72,7 +72,7 @@ pub fn assert_read_only(calls: &[Vec<String>]) {
     assert!(
         kinds
             .iter()
-            .any(|kind| kind.ends_with("/annotations?per_page=50"))
+            .any(|kind| kind.ends_with("/annotations?per_page=51"))
     );
     for argv in calls {
         match (argv[0].as_str(), argv[1].as_str()) {

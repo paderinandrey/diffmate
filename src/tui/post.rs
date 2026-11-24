@@ -45,7 +45,7 @@ pub(super) async fn send<H: Gh, G: Git>(
     let head = match read_head(gh, &intent.pr, &mut reader).await? {
         Head::Quit => return Ok(true),
         Head::Failed(error) => {
-            session.set_notice(error.to_string());
+            session.set_notice(error);
             return Ok(false);
         }
         Head::Sha(sha) => sha,
@@ -175,7 +175,7 @@ pub(super) async fn reconcile<H: Gh, G: Git>(
 
 enum Head {
     Sha(String),
-    Failed(Error),
+    Failed(String),
     Quit,
 }
 
@@ -184,23 +184,22 @@ async fn read_head<H: Gh>(
     pr: &crate::pr_url::PrRef,
     reader: &mut Option<super::LiveReader<'_>>,
 ) -> Result<Head, Error> {
-    let view = gh.pr_view(pr);
+    let view = async {
+        let deadline = std::time::Duration::from_secs(5);
+        match tokio::time::timeout(deadline, gh.pr_view(pr)).await {
+            Ok(Ok(meta)) => Head::Sha(meta.head_sha),
+            Ok(Err(error)) => Head::Failed(error.to_string()),
+            Err(_) => Head::Failed("HEAD check timed out; review not queued".into()),
+        }
+    };
     let Some((_, keys)) = reader.as_mut() else {
-        return match view.await {
-            Ok(meta) => Ok(Head::Sha(meta.head_sha)),
-            Err(error) => Ok(Head::Failed(error)),
-        };
+        return Ok(view.await);
     };
     tokio::pin!(view);
     loop {
         tokio::select! {
             biased;
-            result = &mut view => {
-                return match result {
-                    Ok(meta) => Ok(Head::Sha(meta.head_sha)),
-                    Err(error) => Ok(Head::Failed(error)),
-                };
-            }
+            result = &mut view => return Ok(result),
             incoming = keys.recv() => {
                 let Some(key) = incoming.ok_or_else(super::key_stopped)?? else {
                     continue;

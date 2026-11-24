@@ -82,17 +82,16 @@ pub(super) fn transient_gh(error: &Error) -> bool {
     }
 }
 
-pub(super) fn client_rejected(error: &Error) -> bool {
-    let Error::Command { detail, .. } = error else {
-        return false;
-    };
-    matches!(
-        status_token(detail),
-        Some(code) if (400..500).contains(&code) && !matches!(code, 408 | 429)
-    )
+pub(super) fn failed_check(check: &str, error: &Error) -> String {
+    if let Error::Command { detail, .. } = error
+        && let Some(code) = status_token(detail)
+    {
+        return format!("{check} failed (HTTP {code})");
+    }
+    format!("{check} failed")
 }
 
-fn status_token(detail: &str) -> Option<u16> {
+pub(super) fn status_token(detail: &str) -> Option<u16> {
     let mut rest = detail;
     while let Some(at) = rest.find("HTTP ") {
         rest = &rest[at + "HTTP ".len()..];

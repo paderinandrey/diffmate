@@ -65,7 +65,7 @@ impl Gh for Remote {
                 Mode::Code(code) => Err(Error::Command {
                     program: "gh",
                     args: String::new(),
-                    detail: format!("HTTP {code}"),
+                    detail: format!("exit status: 1: gh: sensitive response body (HTTP {code})"),
                 }),
                 Mode::Decode => Err(serde_json::from_str::<u8>("no").unwrap_err().into()),
             }

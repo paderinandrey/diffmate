@@ -14,22 +14,29 @@ pub(super) struct Report {
 
 impl Publication {
     fn status(&self) -> String {
-        if self.state == "unknown" {
-            let result = match self.reconcile.as_deref() {
-                Some("failed") => format!(
-                    "reconciliation failed: {}",
-                    self.failure.as_deref().unwrap_or("unspecified error")
-                ),
-                Some("succeeded") => "marker not found; b: abandon only after checking".into(),
-                Some(state) => format!("reconciliation {state}"),
-                None => "outcome not confirmed".into(),
-            };
-            return format!("publication: unknown; {result}; y: reconcile; o: open PR");
-        }
+        let mut text = format!("publication: {}", self.state);
         if let Some(reason) = &self.reason {
-            return format!("publication: {}: {reason}", self.state);
+            text.push_str(": ");
+            text.push_str(reason);
         }
-        format!("publication: {}", self.state)
+        if self.state == "unknown" {
+            if self.reason.is_none() {
+                text.push_str(": no confirmed response");
+            }
+            match self.reconcile.as_deref() {
+                Some("failed") => text.push_str("; reconciliation failed"),
+                Some("succeeded") => {
+                    text.push_str("; marker not found; b: abandon only after checking");
+                }
+                Some(state) => {
+                    text.push_str("; reconciliation ");
+                    text.push_str(state);
+                }
+                None => {}
+            }
+            text.push_str("; y: reconcile; o: open PR");
+        }
+        text
     }
 }
 
