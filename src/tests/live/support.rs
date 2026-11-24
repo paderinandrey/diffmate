@@ -1,5 +1,6 @@
 use super::stored::{StoredRun, latest_run};
 use crate::app::{AppConfig, ProcessInfo};
+use crate::gh::{GhCli, verified_view};
 use crate::paths::Paths;
 use crate::procenv::InheritedEnv;
 use crate::store::now_ms;
@@ -52,13 +53,28 @@ pub(super) fn load_live_prs() -> Value {
     serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap()
 }
 
-pub(super) async fn review_url(url: &str) -> StoredRun {
+pub(super) async fn review_fixture(fixture: &Value) -> StoredRun {
+    let url = fixture["url"].as_str().unwrap();
+    let expected = fixture["head_sha"].as_str().unwrap();
     let guard = RealStateGuard::new();
     let dir = tempfile::tempdir().unwrap();
     let config = live_config(dir.path());
+    let pr = crate::pr_url::parse(url).unwrap();
+    let head = verified_view(&GhCli::new(&config.env), &pr)
+        .await
+        .unwrap_or_else(|err| panic!("cannot check fixture HEAD for {url}: {err}"))
+        .head_sha;
+    assert_eq!(
+        head, expected,
+        "fixture HEAD changed for {url}; review skipped"
+    );
     let code = crate::review::run(&config, url, true).await;
     let run = latest_run(&config.paths.db());
     println!("{url}: exit {code:?}\n{}", run.describe());
     guard.assert_untouched();
+    assert_eq!(
+        run.head_sha, expected,
+        "reviewed a different fixture revision for {url}"
+    );
     run
 }

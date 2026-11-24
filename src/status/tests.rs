@@ -4,6 +4,7 @@ use proptest::prelude::*;
 
 mod budget;
 mod fixture;
+mod live;
 mod stored;
 
 #[test]

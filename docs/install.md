@@ -94,6 +94,13 @@ and exits 0. `watch` already waits for the runner lock instead of
 exiting, and already exits 0 on SIGTERM, which is what `KeepAlive`
 needs. The agent runs in the GUI session, not at the login window.
 
+If `gh auth status` does not respond within five seconds, `diffmate doctor`
+reports a timeout. It still shows the other checks and exits with an error.
+
+`diffmate status` checks up to three PR heads at once. Each check has a
+five-second timeout. If a check fails, the row shows the last known head
+and its age, or `freshness unknown` if there is no stored head.
+
 The TUI can publish a draft without `watch`. It releases the runner lock
 when the ready publication, reconciliation, and sync jobs finish. Leave
 the TUI open and start `diffmate watch` or `diffmate review <pr-url>`

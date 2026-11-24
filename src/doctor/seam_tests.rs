@@ -53,6 +53,27 @@ async fn auth_success_is_ok() {
     assert_eq!(check.text, "gh auth: ok");
 }
 
+#[tokio::test(start_paused = true)]
+async fn stalled_auth_times_out_after_five_seconds() {
+    use tokio::time::{Duration, Instant, sleep};
+
+    struct SlowAuth;
+    impl AuthProbe for SlowAuth {
+        fn status(&self) -> ProbeFuture<'_> {
+            Box::pin(async {
+                sleep(Duration::from_secs(60)).await;
+                Probe::Ready
+            })
+        }
+    }
+
+    let start = Instant::now();
+    let check = super::gh_auth::check(&SlowAuth).await;
+    assert_eq!(start.elapsed(), Duration::from_secs(5));
+    assert!(!check.passed);
+    assert_eq!(check.text, "gh auth: timed out after 5s");
+}
+
 #[tokio::test]
 async fn old_grok_skips_the_help_probe() {
     let agent = agent(

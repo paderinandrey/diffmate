@@ -3,6 +3,9 @@ use super::which::which;
 use crate::app::AppConfig;
 use crate::gh::GhCli;
 use crate::proc::run_tool;
+use tokio::time::{Duration, timeout};
+
+const AUTH_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub(super) struct Live<'a> {
     config: &'a AppConfig,
@@ -32,7 +35,13 @@ impl AuthProbe for Live<'_> {
 }
 
 pub(super) async fn check(probe: &dyn AuthProbe) -> super::Check {
-    match probe.status().await {
+    let Ok(outcome) = timeout(AUTH_TIMEOUT, probe.status()).await else {
+        return super::Check::fail(format!(
+            "gh auth: timed out after {}s",
+            AUTH_TIMEOUT.as_secs()
+        ));
+    };
+    match outcome {
         Probe::Ready => super::Check::pass("gh auth: ok"),
         Probe::Unfinished => super::Check::fail("gh auth: probe did not finish"),
         Probe::Failed(detail) => super::Check::fail(format!("gh auth: {detail}")),
